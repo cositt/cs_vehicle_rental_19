@@ -15,16 +15,14 @@ class SunsetHomeController(http.Controller):
         current_domain = request.httprequest.headers.get('X-Forwarded-Host', request.httprequest.host)
         
         if 'pinveco' in current_domain.lower():
-            # Renderizar vista vacía de Pinveco (será editada en CMS)
-            return request.render('website.homepage', {})
+            return request.render('vehicle_rental.pinveco_home_basic', {})
         else:
-            # Renderizar vista vacía de Sunset (será editada en CMS)
-            return request.render('website.homepage', {})
+            return request.render('vehicle_rental.sunset_home_basic', {})
 
     @http.route('/sunset', type='http', auth='public', website=True)
     def sunset_home_alt(self, **kw):
         """Página principal alternativa"""
-        return request.render('website.homepage', {})
+        return request.render('vehicle_rental.sunset_home_basic', {})
 
     @http.route('/sunset/flota', type='http', auth='public', website=True)
     def sunset_fleet(self, **kw):
