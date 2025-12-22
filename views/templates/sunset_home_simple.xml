@@ -60,7 +60,7 @@
                 
                 <div class="row g-4">
                     <div class="col-lg-4 col-md-6">
-                        <div class="category-card card h-100 shadow-sm" style="transition: all 0.3s ease;">
+                        <div class="category-card card o_editable h-100 shadow-sm" style="transition: all 0.3s ease;">
                             <div class="card-img-top d-flex align-items-center justify-content-center" 
                                  style="height: 200px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
                                 <i class="fa fa-truck fa-4x text-dark"></i>
@@ -75,7 +75,7 @@
                     </div>
                     
                     <div class="col-lg-4 col-md-6">
-                        <div class="category-card card h-100 shadow-sm" style="transition: all 0.3s ease;">
+                        <div class="category-card card o_editable h-100 shadow-sm" style="transition: all 0.3s ease;">
                             <div class="card-img-top d-flex align-items-center justify-content-center" 
                                  style="height: 200px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
                                 <i class="fa fa-truck fa-4x text-dark"></i>
@@ -90,7 +90,7 @@
                     </div>
                     
                     <div class="col-lg-4 col-md-6">
-                        <div class="category-card card h-100 shadow-sm" style="transition: all 0.3s ease;">
+                        <div class="category-card card o_editable h-100 shadow-sm" style="transition: all 0.3s ease;">
                             <div class="card-img-top d-flex align-items-center justify-content-center" 
                                  style="height: 200px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
                                 <i class="fa fa-truck fa-4x text-dark"></i>
