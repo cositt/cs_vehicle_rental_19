@@ -2,6 +2,7 @@
 <odoo>
     <!-- Simple Booking Enquiry Template -->
 <template id="booking_enquiry_simple" name="Simple Booking Enquiry">
+            <t t-set="img_folder" t-value="'tipos_pinveco' if is_pinveco else 'tipos'" />
     <t t-call="website.layout">
         <div class="container py-4">
             <h2 class="mb-4 text-center text-dark">
@@ -20,73 +21,73 @@
                              t-att-onclick="'selectCategory(' + str(category.id) + ')'">
                             <div class="card-img-top d-flex align-items-center justify-content-center" 
                                  t-attf-style="height: 200px; background: linear-gradient(135deg, #{primary_color} 0%, #{secondary_color} 100%);">
-                                <img t-att-src="'/vehicle_rental/static/description/img/tipos/tipoA.png'"
+                                <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoA.png"
                                      t-att-alt="category.name"
                                      style="max-height: 150px; max-width: 200px; object-fit: contain;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo A' in category.name"/>
-                                <img t-att-src="'/vehicle_rental/static/description/img/tipos/tipoB.png'"
+                                <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoB.png"
                                      t-att-alt="category.name"
                                      style="max-height: 150px; max-width: 200px; object-fit: contain;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo B' in category.name"/>
-                                <img t-att-src="'/vehicle_rental/static/description/img/tipos/tipoC.png'"
+                                <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoC.png"
                                      t-att-alt="category.name"
                                      style="max-height: 150px; max-width: 200px; object-fit: contain;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo C' in category.name"/>
-                                <img t-att-src="'/vehicle_rental/static/description/img/tipos/tipoD.png'"
+                                <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoD.png"
                                      t-att-alt="category.name"
                                      style="max-height: 150px; max-width: 200px; object-fit: contain;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo D' in category.name"/>
-                                <img t-att-src="'/vehicle_rental/static/description/img/tipos/tipoE.png'"
+                                <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoE.png"
                                      t-att-alt="category.name"
                                      style="max-height: 150px; max-width: 200px; object-fit: contain;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo E' in category.name"/>
-                                <img t-att-src="'/vehicle_rental/static/description/img/tipos/tipoF.png'"
+                                <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoF.png"
                                      t-att-alt="category.name"
                                      style="max-height: 150px; max-width: 200px; object-fit: contain;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo F' in category.name"/>
-                                <img t-att-src="'/vehicle_rental/static/description/img/tipos/tipoK.png'"
+                                <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoK.png"
                                      t-att-alt="category.name"
                                      style="max-height: 150px; max-width: 200px; object-fit: contain;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo K' in category.name"/>
-                                <img t-att-src="'/vehicle_rental/static/description/img/tipos/tipoT.png'"
+                                <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoT.png"
                                      t-att-alt="category.name"
                                      style="max-height: 150px; max-width: 200px; object-fit: contain;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo T' in category.name"/>
-                                <img t-att-src="'/vehicle_rental/static/description/img/tipos/tipoV.png'"
+                                <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoV.png"
                                      t-att-alt="category.name"
                                      style="max-height: 150px; max-width: 200px; object-fit: contain;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo V' in category.name"/>
-                                <img t-att-src="'/vehicle_rental/static/description/img/tipos/tipoW.png'"
+                                <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoW.png"
                                      t-att-alt="category.name"
                                      style="max-height: 150px; max-width: 200px; object-fit: contain;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo W' in category.name"/>
-                                <img t-att-src="'/vehicle_rental/static/description/img/tipos/tipoX.png'"
+                                <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoX.png"
                                      t-att-alt="category.name"
                                      style="max-height: 150px; max-width: 200px; object-fit: contain;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo X' in category.name"/>
-                                <img t-att-src="'/vehicle_rental/static/description/img/tipos/tipoZ.png'"
+                                <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoZ.png"
                                      t-att-alt="category.name"
                                      style="max-height: 150px; max-width: 200px; object-fit: contain;" 
                                      loading="lazy"
