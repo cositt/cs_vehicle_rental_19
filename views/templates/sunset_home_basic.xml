@@ -4,8 +4,8 @@
     <template id="sunset_home_basic" name="Sunset Home Basic">
         <t t-call="website.layout">
             
-            <!-- HERO SECTION -->
-            <div class="hero-section" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); min-height: 80vh; display: flex; align-items: center;">
+            <!-- HERO SECTION - EDITABLE -->
+            <section class="hero-section o_editable" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); min-height: 80vh; display: flex; align-items: center;">
                 <div class="container">
                     <div class="row align-items-center">
                         <div class="col-lg-6">
@@ -40,10 +40,10 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- CATEGORÍAS -->
-            <div class="container py-5">
+            <!-- CATEGORÍAS - SECCIÓN EDITABLE -->
+            <section class="container py-5 o_editable">
                 <div class="row text-center mb-5">
                     <div class="col-12">
                         <h2 class="display-5 fw-bold text-dark mb-3">
@@ -58,8 +58,7 @@
                 
                 <div class="row g-4">
                     <div class="col-lg-4 col-md-6">
-                        <div class="category-card card o_editable h-100 shadow-sm" style="transition: all 0.3s ease; " 
-                             >
+                        <div class="category-card card h-100 shadow-sm o_editable" style="transition: all 0.3s ease;">
                             <div class="card-img-top d-flex align-items-center justify-content-center" 
                                  style="height: 200px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
                                 <i class="fa fa-truck fa-4x text-dark"></i>
@@ -77,8 +76,7 @@
                     </div>
                     
                     <div class="col-lg-4 col-md-6">
-                        <div class="category-card card o_editable h-100 shadow-sm" style="transition: all 0.3s ease; " 
-                             >
+                        <div class="category-card card h-100 shadow-sm o_editable" style="transition: all 0.3s ease;">
                             <div class="card-img-top d-flex align-items-center justify-content-center" 
                                  style="height: 200px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
                                 <i class="fa fa-truck fa-4x text-dark"></i>
@@ -96,8 +94,7 @@
                     </div>
                     
                     <div class="col-lg-4 col-md-6">
-                        <div class="category-card card o_editable h-100 shadow-sm" style="transition: all 0.3s ease; " 
-                             >
+                        <div class="category-card card h-100 shadow-sm o_editable" style="transition: all 0.3s ease;">
                             <div class="card-img-top d-flex align-items-center justify-content-center" 
                                  style="height: 200px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
                                 <i class="fa fa-truck fa-4x text-dark"></i>
@@ -114,10 +111,10 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- DELEGACIONES -->
-            <div class="delegations-section py-5" style="background-color: #f8f9fa;">
+            <!-- DELEGACIONES - SECCIÓN EDITABLE -->
+            <section class="delegations-section py-5 o_editable" style="background-color: #f8f9fa;">
                 <div class="container">
                     <div class="row text-center mb-5">
                         <div class="col-12">
@@ -133,7 +130,7 @@
                     
                     <div class="row g-4">
                         <div class="col-lg-4 col-md-6">
-                            <div class="delegation-card card h-100 shadow-sm">
+                            <div class="delegation-card card h-100 shadow-sm o_editable">
                                 <div class="card-body text-center">
                                     <div class="delegation-icon mb-3">
                                         <i class="fa fa-building fa-3x text-dark"></i>
@@ -165,7 +162,7 @@
                         </div>
                         
                         <div class="col-lg-4 col-md-6">
-                            <div class="delegation-card card h-100 shadow-sm">
+                            <div class="delegation-card card h-100 shadow-sm o_editable">
                                 <div class="card-body text-center">
                                     <div class="delegation-icon mb-3">
                                         <i class="fa fa-building fa-3x text-dark"></i>
@@ -197,7 +194,7 @@
                         </div>
                         
                         <div class="col-lg-4 col-md-6">
-                            <div class="delegation-card card h-100 shadow-sm">
+                            <div class="delegation-card card h-100 shadow-sm o_editable">
                                 <div class="card-body text-center">
                                     <div class="delegation-icon mb-3">
                                         <i class="fa fa-building fa-3x text-dark"></i>
@@ -229,10 +226,10 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- CALL TO ACTION FINAL -->
-            <div class="cta-section py-5" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+            <!-- CALL TO ACTION FINAL - EDITABLE -->
+            <section class="cta-section py-5 o_editable" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
                 <div class="container text-center">
                     <div class="row justify-content-center">
                         <div class="col-lg-8">
@@ -257,9 +254,9 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- Estilos CSS específicos - Usando colores corporativos del template anterior -->
+            <!-- Estilos CSS específicos -->
             <style>
                 .hero-section {
                     position: relative;
@@ -276,7 +273,6 @@
                     box-shadow: 0 10px 25px rgba(0,0,0,0.1);
                 }
                 
-                /* Colores corporativos exactos del template anterior */
                 .btn-dark {
                     background: #000000;
                     border: none;
@@ -294,7 +290,7 @@
                 }
                 
                 .bg-info {
-                    background: #E6E6FA !important; /* Lavanda claro */
+                    background: #E6E6FA !important;
                     color: #000000;
                 }
                 
@@ -318,41 +314,6 @@
                     font-weight: 600;
                     text-transform: uppercase;
                     letter-spacing: 0.5px;
-                }
-                
-                /* Mantener colores Bootstrap estándar para otros elementos */
-                .btn-warning {
-                    background-color: #ffc107;
-                    border-color: #ffc107;
-                    color: #000;
-                    font-weight: 600;
-                }
-                
-                .btn-warning:hover {
-                    background-color: #ffca2c;
-                    border-color: #ffc720;
-                    color: #000;
-                    transform: translateY(-1px);
-                }
-                
-                .text-warning {
-                    color: #ffc107 !important;
-                }
-                
-                .text-success {
-                    color: #198754 !important;
-                }
-                
-                .text-danger {
-                    color: #dc3545 !important;
-                }
-                
-                .text-info {
-                    color: #0dcaf0 !important;
-                }
-                
-                .text-muted {
-                    color: #6c757d !important;
                 }
             </style>
         </t>
