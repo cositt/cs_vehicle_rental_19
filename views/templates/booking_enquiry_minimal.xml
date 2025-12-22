@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Minimal Booking Enquiry Template -->
+    <template id="booking_enquiry_minimal" name="Minimal Booking Enquiry">
+        <t t-call="website.layout">
+            <div class="container py-4">
+                <h1>Booking Enquiry - Minimal</h1>
+                <p>Esta es una versión minimal para debug.</p>
+            </div>
+        </t>
+    </template>
+</odoo>

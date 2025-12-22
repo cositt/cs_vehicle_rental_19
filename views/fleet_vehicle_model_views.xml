@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Heredar la vista de modelo de vehículo para mostrar MODELO y MOTOR también para furgonetas -->
+        <record id="fleet_vehicle_model_view_form_inherit_van" model="ir.ui.view">
+            <field name="name">fleet.vehicle.model.form.inherit.van</field>
+            <field name="model">fleet.vehicle.model</field>
+            <field name="inherit_id" ref="fleet.fleet_vehicle_model_view_form"/>
+            <field name="arch" type="xml">
+                <!-- Cambiar la restricción del grupo MODELO usando el campo seats como referencia -->
+                <xpath expr="//field[@name='seats']/.." position="attributes">
+                    <attribute name="invisible">vehicle_type not in ('car', 'van')</attribute>
+                </xpath>
+                
+                <!-- Cambiar la restricción del grupo MOTOR usando su name -->
+                <group name="group_engine" position="attributes">
+                    <attribute name="invisible">vehicle_type not in ('car', 'van')</attribute>
+                </group>
+            </field>
+        </record>
+    </data>
+</odoo>

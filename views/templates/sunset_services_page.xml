@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="sunset_services_page" name="Sunset Services Page">
+        <t t-call="website.layout">
+            <t t-set="title">Servicios - Sunset Rent a Car</t>
+            
+            <!-- Hero Section -->
+            <div class="hero-section" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); padding: 80px 0; text-align: center;">
+                <div class="container">
+                    <h1 class="display-4 fw-bold text-dark mb-4">Nuestros Servicios</h1>
+                    <p class="lead text-dark">Soluciones completas de transporte para todas tus necesidades</p>
+                </div>
+            </div>
+            
+            <!-- Servicios Principales -->
+            <div class="container py-5">
+                <div class="row">
+                    <div class="col-12 text-center mb-5">
+                        <h2 class="h1 fw-bold text-dark">Servicios Principales</h2>
+                        <p class="lead text-muted">Ofrecemos una amplia gama de servicios de transporte</p>
+                    </div>
+                </div>
+                
+                <div class="row g-4">
+                    <t t-foreach="services" t-as="service" t-key="service['id']">
+                        <div class="col-lg-4 col-md-6">
+                            <div class="card h-100 shadow-sm border-0" style="transition: transform 0.3s ease;">
+                                <div class="card-body text-center p-4">
+                                    <div class="mb-4">
+                                        <i t-attf-class="fa {{service['icon']}} fa-4x text-dark"></i>
+                                    </div>
+                                    <h4 class="card-title fw-bold text-dark mb-3" t-esc="service['name']"/>
+                                    <p class="card-text text-muted mb-4" t-esc="service['description']"/>
+                                    
+                                    <ul class="list-unstyled text-start">
+                                        <t t-foreach="service['features']" t-as="feature" t-key="feature_index">
+                                            <li class="mb-2">
+                                                <i class="fa fa-check text-dark me-2"></i>
+                                                <span t-esc="feature"/>
+                                            </li>
+                                        </t>
+                                    </ul>
+                                    
+                                    <div class="mt-4">
+                                        <a href="/web/booking-enquiry" class="btn btn-dark btn-lg px-4">
+                                            <i class="fa fa-calendar me-2"></i>
+                                            Reservar Ahora
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </div>
+            
+            <!-- Servicios Adicionales -->
+            <div class="py-5" style="background-color: #f8f9fa;">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-12 text-center mb-5">
+                            <h2 class="h1 fw-bold text-dark">Servicios Adicionales</h2>
+                            <p class="lead text-muted">Complementos que hacen la diferencia</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-4">
+                        <t t-foreach="additional_services" t-as="service" t-key="service_index">
+                            <div class="col-lg-3 col-md-6">
+                                <div class="text-center p-4">
+                                    <div class="mb-3">
+                                        <i t-attf-class="fa {{service['icon']}} fa-3x text-dark"></i>
+                                    </div>
+                                    <h5 class="fw-bold text-dark mb-3" t-esc="service['name']"/>
+                                    <p class="text-muted" t-esc="service['description']"/>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Testimonios -->
+            <div class="py-5">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-12 text-center mb-5">
+                            <h2 class="h1 fw-bold text-dark">Lo Que Dicen Nuestros Clientes</h2>
+                            <p class="lead text-muted">Testimonios reales de clientes satisfechos</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-4">
+                        <t t-foreach="testimonials" t-as="testimonial" t-key="testimonial_index">
+                            <div class="col-lg-4 col-md-6">
+                                <div class="card h-100 border-0 shadow-sm">
+                                    <div class="card-body p-4">
+                                        <div class="text-center mb-3">
+                                            <div class="mb-2">
+                                                <i class="fa fa-quote-left fa-2x text-dark"></i>
+                                            </div>
+                                            <div class="mb-3">
+                                                <t t-foreach="range(testimonial['rating'])" t-as="star" t-key="star_index">
+                                                    <i class="fa fa-star text-dark"></i>
+                                                </t>
+                                            </div>
+                                        </div>
+                                        <p class="card-text text-muted mb-4" t-esc="testimonial['text']"/>
+                                        <div class="text-center">
+                                            <h6 class="fw-bold text-dark mb-1" t-esc="testimonial['name']"/>
+                                            <small class="text-muted" t-esc="testimonial['company']"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- CTA Section -->
+            <div class="py-5" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+                <div class="container text-center">
+                    <div class="row">
+                        <div class="col-lg-8 mx-auto">
+                            <h2 class="h1 fw-bold text-dark mb-4">¿Listo para Experimentar Nuestros Servicios?</h2>
+                            <p class="lead text-dark mb-4">
+                                Contacta con nosotros hoy mismo y descubre por qué somos la mejor opción en alquiler de vehículos
+                            </p>
+                            <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
+                                <a href="/web/booking-enquiry" class="btn btn-dark btn-lg px-5">
+                                    <i class="fa fa-calendar me-2"></i>
+                                    Hacer Reserva
+                                </a>
+                                <a href="/contactus" class="btn btn-outline-dark btn-lg px-5">
+                                    <i class="fa fa-phone me-2"></i>
+                                    Contactar
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Estilos personalizados -->
+            <style>
+                .card:hover {
+                    transform: translateY(-5px);
+                }
+                
+                .btn-dark {
+                    background-color: #000000;
+                    border-color: #000000;
+                }
+                
+                .btn-dark:hover {
+                    background-color: #333333;
+                    border-color: #333333;
+                    transform: translateY(-1px);
+                }
+                
+                .btn-outline-dark {
+                    color: #000000;
+                    border-color: #000000;
+                }
+                
+                .btn-outline-dark:hover {
+                    background-color: #000000;
+                    border-color: #000000;
+                    color: #ffffff;
+                }
+                
+                .text-dark {
+                    color: #000000 !important;
+                }
+            </style>
+        </t>
+    </template>
+</odoo>
+
+
+
+
+
+
+
+
+
+
+
+
+
+

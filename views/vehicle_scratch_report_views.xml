@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <record id="vehicle_scratch_report_form_view" model="ir.ui.view">
+            <field name="name">vehicle.scratch.report.form.view</field>
+            <field name="model">vehicle.scratch.report</field>
+            <field name="arch" type="xml">
+                <form>
+                    <sheet>
+                        <div class="row">
+                            <div class="col-6">
+                                <group string="Vehicle Details">
+                                    <field name="name" required="1"/>
+                                    <field name="vehicle_id" required="1"
+                                           options="{'no_create': True, 'no_create_edit': True}"/>
+                                    <field name="company_id" required="1"
+                                           options="{'no_create': True, 'no_create_edit': True}"/>
+                                </group>
+                            </div>
+                            <div class="col-6 text-center">
+                                <field name="avatar" widget="image" required="1"
+                                       options='{"size": [250, 250]}' class="bg-view"/>
+                            </div>
+                        </div>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+        <record id="vehicle_scratch_report_tree_view" model="ir.ui.view">
+            <field name="name">vehicle.scratch.report.tree.view</field>
+            <field name="model">vehicle.scratch.report</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="name"/>
+                    <field name="vehicle_id"/>
+                    <field name="company_id"/>
+                </list>
+            </field>
+        </record>
+        <record id="vehicle_scratch_report_search_view" model="ir.ui.view">
+            <field name="name">vehicle.scratch.report.search.view</field>
+            <field name="model">vehicle.scratch.report</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="name"/>
+                </search>
+            </field>
+        </record>
+        <record id="action_vehicle_scratch_report" model="ir.actions.act_window">
+            <field name="name">Scratch Reports</field>
+            <field name="res_model">vehicle.scratch.report</field>
+            <field name="view_mode">list,form,search</field>
+        </record>
+    </data>
+</odoo>

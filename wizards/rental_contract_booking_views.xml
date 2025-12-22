@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <record id="rental_contract_booking_form_view" model="ir.ui.view">
+            <field name="name">rental.contract.booking.form.view</field>
+            <field name="model">rental.contract.booking</field>
+            <field name="arch" type="xml">
+                <form>
+                    <group>
+                        <group>
+                            <field name="customer_id" required="1"
+                                   options="{'no_create': True, 'no_create_edit': True}"/>
+                            <field name="start_date"/>
+                        </group>
+                        <group>
+                            <field name="company_id" required="1"
+                                   options="{'no_create': True, 'no_create_edit': True}"
+                                   string="Compañía"/>
+                            <field name="end_date"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="fleet_vehicles" string="Vehículos de Flota"
+                              invisible="start_date == False or end_date == False">
+                            <field name="fleet_vehicle_ids" readonly="1"
+                                   context="{'customer_id': customer_id, 'start_date': start_date, 'end_date': end_date}">
+                                <list editable="bottom">
+                                    <field name="model_id"/>
+                                    <field name="license_plate"/>
+                                    <field name="model_year"/>
+                                    <field name="transmission"/>
+                                    <field name="fuel_type"/>
+                                    <field name="category_id"/>
+                                    <button string="Reservar" name="action_create_book_contract" type="object"
+                                            class="btn btn-outline-info"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                    <footer>
+                        <button string="Cancelar" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+        <record id="action_rental_contract_booking" model="ir.actions.act_window">
+            <field name="name">Reserva de Contrato</field>
+            <field name="res_model">rental.contract.booking</field>
+            <field name="target">new</field>
+            <field name="view_id" ref="rental_contract_booking_form_view"/>
+        </record>
+    </data>
+</odoo>

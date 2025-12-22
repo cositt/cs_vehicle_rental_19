@@ -1,0 +1,417 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- PÁGINA PRINCIPAL SUNSET - VERSIÓN BÁSICA -->
+    <template id="sunset_home_basic" name="Sunset Home Basic">
+        <t t-call="website.layout">
+            
+            <!-- HERO SECTION -->
+            <div class="hero-section" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); min-height: 80vh; display: flex; align-items: center;">
+                <div class="container">
+                    <div class="row align-items-center">
+                        <div class="col-lg-6">
+                            <div class="hero-content text-dark">
+                                <h1 class="display-4 fw-bold mb-4">
+                                    <i class="fa fa-car me-3"></i>
+                                    Sunset Rent a Car
+                                </h1>
+                                <h2 class="h3 mb-4">
+                                    Libera tu <span class="text-dark fw-bold">aventura</span>
+                                </h2>
+                                <p class="lead mb-4">
+                                    Descubre la libertad de viajar con nuestra flota de vehículos premium. 
+                                    Desde coches económicos hasta furgonetas de lujo, tenemos el vehículo perfecto para tu viaje.
+                                </p>
+                                <div class="hero-buttons">
+                                    <a href="/web/booking-enquiry" class="btn btn-dark btn-lg me-3">
+                                        <i class="fa fa-calendar-check-o me-2"></i>
+                                        Reservar Ahora
+                                    </a>
+                                    <a href="/sunset/flota" class="btn btn-outline-dark btn-lg">
+                                        <i class="fa fa-car me-2"></i>
+                                        Ver Flota
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="hero-image text-center">
+                                <i class="fa fa-car fa-10x text-dark opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CATEGORÍAS -->
+            <div class="container py-5">
+                <div class="row text-center mb-5">
+                    <div class="col-12">
+                        <h2 class="display-5 fw-bold text-dark mb-3">
+                            <i class="fa fa-star me-2"></i>
+                            Nuestras Categorías
+                        </h2>
+                        <p class="lead text-muted">
+                            Elige la categoría que mejor se adapte a tus necesidades
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="row g-4">
+                    <div class="col-lg-4 col-md-6">
+                        <div class="category-card card h-100 shadow-sm" style="transition: all 0.3s ease; cursor: pointer;" 
+                             onclick="window.location.href='/sunset/categoria/1'">
+                            <div class="card-img-top d-flex align-items-center justify-content-center" 
+                                 style="height: 200px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+                                <i class="fa fa-car fa-4x text-dark"></i>
+                            </div>
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-dark fw-bold">Economy</h5>
+                                <p class="card-text text-muted">
+                                    Perfecto para viajes urbanos y trayectos cortos
+                                </p>
+                                <div class="mt-3">
+                                    <span class="badge bg-info">Explorar</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4 col-md-6">
+                        <div class="category-card card h-100 shadow-sm" style="transition: all 0.3s ease; cursor: pointer;" 
+                             onclick="window.location.href='/sunset/categoria/2'">
+                            <div class="card-img-top d-flex align-items-center justify-content-center" 
+                                 style="height: 200px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+                                <i class="fa fa-car fa-4x text-dark"></i>
+                            </div>
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-dark fw-bold">Compact</h5>
+                                <p class="card-text text-muted">
+                                    Ideal para parejas y viajes de fin de semana
+                                </p>
+                                <div class="mt-3">
+                                    <span class="badge bg-info">Explorar</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4 col-md-6">
+                        <div class="category-card card h-100 shadow-sm" style="transition: all 0.3s ease; cursor: pointer;" 
+                             onclick="window.location.href='/sunset/categoria/3'">
+                            <div class="card-img-top d-flex align-items-center justify-content-center" 
+                                 style="height: 200px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+                                <i class="fa fa-car fa-4x text-dark"></i>
+                            </div>
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-dark fw-bold">Standard</h5>
+                                <p class="card-text text-muted">
+                                    Confort y espacio para familias pequeñas
+                                </p>
+                                <div class="mt-3">
+                                    <span class="badge bg-info">Explorar</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4 col-md-6">
+                        <div class="category-card card h-100 shadow-sm" style="transition: all 0.3s ease; cursor: pointer;" 
+                             onclick="window.location.href='/sunset/categoria/4'">
+                            <div class="card-img-top d-flex align-items-center justify-content-center" 
+                                 style="height: 200px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+                                <i class="fa fa-car fa-4x text-dark"></i>
+                            </div>
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-dark fw-bold">Premium</h5>
+                                <p class="card-text text-muted">
+                                    Lujo y comodidad para ocasiones especiales
+                                </p>
+                                <div class="mt-3">
+                                    <span class="badge bg-info">Explorar</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4 col-md-6">
+                        <div class="category-card card h-100 shadow-sm" style="transition: all 0.3s ease; cursor: pointer;" 
+                             onclick="window.location.href='/sunset/categoria/5'">
+                            <div class="card-img-top d-flex align-items-center justify-content-center" 
+                                 style="height: 200px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+                                <i class="fa fa-car fa-4x text-dark"></i>
+                            </div>
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-dark fw-bold">SUV</h5>
+                                <p class="card-text text-muted">
+                                    Espacio y versatilidad para aventuras
+                                </p>
+                                <div class="mt-3">
+                                    <span class="badge bg-info">Explorar</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4 col-md-6">
+                        <div class="category-card card h-100 shadow-sm" style="transition: all 0.3s ease; cursor: pointer;" 
+                             onclick="window.location.href='/sunset/categoria/6'">
+                            <div class="card-img-top d-flex align-items-center justify-content-center" 
+                                 style="height: 200px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+                                <i class="fa fa-truck fa-4x text-dark"></i>
+                            </div>
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-dark fw-bold">Furgoneta</h5>
+                                <p class="card-text text-muted">
+                                    Perfecta para mudanzas y transporte de carga
+                                </p>
+                                <div class="mt-3">
+                                    <span class="badge bg-info">Explorar</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DELEGACIONES -->
+            <div class="delegations-section py-5" style="background-color: #f8f9fa;">
+                <div class="container">
+                    <div class="row text-center mb-5">
+                        <div class="col-12">
+                            <h2 class="display-5 fw-bold text-dark mb-3">
+                                <i class="fa fa-map-marker me-2"></i>
+                                Nuestras Delegaciones
+                            </h2>
+                            <p class="lead text-muted">
+                                Encuentra la delegación más cercana a ti
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-4">
+                        <div class="col-lg-4 col-md-6">
+                            <div class="delegation-card card h-100 shadow-sm">
+                                <div class="card-body text-center">
+                                    <div class="delegation-icon mb-3">
+                                        <i class="fa fa-building fa-3x text-dark"></i>
+                                    </div>
+                                    <h5 class="card-title text-dark fw-bold">Delegación Córdoba</h5>
+                                    <p class="text-muted mb-3">
+                                        <i class="fa fa-map-marker me-2"></i>
+                                        Av. de la Libertad, 123<br/>
+                                        14005 Córdoba
+                                    </p>
+                                    <div class="rating mb-3">
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <span class="ms-2 text-muted">4.8/5</span>
+                                    </div>
+                                    <a href="tel:+34957322664" class="btn btn-outline-dark me-2">
+                                        <i class="fa fa-phone me-1"></i>
+                                        +34 957 322 664
+                                    </a>
+                                    <a href="/sunset/delegacion/cordoba" class="btn btn-dark">
+                                        <i class="fa fa-info-circle me-1"></i>
+                                        Más Info
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6">
+                            <div class="delegation-card card h-100 shadow-sm">
+                                <div class="card-body text-center">
+                                    <div class="delegation-icon mb-3">
+                                        <i class="fa fa-building fa-3x text-dark"></i>
+                                    </div>
+                                    <h5 class="card-title text-dark fw-bold">Delegación Málaga</h5>
+                                    <p class="text-muted mb-3">
+                                        <i class="fa fa-map-marker me-2"></i>
+                                        C/ Larios, 45<br/>
+                                        29001 Málaga
+                                    </p>
+                                    <div class="rating mb-3">
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <span class="ms-2 text-muted">4.9/5</span>
+                                    </div>
+                                    <a href="tel:+34951234567" class="btn btn-outline-dark me-2">
+                                        <i class="fa fa-phone me-1"></i>
+                                        +34 951 234 567
+                                    </a>
+                                    <a href="/sunset/delegacion/malaga" class="btn btn-dark">
+                                        <i class="fa fa-info-circle me-1"></i>
+                                        Más Info
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6">
+                            <div class="delegation-card card h-100 shadow-sm">
+                                <div class="card-body text-center">
+                                    <div class="delegation-icon mb-3">
+                                        <i class="fa fa-building fa-3x text-dark"></i>
+                                    </div>
+                                    <h5 class="card-title text-dark fw-bold">Delegación Sevilla</h5>
+                                    <p class="text-muted mb-3">
+                                        <i class="fa fa-map-marker me-2"></i>
+                                        Paseo de la Delicias, 78<br/>
+                                        41012 Sevilla
+                                    </p>
+                                    <div class="rating mb-3">
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <span class="ms-2 text-muted">4.7/5</span>
+                                    </div>
+                                    <a href="tel:+34954567890" class="btn btn-outline-dark me-2">
+                                        <i class="fa fa-phone me-1"></i>
+                                        +34 954 567 890
+                                    </a>
+                                    <a href="/sunset/delegacion/sevilla" class="btn btn-dark">
+                                        <i class="fa fa-info-circle me-1"></i>
+                                        Más Info
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CALL TO ACTION FINAL -->
+            <div class="cta-section py-5" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+                <div class="container text-center">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8">
+                            <h2 class="display-5 fw-bold text-dark mb-4">
+                                <i class="fa fa-rocket me-3"></i>
+                                ¿Listo para tu Próxima Aventura?
+                            </h2>
+                            <p class="lead text-dark mb-4">
+                                Descubre nuestra flota completa y encuentra el vehículo perfecto para tu viaje. 
+                                Reserva ahora y disfruta de la mejor experiencia de alquiler.
+                            </p>
+                            <div class="cta-buttons">
+                                <a href="/sunset/flota" class="btn btn-dark btn-lg me-3">
+                                    <i class="fa fa-car me-2"></i>
+                                    Ver Flota Completa
+                                </a>
+                                <a href="/web/booking-enquiry" class="btn btn-outline-dark btn-lg">
+                                    <i class="fa fa-calendar-check-o me-2"></i>
+                                    Hacer Reserva
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estilos CSS específicos - Usando colores corporativos del template anterior -->
+            <style>
+                .hero-section {
+                    position: relative;
+                    overflow: hidden;
+                }
+                
+                .category-card:hover {
+                    transform: translateY(-10px);
+                    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+                }
+                
+                .delegation-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                }
+                
+                /* Colores corporativos exactos del template anterior */
+                .btn-dark {
+                    background: #000000;
+                    border: none;
+                    color: #ffffff;
+                }
+                
+                .btn-dark:hover {
+                    background: #333333;
+                    transform: translateY(-1px);
+                    color: #ffffff;
+                }
+                
+                .text-dark {
+                    color: #000000 !important;
+                }
+                
+                .bg-info {
+                    background: #E6E6FA !important; /* Lavanda claro */
+                    color: #000000;
+                }
+                
+                .card {
+                    border: none;
+                    border-radius: 15px;
+                    transition: all 0.3s ease;
+                }
+                
+                .hero-buttons .btn {
+                    border-radius: 50px;
+                    padding: 12px 30px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                
+                .cta-buttons .btn {
+                    border-radius: 50px;
+                    padding: 15px 35px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                
+                /* Mantener colores Bootstrap estándar para otros elementos */
+                .btn-warning {
+                    background-color: #ffc107;
+                    border-color: #ffc107;
+                    color: #000;
+                    font-weight: 600;
+                }
+                
+                .btn-warning:hover {
+                    background-color: #ffca2c;
+                    border-color: #ffc720;
+                    color: #000;
+                    transform: translateY(-1px);
+                }
+                
+                .text-warning {
+                    color: #ffc107 !important;
+                }
+                
+                .text-success {
+                    color: #198754 !important;
+                }
+                
+                .text-danger {
+                    color: #dc3545 !important;
+                }
+                
+                .text-info {
+                    color: #0dcaf0 !important;
+                }
+                
+                .text-muted {
+                    color: #6c757d !important;
+                }
+            </style>
+        </t>
+    </template>
+</odoo>

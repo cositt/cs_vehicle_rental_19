@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <record id="action_vehicle_rental_dashboard" model="ir.actions.client">
+            <field name="name">Statistics</field>
+            <field name="tag">vehicle_rental_dashboard</field>
+        </record>
+        <record id="action_vehicle_availability" model="ir.actions.client">
+            <field name="name">Vehicle Availability</field>
+            <field name="tag">vehicle_availability</field>
+        </record>
+    </data>
+</odoo>

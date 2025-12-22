@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <record id="lead_rental_contract_form_view" model="ir.ui.view">
+            <field name="name">lead.rental.contract.form.view</field>
+            <field name="model">lead.rental.contract</field>
+            <field name="arch" type="xml">
+                <form string="Crear Contrato de Vehículo">
+                    <group>
+                        <group string="Información del Cliente">
+                            <field name="crm_lead_id" string="Lead" readonly="1" invisible="1"/>
+                            <field name="partner_id" string="Cliente" required="1"
+                                   options="{'no_create': True, 'no_create_edit': True}"/>
+                            <field name="vehicle_id" string="Vehículo" required="1"
+                                   options="{'no_create': True, 'no_create_edit': True}"/>
+                        </group>
+                        <group string="Fechas del Alquiler">
+                            <field name="start_date" string="Fecha de Recogida" required="1"/>
+                            <field name="end_date" string="Fecha de Devolución" required="1"/>
+                        </group>
+                    </group>
+                    <footer>
+                        <button string="Crear Contrato" name="action_create_rental_contract" type="object"
+                                class="oe_highlight"/>
+                        <button string="Cancelar" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+        <record id="action_lead_rental_contract" model="ir.actions.act_window">
+            <field name="name">Crear Contrato</field>
+            <field name="res_model">lead.rental.contract</field>
+            <field name="target">new</field>
+            <field name="view_id" ref="lead_rental_contract_form_view"/>
+        </record>
+    </data>
+</odoo>

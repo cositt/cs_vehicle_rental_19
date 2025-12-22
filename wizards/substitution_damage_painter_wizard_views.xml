@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Form View para el Damage Painter de Sustituciones -->
+    <record id="vehicle_substitution_damage_painter_form_view" model="ir.ui.view">
+        <field name="name">vehicle.substitution.damage.painter.form</field>
+        <field name="model">vehicle.substitution.damage.painter</field>
+        <field name="arch" type="xml">
+            <form string="Editor de Daños">
+                <field name="substitution_wizard_id" invisible="1"/>
+                <field name="vehicle_id" invisible="1"/>
+                <field name="damage_type" invisible="1"/>
+                <field name="base_image" invisible="1" force_save="1"/>
+                
+                <sheet>
+                    <group>
+                        <field name="vehicle_id" readonly="1" force_save="1"/>
+                        <field name="damage_type" readonly="1" force_save="1" 
+                               widget="badge" 
+                               decoration-danger="damage_type == 'old'"
+                               decoration-success="damage_type == 'new'"/>
+                    </group>
+                    
+                    <separator string="Editor de Daños del Vehículo"/>
+                    
+                    <!-- Toolbar con herramientas de dibujo -->
+                    <div class="damage_painter_toolbar" style="margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <!-- Herramientas -->
+                            <span class="btn btn-primary damage_tool" data-tool="pen" title="Pluma" style="cursor: pointer;">
+                                <i class="fa fa-pencil"/> Pluma
+                            </span>
+                            <span class="btn btn-secondary damage_tool" data-tool="circle" title="Círculo" style="cursor: pointer;">
+                                <i class="fa fa-circle-o"/> Círculo
+                            </span>
+                            <span class="btn btn-secondary damage_tool" data-tool="rectangle" title="Rectángulo" style="cursor: pointer;">
+                                <i class="fa fa-square-o"/> Rectángulo
+                            </span>
+                            <span class="btn btn-secondary damage_tool" data-tool="arrow" title="Flecha" style="cursor: pointer;">
+                                <i class="fa fa-long-arrow-right"/> Flecha
+                            </span>
+                            <span class="btn btn-secondary damage_tool" data-tool="text" title="Texto" style="cursor: pointer;">
+                                <i class="fa fa-font"/> Texto
+                            </span>
+                            
+                            <span style="margin: 0 10px; border-left: 2px solid #dee2e6; height: 30px;"/>
+                            
+                            <!-- Color -->
+                            <span class="o_form_label" style="margin: 0 5px;">Color:</span>
+                            <input type="color" class="damage_color_input" value="#ff0000" style="width: 50px; height: 30px; border: 1px solid #dee2e6; border-radius: 3px;"/>
+                            
+                            <!-- Grosor -->
+                            <span class="o_form_label" style="margin: 0 5px;">Grosor:</span>
+                            <input type="range" class="damage_line_width" min="1" max="10" value="3" style="width: 100px;"/>
+                            <span class="line_width_display" style="min-width: 30px;">3</span>
+                            
+                            <span style="margin: 0 10px; border-left: 2px solid #dee2e6; height: 30px;"/>
+                            
+                            <!-- Acciones -->
+                            <span class="btn btn-warning damage_undo" title="Deshacer" style="cursor: pointer;">
+                                <i class="fa fa-undo"/> Deshacer
+                            </span>
+                            <span class="btn btn-danger damage_clear" title="Limpiar Todo" style="cursor: pointer;">
+                                <i class="fa fa-trash"/> Limpiar
+                            </span>
+                            
+                            <span style="flex: 1;"/>
+                            
+                            <span class="btn btn-success o_save_damage_btn" title="Guardar Imagen" style="cursor: pointer;">
+                                <i class="fa fa-save"/> Guardar
+                            </span>
+                            <span class="btn btn-info o_download_damage_btn" title="Descargar Imagen" style="cursor: pointer;">
+                                <i class="fa fa-download"/> Descargar
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Canvas para dibujar -->
+                    <div class="damage_painter_canvas_container" style="margin: 20px 0; text-align: center; border: 2px solid #dee2e6; border-radius: 5px; background-color: #ffffff; overflow: auto;">
+                        <canvas id="damage_canvas" width="800" height="600" 
+                                style="max-width: 100%; height: auto; cursor: crosshair; display: block; margin: 0 auto;"/>
+                    </div>
+                    
+                    <div class="alert alert-info" role="alert" style="margin-top: 10px;">
+                        <i class="fa fa-info-circle"/> 
+                        <strong>Instrucciones:</strong> Utilice las herramientas de arriba para marcar los daños en el vehículo. 
+                        Una vez finalizado, haga clic en "Guardar" para guardar la imagen.
+                    </div>
+                </sheet>
+                
+                <footer>
+                    <button string="Cerrar" special="cancel" class="btn-default"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>
+

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Inherit Sale Order Form View -->
+        <record id="view_order_form_vehicle_rental_inherit" model="ir.ui.view">
+            <field name="name">sale.order.form.vehicle.rental.inherit</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type="xml">
+                <!-- Add button to create vehicle contract -->
+                <xpath expr="//button[@name='action_quotation_send']" position="after">
+                    <button string="Crear Contrato de Vehículo" 
+                            name="action_create_vehicle_contract" 
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state not in ['sale', 'done'] or vehicle_contract_id != False or not is_vehicle_rental"
+                            help="Crear un contrato de alquiler de vehículo desde este pedido"/>
+                </xpath>
+                
+                <!-- Add vehicle rental fields -->
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="is_vehicle_rental" invisible="1"/>
+                    <field name="vehicle_contract_id" invisible="1"/>
+                </xpath>
+                
+                <!-- Add a page for vehicle rental details -->
+                <xpath expr="//page[@name='other_information']" position="after">
+                    <page string="Detalles del Alquiler" 
+                          name="vehicle_rental_details"
+                          invisible="not is_vehicle_rental">
+                        <group>
+                            <group>
+                                <field name="vehicle_id" 
+                                       options="{'no_create': True, 'no_create_edit': True}"/>
+                                <field name="rental_start_date"/>
+                            </group>
+                            <group>
+                                <field name="vehicle_contract_id" 
+                                       readonly="1"
+                                       invisible="vehicle_contract_id == False"/>
+                                <field name="rental_end_date"/>
+                            </group>
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
+

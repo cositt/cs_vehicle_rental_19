@@ -1,0 +1,696 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- PÁGINA PRINCIPAL SUNSET - HOME -->
+    <template id="sunset_home_page" name="Sunset Home Page">
+        <t t-call="website.layout">
+            <t t-set="logged_user"
+               t-value="request.env.user.id != request.env.ref('base.public_user').id"/>
+            
+            <!-- HERO SECTION -->
+            <div class="hero-section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 80vh; display: flex; align-items: center;">
+                <div class="container">
+                    <div class="row align-items-center">
+                        <div class="col-lg-6">
+                            <div class="hero-content text-white">
+                                <h1 class="display-4 fw-bold mb-4">
+                                    <i class="fa fa-car me-3"></i>
+                                    Sunset Rent a Car
+                                </h1>
+                                <h2 class="h3 mb-4">
+                                    Libera tu <span class="text-warning">aventura</span>
+                                </h2>
+                                <p class="lead mb-4">
+                                    Descubre la libertad de viajar con nuestra flota de vehículos premium. 
+                                    Desde coches económicos hasta furgonetas de lujo, tenemos el vehículo perfecto para tu viaje.
+                                </p>
+                                <div class="hero-buttons">
+                                    <a href="/web/booking-enquiry" class="btn btn-warning btn-lg me-3">
+                                        <i class="fa fa-calendar-check-o me-2"></i>
+                                        Reservar Ahora
+                                    </a>
+                                    <a href="/sunset/flota" class="btn btn-outline-light btn-lg">
+                                        <i class="fa fa-car me-2"></i>
+                                        Ver Flota
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="hero-image text-center">
+                                <i class="fa fa-car fa-10x text-white opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Shape Divider -->
+                <div class="shape-divider" style="position: absolute; bottom: 0; left: 0; width: 100%; overflow: hidden; line-height: 0; transform: rotate(180deg);">
+                    <svg style="position: relative; display: block; width: calc(100% + 1.3px); height: 60px;" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
+                        <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" style="fill: #ffffff;"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- PRESENTACIÓN DE CATEGORÍAS -->
+            <div class="container py-5">
+                <div class="row text-center mb-5">
+                    <div class="col-12">
+                        <h2 class="display-5 fw-bold text-primary mb-3">
+                            <i class="fa fa-star me-2"></i>
+                            Nuestras Categorías
+                        </h2>
+                        <p class="lead text-muted">
+                            Elige la categoría que mejor se adapte a tus necesidades
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="row g-4">
+                    <t t-foreach="vehicle_categories" t-as="category">
+                        <div class="col-lg-4 col-md-6">
+                            <div class="category-card card h-100 shadow-sm" style="transition: all 0.3s ease; cursor: pointer;" 
+                                 t-att-onclick="'window.location.href=\'/sunset/categoria/' + str(category.id) + '\''">
+                                <div class="card-img-top d-flex align-items-center justify-content-center" 
+                                     style="height: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                    <i class="fa fa-car fa-4x text-white"></i>
+                                </div>
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-primary fw-bold" t-field="category.name"></h5>
+                                    <p class="card-text text-muted">
+                                        <t t-if="category.name == 'Economy'">
+                                            Perfecto para viajes urbanos y trayectos cortos
+                                        </t>
+                                        <t t-elif="category.name == 'Compact'">
+                                            Ideal para parejas y viajes de fin de semana
+                                        </t>
+                                        <t t-elif="category.name == 'Standard'">
+                                            Confort y espacio para familias pequeñas
+                                        </t>
+                                        <t t-elif="category.name == 'Premium'">
+                                            Lujo y comodidad para ocasiones especiales
+                                        </t>
+                                        <t t-elif="category.name == 'SUV'">
+                                            Espacio y versatilidad para aventuras
+                                        </t>
+                                        <t t-else="">
+                                            Descubre las ventajas de esta categoría
+                                        </t>
+                                    </p>
+                                    <div class="mt-3">
+                                        <span class="badge bg-primary">Explorar</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </div>
+
+            <!-- DELEGACIONES -->
+            <div class="delegations-section py-5" style="background-color: #f8f9fa;">
+                <div class="container">
+                    <div class="row text-center mb-5">
+                        <div class="col-12">
+                            <h2 class="display-5 fw-bold text-primary mb-3">
+                                <i class="fa fa-map-marker me-2"></i>
+                                Nuestras Delegaciones
+                            </h2>
+                            <p class="lead text-muted">
+                                Encuentra la delegación más cercana a ti
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-4">
+                        <div class="col-lg-4 col-md-6">
+                            <div class="delegation-card card h-100 shadow-sm">
+                                <div class="card-body text-center">
+                                    <div class="delegation-icon mb-3">
+                                        <i class="fa fa-building fa-3x text-primary"></i>
+                                    </div>
+                                    <h5 class="card-title text-primary fw-bold">Delegación Córdoba</h5>
+                                    <p class="text-muted mb-3">
+                                        <i class="fa fa-map-marker me-2"></i>
+                                        Av. de la Libertad, 123<br/>
+                                        14005 Córdoba
+                                    </p>
+                                    <div class="rating mb-3">
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <span class="ms-2 text-muted">4.8/5</span>
+                                    </div>
+                                    <a href="tel:+34957322664" class="btn btn-outline-primary me-2">
+                                        <i class="fa fa-phone me-1"></i>
+                                        +34 957 322 664
+                                    </a>
+                                    <a href="/sunset/delegacion/cordoba" class="btn btn-primary">
+                                        <i class="fa fa-info-circle me-1"></i>
+                                        Más Info
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6">
+                            <div class="delegation-card card h-100 shadow-sm">
+                                <div class="card-body text-center">
+                                    <div class="delegation-icon mb-3">
+                                        <i class="fa fa-building fa-3x text-primary"></i>
+                                    </div>
+                                    <h5 class="card-title text-primary fw-bold">Delegación Málaga</h5>
+                                    <p class="text-muted mb-3">
+                                        <i class="fa fa-map-marker me-2"></i>
+                                        C/ Larios, 45<br/>
+                                        29001 Málaga
+                                    </p>
+                                    <div class="rating mb-3">
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <span class="ms-2 text-muted">4.9/5</span>
+                                    </div>
+                                    <a href="tel:+34951234567" class="btn btn-outline-primary me-2">
+                                        <i class="fa fa-phone me-1"></i>
+                                        +34 951 234 567
+                                    </a>
+                                    <a href="/sunset/delegacion/malaga" class="btn btn-primary">
+                                        <i class="fa fa-info-circle me-1"></i>
+                                        Más Info
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6">
+                            <div class="delegation-card card h-100 shadow-sm">
+                                <div class="card-body text-center">
+                                    <div class="delegation-icon mb-3">
+                                        <i class="fa fa-building fa-3x text-primary"></i>
+                                    </div>
+                                    <h5 class="card-title text-primary fw-bold">Delegación Sevilla</h5>
+                                    <p class="text-muted mb-3">
+                                        <i class="fa fa-map-marker me-2"></i>
+                                        Paseo de la Delicias, 78<br/>
+                                        41012 Sevilla
+                                    </p>
+                                    <div class="rating mb-3">
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <i class="fa fa-star text-warning"></i>
+                                        <span class="ms-2 text-muted">4.7/5</span>
+                                    </div>
+                                    <a href="tel:+34954567890" class="btn btn-outline-primary me-2">
+                                        <i class="fa fa-phone me-1"></i>
+                                        +34 954 567 890
+                                    </a>
+                                    <a href="/sunset/delegacion/sevilla" class="btn btn-primary">
+                                        <i class="fa fa-info-circle me-1"></i>
+                                        Más Info
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SERVICIOS -->
+            <div class="services-section py-5">
+                <div class="container">
+                    <div class="row text-center mb-5">
+                        <div class="col-12">
+                            <h2 class="display-5 fw-bold text-primary mb-3">
+                                <i class="fa fa-cogs me-2"></i>
+                                Nuestros Servicios
+                            </h2>
+                            <p class="lead text-muted">
+                                Soluciones completas para todas tus necesidades de transporte
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-4">
+                        <div class="col-lg-4 col-md-6">
+                            <div class="service-card card h-100 shadow-sm">
+                                <div class="card-body text-center">
+                                    <div class="service-icon mb-3">
+                                        <i class="fa fa-truck fa-3x text-primary"></i>
+                                    </div>
+                                    <h5 class="card-title text-primary fw-bold">Furgonetas de Carga</h5>
+                                    <p class="card-text text-muted">
+                                        Perfectas para mudanzas, repartos y transporte de mercancías. 
+                                        Amplia gama de tamaños y capacidades.
+                                    </p>
+                                    <a href="/sunset/servicios/carga" class="btn btn-outline-primary">
+                                        <i class="fa fa-angle-right me-1"></i>
+                                        Más Información
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6">
+                            <div class="service-card card h-100 shadow-sm">
+                                <div class="card-body text-center">
+                                    <div class="service-icon mb-3">
+                                        <i class="fa fa-users fa-3x text-primary"></i>
+                                    </div>
+                                    <h5 class="card-title text-primary fw-bold">Furgonetas de Pasajeros</h5>
+                                    <p class="card-text text-muted">
+                                        Hasta 9 plazas para grupos y excursiones. 
+                                        Confort y seguridad para todos tus viajes.
+                                    </p>
+                                    <a href="/sunset/servicios/pasajeros" class="btn btn-outline-primary">
+                                        <i class="fa fa-angle-right me-1"></i>
+                                        Más Información
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6">
+                            <div class="service-card card h-100 shadow-sm">
+                                <div class="card-body text-center">
+                                    <div class="service-icon mb-3">
+                                        <i class="fa fa-briefcase fa-3x text-primary"></i>
+                                    </div>
+                                    <h5 class="card-title text-primary fw-bold">Vehículos Comerciales</h5>
+                                    <p class="card-text text-muted">
+                                        Soluciones profesionales para empresas. 
+                                        Flota moderna y mantenimiento incluido.
+                                    </p>
+                                    <a href="/sunset/servicios/comerciales" class="btn btn-outline-primary">
+                                        <i class="fa fa-angle-right me-1"></i>
+                                        Más Información
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SEGUROS PROMOCIONAL -->
+            <div class="insurance-section py-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="container">
+                    <div class="row align-items-center">
+                        <div class="col-lg-6">
+                            <div class="insurance-content text-white">
+                                <h2 class="display-6 fw-bold mb-4">
+                                    <i class="fa fa-shield me-3"></i>
+                                    Seguro a Todo Riesgo
+                                </h2>
+                                <p class="lead mb-4">
+                                    Viaja con total tranquilidad. Nuestro seguro a todo riesgo te protege 
+                                    en cualquier situación. Sin franquicia, sin preocupaciones.
+                                </p>
+                                <ul class="list-unstyled mb-4">
+                                    <li class="mb-2">
+                                        <i class="fa fa-check-circle me-2 text-warning"></i>
+                                        Cobertura completa sin franquicia
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fa fa-check-circle me-2 text-warning"></i>
+                                        Asistencia 24/7 en toda España
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fa fa-check-circle me-2 text-warning"></i>
+                                        Vehículo de sustitución incluido
+                                    </li>
+                                </ul>
+                                <a href="/sunset/seguros" class="btn btn-warning btn-lg">
+                                    <i class="fa fa-info-circle me-2"></i>
+                                    Conocer Más
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-lg-6 text-center">
+                            <i class="fa fa-shield fa-8x text-white opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ALQUILERES POPULARES -->
+            <div class="popular-rentals py-5" style="background-color: #f8f9fa;">
+                <div class="container">
+                    <div class="row text-center mb-5">
+                        <div class="col-12">
+                            <h2 class="display-5 fw-bold text-primary mb-3">
+                                <i class="fa fa-star me-2"></i>
+                                Alquileres Más Populares
+                            </h2>
+                            <p class="lead text-muted">
+                                Las opciones más demandadas por nuestros clientes
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-4">
+                        <div class="col-lg-4 col-md-6">
+                            <div class="pricing-card card h-100 shadow-sm">
+                                <div class="card-header bg-primary text-white text-center">
+                                    <h5 class="mb-0">Tipo C</h5>
+                                    <small>Económico</small>
+                                </div>
+                                <div class="card-body text-center">
+                                    <div class="price mb-3">
+                                        <span class="display-4 fw-bold text-primary">€75</span>
+                                        <small class="text-muted">/día</small>
+                                    </div>
+                                    <ul class="list-unstyled mb-4">
+                                        <li class="mb-2">
+                                            <i class="fa fa-check text-success me-2"></i>
+                                            4 pasajeros
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fa fa-check text-success me-2"></i>
+                                            350km incluidos
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fa fa-check text-success me-2"></i>
+                                            Aire acondicionado
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fa fa-check text-success me-2"></i>
+                                            Seguro incluido
+                                        </li>
+                                    </ul>
+                                    <a href="/web/booking-enquiry" class="btn btn-primary w-100">
+                                        <i class="fa fa-calendar-check-o me-1"></i>
+                                        Reservar Ahora
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6">
+                            <div class="pricing-card card h-100 shadow-sm border-primary">
+                                <div class="card-header bg-primary text-white text-center position-relative">
+                                    <div class="popular-badge position-absolute top-0 start-50 translate-middle">
+                                        <span class="badge bg-warning text-dark">MÁS POPULAR</span>
+                                    </div>
+                                    <h5 class="mb-0">Tipo D</h5>
+                                    <small>Estándar</small>
+                                </div>
+                                <div class="card-body text-center">
+                                    <div class="price mb-3">
+                                        <span class="display-4 fw-bold text-primary">€89</span>
+                                        <small class="text-muted">/día</small>
+                                    </div>
+                                    <ul class="list-unstyled mb-4">
+                                        <li class="mb-2">
+                                            <i class="fa fa-check text-success me-2"></i>
+                                            5 pasajeros
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fa fa-check text-success me-2"></i>
+                                            500km incluidos
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fa fa-check text-success me-2"></i>
+                                            Bluetooth
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fa fa-check text-success me-2"></i>
+                                            Seguro premium
+                                        </li>
+                                    </ul>
+                                    <a href="/web/booking-enquiry" class="btn btn-primary w-100">
+                                        <i class="fa fa-calendar-check-o me-1"></i>
+                                        Reservar Ahora
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6">
+                            <div class="pricing-card card h-100 shadow-sm">
+                                <div class="card-header bg-primary text-white text-center">
+                                    <h5 class="mb-0">Tipo W</h5>
+                                    <small>Premium</small>
+                                </div>
+                                <div class="card-body text-center">
+                                    <div class="price mb-3">
+                                        <span class="display-4 fw-bold text-primary">€105</span>
+                                        <small class="text-muted">/día</small>
+                                    </div>
+                                    <ul class="list-unstyled mb-4">
+                                        <li class="mb-2">
+                                            <i class="fa fa-check text-success me-2"></i>
+                                            7 pasajeros
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fa fa-check text-success me-2"></i>
+                                            Km ilimitados
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fa fa-check text-success me-2"></i>
+                                            GPS incluido
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fa fa-check text-success me-2"></i>
+                                            Seguro a todo riesgo
+                                        </li>
+                                    </ul>
+                                    <a href="/web/booking-enquiry" class="btn btn-primary w-100">
+                                        <i class="fa fa-calendar-check-o me-1"></i>
+                                        Reservar Ahora
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BENEFICIOS -->
+            <div class="benefits-section py-5">
+                <div class="container">
+                    <div class="row text-center mb-5">
+                        <div class="col-12">
+                            <h2 class="display-5 fw-bold text-primary mb-3">
+                                <i class="fa fa-heart me-2"></i>
+                                ¿Por Qué Elegir Sunset?
+                            </h2>
+                            <p class="lead text-muted">
+                                Las ventajas que nos hacen únicos
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-4">
+                        <div class="col-lg-2 col-md-4 col-6">
+                            <div class="benefit-item text-center">
+                                <div class="benefit-icon mb-3">
+                                    <i class="fa fa-star fa-2x text-primary"></i>
+                                </div>
+                                <h6 class="fw-bold">Excelencia</h6>
+                                <small class="text-muted">Servicio premium</small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-2 col-md-4 col-6">
+                            <div class="benefit-item text-center">
+                                <div class="benefit-icon mb-3">
+                                    <i class="fa fa-shield fa-2x text-primary"></i>
+                                </div>
+                                <h6 class="fw-bold">Seguridad</h6>
+                                <small class="text-muted">Total garantía</small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-2 col-md-4 col-6">
+                            <div class="benefit-item text-center">
+                                <div class="benefit-icon mb-3">
+                                    <i class="fa fa-clock-o fa-2x text-primary"></i>
+                                </div>
+                                <h6 class="fw-bold">Puntualidad</h6>
+                                <small class="text-muted">Siempre a tiempo</small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-2 col-md-4 col-6">
+                            <div class="benefit-item text-center">
+                                <div class="benefit-icon mb-3">
+                                    <i class="fa fa-car fa-2x text-primary"></i>
+                                </div>
+                                <h6 class="fw-bold">Flota Moderna</h6>
+                                <small class="text-muted">Últimos modelos</small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-2 col-md-4 col-6">
+                            <div class="benefit-item text-center">
+                                <div class="benefit-icon mb-3">
+                                    <i class="fa fa-phone fa-2x text-primary"></i>
+                                </div>
+                                <h6 class="fw-bold">Soporte 24/7</h6>
+                                <small class="text-muted">Siempre disponibles</small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-2 col-md-4 col-6">
+                            <div class="benefit-item text-center">
+                                <div class="benefit-icon mb-3">
+                                    <i class="fa fa-euro fa-2x text-primary"></i>
+                                </div>
+                                <h6 class="fw-bold">Mejor Precio</h6>
+                                <small class="text-muted">Garantizado</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CALL TO ACTION FINAL -->
+            <div class="cta-section py-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="container text-center">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8">
+                            <h2 class="display-5 fw-bold text-white mb-4">
+                                <i class="fa fa-rocket me-3"></i>
+                                ¿Listo para tu Próxima Aventura?
+                            </h2>
+                            <p class="lead text-white mb-4">
+                                Descubre nuestra flota completa y encuentra el vehículo perfecto para tu viaje. 
+                                Reserva ahora y disfruta de la mejor experiencia de alquiler.
+                            </p>
+                            <div class="cta-buttons">
+                                <a href="/sunset/flota" class="btn btn-warning btn-lg me-3">
+                                    <i class="fa fa-car me-2"></i>
+                                    Ver Flota Completa
+                                </a>
+                                <a href="/web/booking-enquiry" class="btn btn-outline-light btn-lg">
+                                    <i class="fa fa-calendar-check-o me-2"></i>
+                                    Hacer Reserva
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estilos CSS específicos para la página principal -->
+            <style>
+                .hero-section {
+                    position: relative;
+                    overflow: hidden;
+                }
+                
+                .category-card:hover {
+                    transform: translateY(-10px);
+                    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+                }
+                
+                .delegation-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                }
+                
+                .service-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                }
+                
+                .pricing-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+                }
+                
+                .benefit-item:hover {
+                    transform: translateY(-3px);
+                }
+                
+                .popular-badge {
+                    z-index: 10;
+                }
+                
+                .btn-warning {
+                    background: linear-gradient(135deg, #ffc107 0%, #ff8f00 100%);
+                    border: none;
+                    color: #000;
+                    font-weight: 600;
+                }
+                
+                .btn-warning:hover {
+                    background: linear-gradient(135deg, #ff8f00 0%, #ff6f00 100%);
+                    transform: translateY(-2px);
+                    color: #000;
+                }
+                
+                .btn-primary {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    border: none;
+                }
+                
+                .btn-primary:hover {
+                    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+                    transform: translateY(-2px);
+                }
+                
+                .text-primary {
+                    color: #667eea !important;
+                }
+                
+                .bg-primary {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                }
+                
+                .border-primary {
+                    border-color: #667eea !important;
+                }
+                
+                .card {
+                    border: none;
+                    border-radius: 15px;
+                    transition: all 0.3s ease;
+                }
+                
+                .card-header {
+                    border-radius: 15px 15px 0 0 !important;
+                }
+                
+                .hero-buttons .btn {
+                    border-radius: 50px;
+                    padding: 12px 30px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                
+                .cta-buttons .btn {
+                    border-radius: 50px;
+                    padding: 15px 35px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                
+                @media (max-width: 768px) {
+                    .hero-section {
+                        min-height: 60vh;
+                    }
+                    
+                    .display-4 {
+                        font-size: 2.5rem;
+                    }
+                    
+                    .display-5 {
+                        font-size: 2rem;
+                    }
+                    
+                    .display-6 {
+                        font-size: 1.75rem;
+                    }
+                }
+            </style>
+        </t>
+    </template>
+</odoo>

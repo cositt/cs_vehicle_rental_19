@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================ -->
+    <!-- VISTAS DE TARIFAS DE SEGUROS -->
+    <!-- ============================================ -->
+
+    <!-- Vista Tree (Lista) -->
+    <record id="view_vehicle_insurance_pricing_tree" model="ir.ui.view">
+        <field name="name">vehicle.insurance.pricing.tree</field>
+        <field name="model">vehicle.insurance.pricing</field>
+        <field name="arch" type="xml">
+            <list string="Tarifas de Seguros" 
+                  decoration-muted="not active"
+                  decoration-success="insurance_type == 'basic'"
+                  decoration-warning="insurance_type == 'no_franchise'">
+                <field name="active" column_invisible="1"/>
+                <field name="insurance_type"/>
+                <field name="duration_range"/>
+                <field name="driver_type"/>
+                <field name="price_per_day" widget="monetary"/>
+                <field name="price_without_vat" widget="monetary" optional="show"/>
+                <field name="valid_from"/>
+                <field name="valid_until" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Vista Form (Formulario) -->
+    <record id="view_vehicle_insurance_pricing_form" model="ir.ui.view">
+        <field name="name">vehicle.insurance.pricing.form</field>
+        <field name="model">vehicle.insurance.pricing</field>
+        <field name="arch" type="xml">
+            <form string="Tarifa de Seguro">
+                <header>
+                    <button name="action_duplicate_with_new_dates" 
+                            string="Duplicar con Nuevas Fechas" 
+                            type="object" 
+                            class="btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button" options='{"terminology": "archive"}'/>
+                        </button>
+                    </div>
+                    
+                    <widget name="web_ribbon" title="Inactiva" bg_color="bg-danger" 
+                            invisible="active"/>
+                    <widget name="web_ribbon" title="Sin Franquicia" bg_color="bg-success" 
+                            invisible="insurance_type != 'no_franchise'"/>
+                    
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Configuración del Seguro">
+                            <field name="insurance_type" widget="radio" required="1"/>
+                            <field name="duration_range" required="1"/>
+                            <field name="driver_type" widget="radio" required="1"/>
+                        </group>
+                        <group string="Precio">
+                            <label for="price_per_day" string="Precio por Día"/>
+                            <div class="o_row">
+                                <field name="price_per_day" required="1"/>
+                                <span> (IVA inc.) = </span>
+                                <field name="price_without_vat" readonly="1"/>
+                                <span> (sin IVA)</span>
+                            </div>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="Vigencia">
+                            <field name="valid_from" required="1"/>
+                            <field name="valid_until"/>
+                        </group>
+                        <group string="Compañía">
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Notas y Coberturas">
+                            <field name="notes" placeholder="Coberturas incluidas, condiciones especiales, exclusiones..."/>
+                            
+                            <div class="alert alert-info mt-3" role="alert" invisible="insurance_type != 'basic'">
+                                <h4><i class="fa fa-shield"/> Seguro Básico - Franquicia 300€</h4>
+                                <ul>
+                                    <li>Cobertura de daños con franquicia de 300€</li>
+                                    <li>El cliente paga los primeros 300€ en caso de daño</li>
+                                    <li>Tarifa más económica</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="alert alert-success mt-3" role="alert" invisible="insurance_type != 'no_franchise'">
+                                <h4><i class="fa fa-check-circle"/> Seguro Sin Franquicia</h4>
+                                <ul>
+                                    <li>Cobertura total de daños sin franquicia</li>
+                                    <li>Cliente no paga nada en caso de daño</li>
+                                    <li>Máxima tranquilidad</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="alert alert-warning mt-3" role="alert" invisible="driver_type != 'special'">
+                                <h4><i class="fa fa-exclamation-triangle"/> Conductor Especial</h4>
+                                <p>
+                                    Tarifa aplicable a conductores:
+                                </p>
+                                <ul>
+                                    <li>Menores de 25 años</li>
+                                    <li>Mayores de 60 años</li>
+                                </ul>
+                                <p>Tarifa más alta por mayor riesgo.</p>
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista Search (Búsqueda y Filtros) -->
+    <record id="view_vehicle_insurance_pricing_search" model="ir.ui.view">
+        <field name="name">vehicle.insurance.pricing.search</field>
+        <field name="model">vehicle.insurance.pricing</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Tarifas de Seguros">
+                <!-- Campos de búsqueda -->
+                <field name="name"/>
+                <field name="insurance_type"/>
+                <field name="price_per_day"/>
+                
+                <!-- Filtros predefinidos -->
+                <filter name="active" string="Activas" domain="[('active', '=', True)]"/>
+                <filter name="inactive" string="Inactivas" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter name="basic" string="Seguro Básico (300€)" domain="[('insurance_type', '=', 'basic')]"/>
+                <filter name="no_franchise" string="Sin Franquicia" domain="[('insurance_type', '=', 'no_franchise')]"/>
+                <separator/>
+                <filter name="normal_driver" string="Conductor Normal" domain="[('driver_type', '=', 'normal')]"/>
+                <filter name="special_driver" string="Conductor Especial" domain="[('driver_type', '=', 'special')]"/>
+                <separator/>
+                <filter name="valid_today" string="Vigentes Hoy" 
+                        domain="[('valid_from', '&lt;=', context_today().strftime('%Y-%m-%d')),
+                                '|', ('valid_until', '=', False), 
+                                    ('valid_until', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                
+            </search>
+        </field>
+    </record>
+
+    <!-- Acción de Ventana -->
+    <record id="action_vehicle_insurance_pricing" model="ir.actions.act_window">
+        <field name="name">Tarifas de Seguros</field>
+        <field name="res_model">vehicle.insurance.pricing</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{
+            'search_default_active': 1,
+            'search_default_valid_today': 1,
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear primera tarifa de seguro
+            </p>
+            <p>
+                Las tarifas de seguro definen el precio diario del seguro según:
+            </p>
+            <ul>
+                <li><strong>Tipo:</strong> Básico (franquicia 300€) o Sin Franquicia</li>
+                <li><strong>Duración:</strong> Rango de días del alquiler</li>
+                <li><strong>Conductor:</strong> Normal o Especial (&lt;25 o &gt;60 años)</li>
+            </ul>
+        </field>
+    </record>
+
+</odoo>
+

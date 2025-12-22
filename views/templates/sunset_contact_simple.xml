@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="sunset_contact_simple" name="Sunset Contact Simple">
+        <t t-call="website.layout">
+            <t t-set="title">Contacta con Nosotros - Sunset Rent a Car</t>
+            
+            <div class="container my-5">
+                <div class="row">
+                    <div class="col-12">
+                        <h1 class="text-center text-dark mb-4">
+                            <i class="fa fa-envelope me-2"></i>
+                            Contacta con Nosotros
+                        </h1>
+                        
+                        <!-- Error Message -->
+                        <t t-if="error">
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="fa fa-exclamation-triangle me-2"></i>
+                                <span t-esc="error"/>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        </t>
+                        
+                        <div class="card">
+                            <div class="card-body">
+                                <h3 class="card-title text-dark">Sunset Rent a Car</h3>
+                                <p class="card-text">
+                                    <strong>Dirección:</strong> <span t-esc="contact_info['address']"/><br/>
+                                    <strong>Teléfono:</strong> <span t-esc="contact_info['phone']"/><br/>
+                                    <strong>Email:</strong> <span t-esc="contact_info['email']"/>
+                                </p>
+                                
+                                <form action="/contactus/enviar" method="post">
+                                    <div class="mb-3">
+                                        <label for="name" class="form-label">Nombre Completo *</label>
+                                        <input type="text" class="form-control" id="name" name="name" required="required" t-att-value="form_data.get('name', '') if form_data else ''"/>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="email" class="form-label">Email *</label>
+                                        <input type="email" class="form-control" id="email" name="email" required="required" t-att-value="form_data.get('email', '') if form_data else ''"/>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="subject" class="form-label">Asunto *</label>
+                                        <select class="form-select" id="subject" name="subject" required="required">
+                                            <option value="">Selecciona un asunto</option>
+                                            <option value="Consulta General" t-att-selected="form_data.get('subject') == 'Consulta General' if form_data else False">Consulta General</option>
+                                            <option value="Reserva de Vehículo" t-att-selected="form_data.get('subject') == 'Reserva de Vehículo' if form_data else False">Reserva de Vehículo</option>
+                                            <option value="Soporte Técnico" t-att-selected="form_data.get('subject') == 'Soporte Técnico' if form_data else False">Soporte Técnico</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="message" class="form-label">Mensaje *</label>
+                                        <textarea class="form-control" id="message" name="message" rows="5" required="required"><t t-esc="form_data.get('message', '') if form_data else ''"/></textarea>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-dark">
+                                        <i class="fa fa-paper-plane me-2"></i>
+                                        Enviar Mensaje
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

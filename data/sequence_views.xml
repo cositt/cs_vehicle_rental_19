@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="reference_no_sequence" model="ir.sequence">
+            <field name="name">Reference Number</field>
+            <field name="code">vehicle.contract</field>
+            <field name="prefix">VC%(year)s/%(month)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

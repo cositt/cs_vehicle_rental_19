@@ -1,0 +1,91 @@
+.o_delay_notification {
+    position: fixed;
+    bottom: 20px;
+    right: 90px; // Posicionado a la izquierda del notificador de consultas
+    z-index: 9999;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    
+    &:hover {
+        transform: scale(1.1);
+        box-shadow: 0 8px 20px rgba(220, 53, 69, 0.4);
+    }
+
+    .o_notification_icon.o_delay_icon {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        background: #dc3545; // Fondo rojo
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+        border: 2px solid #c82333; // Borde rojo más oscuro
+
+        img {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            filter: brightness(0) invert(1); // Hacer el icono blanco
+        }
+
+        .o_notification_badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ffffff;
+            color: #dc3545;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            border: 2px solid #dc3545;
+            animation: pulseRed 2s infinite;
+        }
+    }
+}
+
+@keyframes pulseRed {
+    0% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+    }
+}
+
+/* Responsive: en móviles, hacerlo más pequeño y ajustar posición */
+@media (max-width: 768px) {
+    .o_delay_notification {
+        bottom: 10px;
+        right: 70px; // Ajustado para móviles
+
+        .o_notification_icon.o_delay_icon {
+            width: 50px;
+            height: 50px;
+
+            img {
+                width: 32px;
+                height: 32px;
+            }
+
+            .o_notification_badge {
+                width: 20px;
+                height: 20px;
+                font-size: 11px;
+            }
+        }
+    }
+}
+
+
+
+

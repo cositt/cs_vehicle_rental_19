@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Ultra Simple Booking Enquiry Template -->
+    <template id="booking_enquiry_ultra_simple" name="Ultra Simple Booking Enquiry">
+        <t t-call="website.layout">
+            <div class="container py-4">
+                <h1>Booking Enquiry - Ultra Simple</h1>
+                <p>Esta es una versión ultra simple para debug.</p>
+            </div>
+        </t>
+    </template>
+</odoo>

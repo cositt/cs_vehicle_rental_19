@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <!--Hr Expenses Form View-->
+        <record id="vehicle_rental_hr_expense_inherit_form_view" model="ir.ui.view">
+            <field name="name">vehicle.rental.hr.expense.inherit.form.view</field>
+            <field name="model">hr.expense</field>
+            <field name="inherit_id" ref="hr_expense.hr_expense_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='date']" position="after">
+                    <field name="fleet_vehicle_id" invisible="fleet_vehicle_id == False" readonly="1"/>
+                    <field name="vehicle_contract_id" invisible="vehicle_contract_id == False" readonly="1"/>
+                </xpath>
+
+                <xpath expr="//field[@name='employee_id']" position="before">
+                    <field name="driver_id" widget="many2one_avatar" invisible="driver_id == False" readonly="1"
+                           forec_save="1"/>
+                    <field name="employee_ids" invisible="1"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!--Hr Expenses Search View-->
+        <record id="vehicle_rental_hr_expense_inherit_search_view" model="ir.ui.view">
+            <field name="name">vehicle.rental.hr.expense.inherit.search.view</field>
+            <field name="model">hr.expense</field>
+            <field name="inherit_id" ref="hr_expense.hr_expense_view_search"/>
+            <field name="arch" type="xml">
+                <xpath expr="//search/group/filter[@name='status']" position="after">
+                    <filter name="vehicle_contract_id" string="Contract"
+                            context="{'group_by': 'vehicle_contract_id'}"/>
+                    <filter name="fleet_vehicle_id" string="Vehicle"
+                            context="{'group_by': 'fleet_vehicle_id'}"/>
+                    <filter name="driver_id" string="Driver"
+                            context="{'group_by': 'driver_id'}"/>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

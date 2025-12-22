@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data noupdate="1">
+        <record id="vehicle_rental_booking_mail_template" model="mail.template">
+            <field name="name">Vehicle Rental Booking Mail Template</field>
+            <field name="model_id" ref="vehicle_rental.model_vehicle_contract"/>
+            <field name="subject">Important: Vehicle Rental Contract Information for Your Upcoming Journey</field>
+            <field name="email_from">{{object.company_id.email}}</field>
+            <field name="partner_to">{{ object.customer_id.id }}</field>
+            <field name="body_html" type="html">
+                <p>
+                    <h4>
+                        Dear
+                        <strong>
+                            <t t-out="object.customer_id.name"/>
+                        </strong>,
+                    </h4>
+                </p>
+                <hr/>
+                <p>
+                    We are excited about your upcoming journey with us and want to ensure that you have all the
+                    necessary information regarding the rental contract.
+                </p>
+                <table>
+                    <tr>
+                        <td colspan="2" style="text-align: center; width: 100%">
+                            <strong>
+                                Please review the following details:
+                            </strong>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="width: 50%">
+                            <strong>
+                                Reference Number:
+                            </strong>
+                        </td>
+                        <td style="width: 50%">
+                            <t t-out="object.reference_no"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="width: 50%">
+                            <strong>
+                                Vehicle:
+                            </strong>
+                        </td>
+                        <td style="width: 50%">
+                            <t t-if="object.vehicle_id.name">
+                                <t t-out="object.vehicle_id.name"/>
+                            </t>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="width: 50%">
+                            <strong>
+                                Pick-Up Date:
+                            </strong>
+                        </td>
+                        <td style="width: 50%">
+                            <t t-out="object.start_date"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="width: 50%">
+                            <strong>
+                                Pick-Up Location:
+                            </strong>
+                        </td>
+                        <td style="width: 50%">
+                            <t t-if="object.pick_up_street">
+                                <t t-out="object.pick_up_street"/>
+                            </t>
+                        </td>
+                    </tr>
+                    <tr t-if="object.pick_up_street2">
+                        <td style="width: 50%">
+                        </td>
+                        <td style="width: 50%">
+                            <t t-out="object.pick_up_street2"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="width: 50%">
+                        </td>
+                        <td style="width: 50%">
+                            <t t-out="object.pick_up_city" class="me-1"/>
+                            <t t-out="object.pick_up_state_id.name" class="me-1"/>
+                            <t t-out="object.pick_up_zip"/>
+                        </td>
+                    </tr>
+                    <tr t-if="object.pick_up_country_id.name">
+                        <td style="width: 50%">
+                        </td>
+                        <td style="width: 50%">
+                            <t t-out="object.pick_up_country_id.name"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="width: 50%">
+                            <strong>
+                                Drop-Off Date:
+                            </strong>
+                        </td>
+                        <td style="width: 50%">
+                            <t t-out="object.end_date"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="width: 50%">
+                            <strong>
+                                Drop-Off Location:
+                            </strong>
+                        </td>
+                        <td style="width: 50%">
+                            <t t-if="object.drop_off_street">
+                                <t t-out="object.drop_off_street"/>
+                            </t>
+                        </td>
+                    </tr>
+                    <tr t-if="object.drop_off_street2">
+                        <td style="width: 50%">
+                        </td>
+                        <td style="width: 50%">
+                            <t t-out="object.drop_off_street2"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="width: 50%">
+                        </td>
+                        <td style="width: 50%">
+                            <t t-out="object.drop_off_city" class="me-1"/>
+                            <t t-out="object.drop_off_state_id.name" class="me-1"/>
+                            <t t-out="object.drop_off_zip"/>
+                        </td>
+                    </tr>
+                    <tr t-if="object.drop_off_country_id.name">
+                        <td style="width: 50%">
+                        </td>
+                        <td style="width: 50%">
+                            <t t-out="object.drop_off_country_id.name"/>
+                        </td>
+                    </tr>
+                </table>
+                <hr/>
+                <p>
+                    Before your journey, please familiarize yourself with the rental agreement, which outlines the terms
+                    and conditions. To access the agreement, visit
+                    <strong>
+                        <t t-out="object.company_id.website"/>
+                    </strong>
+                    or contact our customer support team. Ensure that your insurance coverage is adequate and that all
+                    drivers meet the requirements. A security deposit may be required at pickup, refundable upon the
+                    vehicle's return. Conduct a thorough inspection before your journey, noting any pre-existing
+                    damages. For any questions or concerns, reach out to our customer support team at
+                    <strong>
+                        <t t-out="object.company_id.phone"/>
+                    </strong>
+                    We appreciate your trust and wish you a fantastic journey!
+                </p>
+                <h5>
+                    Best regards,
+                    <br/>
+                    <strong>
+                        <t t-out="object.responsible_id.name"/>
+                    </strong>
+                </h5>
+                <hr/>
+                <span>
+                    <h4>
+                        <t t-out="object.company_id.name"/>
+                    </h4>
+                    <t t-out="object.company_id.phone"/>
+                    <br/>
+                    <t t-out="object.company_id.email"/>
+                    <br/>
+                    <t t-out="object.company_id.website"/>
+                </span>
+            </field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <menuitem id="main_menu_vehicle_rental" name="Vehicles Rental"
+                  web_icon="vehicle_rental,static/description/icon.png"/>
+
+        <menuitem id="menu_vehicle_dashboard"
+                  name="Panel"
+                  sequence="0"
+                  action="action_vehicle_rental_dashboard"
+                  parent="main_menu_vehicle_rental"/>
+
+        <menuitem id="menu_crm_lead_booking_enquiry"
+                  name="Consultas de Reserva"
+                  action="action_booking_enquiry_leads"
+                  parent="main_menu_vehicle_rental"
+                  sequence="1"/>
+        <menuitem id="menu_vehicle_availability"
+                  name="Disponibilidad"
+                  sequence="2"
+                  action="action_vehicle_availability"
+                  parent="main_menu_vehicle_rental"/>
+        <menuitem id="menu_contract_booking"
+                  name="Reservar Vehículo"
+                  parent="main_menu_vehicle_rental"
+                  action="action_rental_contract_booking"
+                  sequence="3"/>
+        <menuitem id="menu_fleet_vehicle"
+                  name="Vehículos"
+                  parent="main_menu_vehicle_rental"
+                  action="action_fleet_vehicle"
+                  sequence="4"/>
+        <menuitem id="menu_vehicle_contract"
+                  name="Contratos"
+                  parent="main_menu_vehicle_rental"
+                  action="action_vehicle_contract"
+                  sequence="5"/>
+        <menuitem id="menu_fleet_vehicle_customer"
+                  name="Clientes"
+                  parent="main_menu_vehicle_rental"
+                  action="contacts.action_contacts"
+                  sequence="6"/>
+        <menuitem id="menu_maintenance_requests"
+                  name="Solicitudes de mantenimiento"
+                  parent="main_menu_vehicle_rental"
+                  action="action_maintenance_requests"
+                  sequence="7"/>
+        <menuitem id="menu_vehicle_substitution"
+                  name="Sustituciones de Vehículos"
+                  parent="main_menu_vehicle_rental"
+                  action="action_vehicle_contract_substitution"
+                  sequence="8"/>
+        <menuitem id="menu_vehicle_pricing_rule"
+                  name="Tarifas de Vehículos"
+                  parent="main_menu_vehicle_rental"
+                  action="action_vehicle_pricing_rule"
+                  sequence="9"/>
+        <menuitem id="menu_vehicle_insurance_pricing"
+                  name="Tarifas de Seguros"
+                  parent="main_menu_vehicle_rental"
+                  action="action_vehicle_insurance_pricing"
+                  sequence="10"/>
+
+        <menuitem id="menu_configuration" name="Configuraciones" parent="main_menu_vehicle_rental" sequence="20"/>
+        <menuitem id="menu_cancellation_policy"
+                  name="Políticas de Cancelación"
+                  parent="menu_configuration"
+                  action="action_cancellation_policy"
+                  sequence="1"/>
+        <menuitem id="menu_rental_agreement_terms"
+                  name="Términos de Acuerdo de Alquiler"
+                  parent="menu_configuration"
+                  action="action_rental_agreement_terms"
+                  sequence="2"/>
+        <menuitem id="menu_vehicle_scratch_report"
+                  name="Informes de Rayones"
+                  parent="menu_configuration"
+                  action="action_vehicle_scratch_report"
+                  sequence="3"/>
+        <menuitem id="menu_maintenance_schedule"
+                  name="Horarios de Mantenimiento"
+                  parent="menu_configuration"
+                  action="action_maintenance_schedule"
+                  sequence="4"/>
+    </data>
+</odoo>

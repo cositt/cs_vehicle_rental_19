@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Template de email para envío de contrato -->
+        <record id="email_template_vehicle_contract" model="mail.template">
+            <field name="name">Contrato de Vehículo</field>
+            <field name="model_id" ref="model_vehicle_contract"/>
+            <field name="subject">Contrato de Alquiler de Vehículo</field>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px;">
+                    <div style="margin: 0px; padding: 0px; font-size: 13px;">
+                        <p>Estimado/a <t t-out="object.customer_id.name or 'cliente'"/>,</p>
+                        
+                        <p>Adjunto encontrará el contrato de alquiler de vehículo correspondiente a su reserva.</p>
+                        
+                        <div style="margin: 16px 0px 16px 0px;">
+                            <h3>Detalles de la Reserva:</h3>
+                            <ul>
+                                <li><strong>Número de Contrato:</strong> <t t-out="object.reference_no"/></li>
+                                <li><strong>Vehículo:</strong> <t t-out="object.vehicle_id.name"/></li>
+                                <li><strong>Modelo:</strong> <t t-out="object.model_year or (object.vehicle_id.model_id.name or '')"/></li>
+                                <li><strong>Fecha de Inicio:</strong> <t t-out="object.start_date"/></li>
+                                <li><strong>Fecha de Fin:</strong> <t t-out="object.end_date"/></li>
+                                <li><strong>Total Alquiler:</strong> <t t-out="object.total_vehicle_rent"/> €</li>
+                            </ul>
+                        </div>
+                        
+                        <p>Por favor, revise cuidadosamente los términos y condiciones del contrato.</p>
+                        
+                        <p>Si tiene alguna pregunta o necesita realizar cambios, no dude en contactarnos.</p>
+                        
+                        <p>¡Esperamos que disfrute de su vehículo de alquiler!</p>
+                        
+                        <p>Atentamente,<br/>
+                        El equipo de SUNSET RENT</p>
+                        
+                        <hr style="margin: 16px 0px 16px 0px; border: none; border-top: 1px solid #e1e1e1;"/>
+                        
+                        <p style="font-size: 11px; color: #666;">
+                            Este es un mensaje automático, por favor no responda directamente a este email.
+                        </p>
+                    </div>
+                </div>
+            </field>
+            <field name="auto_delete" eval="False"/>
+        </record>
+    </data>
+</odoo>
+

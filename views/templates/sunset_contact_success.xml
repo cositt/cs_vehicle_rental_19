@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="sunset_contact_success" name="Sunset Contact Success">
+        <t t-call="website.layout">
+            <t t-set="title">Mensaje Enviado - Sunset Rent a Car</t>
+            
+            <!-- Hero Section -->
+            <div class="hero-section" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); padding: 80px 0; text-align: center;">
+                <div class="container">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8">
+                            <i class="fa fa-check-circle fa-5x text-dark mb-4"></i>
+                            <h1 class="display-4 text-dark fw-bold mb-3">
+                                ¡Mensaje Enviado!
+                            </h1>
+                            <p class="lead text-dark mb-4">
+                                Gracias <strong t-esc="contact_name"/> por contactarnos. Hemos recibido tu mensaje y te responderemos lo antes posible.
+                            </p>
+                            <div class="alert alert-dark text-white" role="alert">
+                                <i class="fa fa-info-circle me-2"></i>
+                                <strong>Número de referencia:</strong> <span t-esc="lead.name"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="container my-5">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-body p-5 text-center">
+                                <h3 class="text-dark fw-bold mb-4">
+                                    <i class="fa fa-clock me-2"></i>
+                                    ¿Qué Sigue Ahora?
+                                </h3>
+                                
+                                <div class="row">
+                                    <div class="col-md-4 mb-4">
+                                        <div class="text-center">
+                                            <i class="fa fa-envelope fa-3x text-dark mb-3"></i>
+                                            <h5 class="text-dark fw-bold">1. Confirmación</h5>
+                                            <p class="text-muted">
+                                                Recibirás un email de confirmación en los próximos minutos.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-4 mb-4">
+                                        <div class="text-center">
+                                            <i class="fa fa-user-tie fa-3x text-dark mb-3"></i>
+                                            <h5 class="text-dark fw-bold">2. Revisión</h5>
+                                            <p class="text-muted">
+                                                Nuestro equipo revisará tu consulta y te contactará.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-4 mb-4">
+                                        <div class="text-center">
+                                            <i class="fa fa-reply fa-3x text-dark mb-3"></i>
+                                            <h5 class="text-dark fw-bold">3. Respuesta</h5>
+                                            <p class="text-muted">
+                                                Te responderemos en un plazo máximo de 24 horas.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <hr class="my-4"/>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <a href="/sunset" class="btn btn-dark btn-lg w-100">
+                                            <i class="fa fa-home me-2"></i>
+                                            Volver al Inicio
+                                        </a>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <a href="/sunset/flota" class="btn btn-outline-dark btn-lg w-100">
+                                            <i class="fa fa-car me-2"></i>
+                                            Ver Nuestra Flota
+                                        </a>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4">
+                                    <p class="text-muted mb-2">
+                                        <i class="fa fa-phone me-2"></i>
+                                        ¿Necesitas ayuda inmediata? Llámanos al <strong>+34 91 123 45 67</strong>
+                                    </p>
+                                    <p class="text-muted">
+                                        <i class="fa fa-envelope me-2"></i>
+                                        O escríbenos a <strong>info@sunsetrentacar.com</strong>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom CSS -->
+            <style>
+                .hero-section {
+                    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%) !important;
+                }
+                
+                .btn-dark {
+                    background: #000000 !important;
+                    border: none !important;
+                    color: #ffffff !important;
+                }
+                
+                .btn-dark:hover {
+                    background: #333333 !important;
+                    transform: translateY(-1px);
+                    color: #ffffff !important;
+                }
+                
+                .btn-outline-dark {
+                    border: 2px solid #000000 !important;
+                    color: #000000 !important;
+                }
+                
+                .btn-outline-dark:hover {
+                    background: #000000 !important;
+                    color: #ffffff !important;
+                }
+                
+                .text-dark {
+                    color: #000000 !important;
+                }
+                
+                .card {
+                    border-radius: 15px !important;
+                }
+                
+                .alert-dark {
+                    background: #000000 !important;
+                    border: none !important;
+                    color: #ffffff !important;
+                }
+            </style>
+        </t>
+    </template>
+</odoo>

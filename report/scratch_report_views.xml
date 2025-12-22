@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <template id="scratch_report_template">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="scratch">
+                    <t t-call="web.basic_layout">
+                        <div class="page">
+                            <h2 style="text-align: center;">
+                                Scratch Report
+                            </h2>
+                            <br/>
+                            <div id="information" class="row mt8 mb8">
+                                <div class="col-auto col-4 mw-100 mb-2" t-if="scratch.reference_no"
+                                     name="reference_no" style="text-align: left;">
+                                    <strong>Reference Number</strong>
+                                    <p class="m-0" t-field="scratch.reference_no"/>
+                                </div>
+                                <div class="col-auto col-4 mw-100 mb-2" t-if="scratch.vehicle_id"
+                                     name="vehicle_id" style="text-align: center;">
+                                    <strong>Vehicle</strong>
+                                    <p class="m-0" t-field="scratch.vehicle_id"/>
+                                </div>
+                                <div class="col-auto col-4 mw-100 mb-2" t-if="scratch.model_year" name="model_year"
+                                     style="text-align: right;">
+                                    <strong>Model</strong>
+                                    <p class="m-0" t-field="scratch.model_year"/>
+                                </div>
+                            </div>
+                            <div id="information" class="row mt8 mb8">
+                                <div class="col-auto col-4 mw-100 mb-2" t-if="scratch.customer_id"
+                                     name="customer_id" style="text-align: left;">
+                                    <strong>Customer</strong>
+                                    <p class="m-0" t-field="scratch.customer_id"/>
+                                </div>
+                                <div class="col-auto col-4 mw-100 mb-2" t-if="scratch.responsible_id"
+                                     name="responsible_id" style="text-align: center;">
+                                    <strong>Responsible</strong>
+                                    <p class="m-0" t-field="scratch.responsible_id.name"/>
+                                </div>
+                                <div class="col-auto col-4 mw-100 mb-2" t-if="scratch.last_odometer"
+                                     name="last_odometer" style="text-align: right;">
+                                    <strong>Last Odometer</strong>
+                                    <p class="m-0" t-field="scratch.last_odometer"/>
+                                </div>
+                            </div>
+                            <br/>
+                            <h6 style="text-align: center; margin: 0px;">
+                                Inspect vehicle with customer, Point out and mark on diagram any current damage
+                                or issues.
+                            </h6>
+                            <table class="table table-borderless" style="margin-top: 0px;">
+                                <tr style="border: 1px solid black;">
+                                    <td style="width: 70%; vertical-align: top;">
+                                        <t t-if="scratch.is_scratch_report">
+                                            <img t-att-src="'data:image/png;base64,%s' % scratch.vehicle_scratch_report_id.avatar.decode('utf-8')"
+                                                 style="width: 32.4rem; height: 42rem; object-fit: cover;"/>
+                                        </t>
+                                        <t t-else="">
+                                            <img src="/vehicle_rental/static/src/img/img.png"
+                                                 style="width: 32.4rem; height: 42rem; object-fit: cover;"/>
+                                        </t>
+                                    </td>
+                                    <td style="width: 30%; vertical-align: top; border: 1px solid black;">
+                                        <table class="table table-borderless" style="margin-top: 0px; padding: 2px;">
+                                            <h4 style="text-align: center; border-bottom: 1px solid black; margin-bottom: 1rem;margin-left: 4rem; margin-right: 4rem;">
+                                                Legend
+                                            </h4>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black; margin-top: 5px;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        SH
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Swirls / Holograms
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        WS
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Water Spots
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        OX
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Oxidation
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        CF
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Clearcoat Failure
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        DS
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Deep Scratch
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        BD
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Bird Dropping
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        RP
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Rough Paint
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        UD
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Unknown Defect
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        PT
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Paint Transfer
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        PC
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Pant Chip
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        GS
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Glass Scratch
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        GC
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Glass Chip
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        DD
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Dents / Dings
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        SS
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Side Swipe
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        CR
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Curb Rash
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        WD
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Wheel Damage
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        GC
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Gouges / Crease
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 2.2rem; border-bottom: 1px solid black;">
+                                                <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        LM
+                                                    </strong>
+                                                </td>
+                                                <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                    <strong>
+                                                        Loose Molding
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                            <table class="table table-borderless" width="100%">
+                                <tr>
+                                    <td style="padding: 2px; font-size: 18px;">
+                                        <strong>Notes:</strong>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </template>
+    </data>
+    <record id="action_scratch_report_template" model="ir.actions.report">
+        <field name="name">Scratch Report</field>
+        <field name="model">vehicle.contract</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">vehicle_rental.scratch_report_template</field>
+        <field name="report_file">vehicle_rental.scratch_report_template</field>
+        <field name="binding_model_id" ref="model_vehicle_contract"/>
+        <field name="paperformat_id" ref="scratch_report_paper_format"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

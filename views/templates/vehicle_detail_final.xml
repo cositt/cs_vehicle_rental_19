@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Final Vehicle Detail Template -->
+<template id="vehicle_detail_final" name="Final Vehicle Detail View">
+    <t t-call="website.layout">
+        <div class="container py-4">
+            <h1>Vista Detalle del Vehículo - FINAL</h1>
+            <p>Vehículo: <span t-esc="vehicle_info.get('name', 'Sin nombre')"/></p>
+            <p>Descripción: <span t-esc="vehicle_info.get('description', 'Sin descripción')"/></p>
+            <p>Plazas: <span t-esc="vehicle_info.get('seats', 0)"/></p>
+            <p>Volumen: <span t-esc="vehicle_info.get('volume', 'N/A')"/></p>
+            <p>Aire acondicionado: <span t-esc="'Sí' if vehicle_info.get('ac', False) else 'No'"/></p>
+            
+            <h3>Ofertas de Alquiler</h3>
+            <t t-foreach="vehicle_info.get('pricing', [])" t-as="offer" t-key="offer_index">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h5 t-esc="offer.get('duration', '')"/>
+                        <p t-esc="offer.get('km', '')"/>
+                        <h4 t-esc="'€' + str(offer.get('price', 0))"/>
+                        <ul>
+                            <t t-foreach="offer.get('features', [])" t-as="feature" t-key="feature_index">
+                                <li t-esc="feature"/>
+                            </t>
+                        </ul>
+                    </div>
+                </div>
+            </t>
+            
+            <button class="btn btn-primary" onclick="window.location.href='/web/booking-enquiry'">
+                Volver a categorías
+            </button>
+        </div>
+    </t>
+</template>
+</odoo>

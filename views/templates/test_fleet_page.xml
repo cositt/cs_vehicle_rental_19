@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="test_fleet_page" name="Test Fleet Page">
+        <t t-call="web.layout">
+            <div class="container mt-4">
+                <h1>Test de Vehículos</h1>
+                <p>Total de vehículos: <t t-esc="len(vehicles)"/></p>
+                
+                <div class="row">
+                    <t t-foreach="vehicles" t-as="vehicle">
+                        <div class="col-md-4 mb-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title" t-esc="vehicle['name']"/>
+                                    <p class="card-text">
+                                        <strong>Matrícula:</strong> <span t-esc="vehicle['license_plate']"/>
+                                        <br/>
+                                        <strong>Modelo:</strong> <span t-esc="vehicle['model']"/>
+                                        <br/>
+                                        <strong>Categoría:</strong> <span t-esc="vehicle['category']"/>
+                                        <br/>
+                                        <strong>Precio:</strong> €<span t-esc="vehicle['price']"/>/día
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>
+
+
+
+
+
+
+
+
+
+
+
+
+
+

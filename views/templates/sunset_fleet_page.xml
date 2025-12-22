@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- PÁGINA DE FLOTA SUNSET - BOOKING ENQUIRY -->
+    <template id="sunset_fleet_page" name="Sunset Fleet Page">
+        <t t-call="website.layout">
+            
+            <!-- HERO SECTION -->
+            <div class="hero-section" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); min-height: 60vh; display: flex; align-items: center;">
+                <div class="container">
+                    <div class="row align-items-center">
+                        <div class="col-lg-8">
+                            <div class="hero-content text-dark">
+                                <h1 class="display-4 fw-bold mb-4">
+                                    <i class="fa fa-car me-3"></i>
+                                    Nuestra Flota
+                                </h1>
+                                <h2 class="h3 mb-4">
+                                    Encuentra el vehículo perfecto para tu <span class="fw-bold">aventura</span>
+                                </h2>
+                                <p class="lead mb-4">
+                                    Descubre nuestra amplia gama de vehículos. Desde coches económicos hasta furgonetas de lujo, 
+                                    tenemos el vehículo ideal para cada necesidad y presupuesto.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="hero-image text-center">
+                                <i class="fa fa-car fa-8x text-dark opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- GRID DE VEHÍCULOS -->
+            <div class="vehicles-section py-5">
+                <div class="container">
+                    <div class="row text-center mb-5">
+                        <div class="col-12">
+                            <h2 class="display-5 fw-bold text-dark mb-3">
+                                <i class="fa fa-car me-2"></i>
+                                Vehículos Disponibles
+                            </h2>
+                            <p class="lead text-muted">
+                                Selecciona el vehículo que mejor se adapte a tus necesidades
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Loading spinner -->
+                    <div id="loading-spinner" class="text-center py-5" style="display: none;">
+                        <div class="spinner-border text-dark" role="status">
+                            <span class="visually-hidden">Buscando vehículos...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Buscando vehículos disponibles...</p>
+                    </div>
+                    
+                    <!-- Grid de vehículos -->
+                    <div id="vehicles-grid" class="vehicle-grid">
+                        <t t-foreach="vehicles" t-as="vehicle">
+                            <div class="vehicle-card card h-100 shadow-sm">
+                                <div class="vehicle-image">
+                                    <i t-attf-class="fa #{vehicle['icon']} fa-4x text-dark"></i>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h5 class="card-title text-dark fw-bold" t-esc="vehicle['name']"></h5>
+                                        <span class="price-badge" t-esc="'€' + str(vehicle['price']) + '/día'"></span>
+                                    </div>
+                                    <p class="card-text text-muted mb-3">
+                                        <i class="fa fa-tag me-1"></i> <span class="category-info" t-esc="vehicle['category']"></span>
+                                        <br/>
+                                        <i class="fa fa-users me-1"></i> <span class="passengers-info" t-esc="str(vehicle['passengers']) + ' pasajeros'"></span>
+                                        <t t-if="vehicle['color']">
+                                            <br/>
+                                            <i class="fa fa-paint-brush me-1"></i> <span t-esc="vehicle['color']"></span>
+                                        </t>
+                                    </p>
+                                    <ul class="list-unstyled mb-3">
+                                        <t t-foreach="vehicle['features']" t-as="feature">
+                                            <li><i class="fa fa-check text-success me-2"></i><span t-esc="feature"></span></li>
+                                        </t>
+                                    </ul>
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <button class="btn btn-dark w-100" t-att-onclick="'selectVehicle(' + str(vehicle['id']) + ', \'' + vehicle['name'] + '\', ' + str(vehicle['price']) + ')'">
+                                        <i class="fa fa-calendar-check-o me-1"></i>
+                                        Reservar Ahora
+                                    </button>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                    
+                    <!-- Mensaje cuando no hay vehículos -->
+                    <div id="no-vehicles" class="text-center py-5" style="display: none;">
+                        <div class="alert alert-warning">
+                            <i class="fa fa-exclamation-triangle fa-3x mb-3 text-warning"></i>
+                            <h4>No hay vehículos disponibles</h4>
+                            <p>No se encontraron vehículos disponibles para los criterios seleccionados.</p>
+                            <p>Intenta con otras fechas o criterios de búsqueda.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INFORMACIÓN ADICIONAL -->
+            <div class="info-section py-5" style="background-color: #f8f9fa;">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-lg-4 col-md-6 mb-4">
+                            <div class="info-card card h-100 shadow-sm">
+                                <div class="card-body text-center">
+                                    <div class="info-icon mb-3">
+                                        <i class="fa fa-shield fa-3x text-dark"></i>
+                                    </div>
+                                    <h5 class="card-title text-dark fw-bold">Seguro Incluido</h5>
+                                    <p class="card-text text-muted">
+                                        Todos nuestros vehículos incluyen seguro a todo riesgo. 
+                                        Viaja con total tranquilidad.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 mb-4">
+                            <div class="info-card card h-100 shadow-sm">
+                                <div class="card-body text-center">
+                                    <div class="info-icon mb-3">
+                                        <i class="fa fa-clock-o fa-3x text-dark"></i>
+                                    </div>
+                                    <h5 class="card-title text-dark fw-bold">Disponibilidad 24/7</h5>
+                                    <p class="card-text text-muted">
+                                        Reserva en cualquier momento. Nuestro sistema está 
+                                        disponible las 24 horas del día.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 mb-4">
+                            <div class="info-card card h-100 shadow-sm">
+                                <div class="card-body text-center">
+                                    <div class="info-icon mb-3">
+                                        <i class="fa fa-phone fa-3x text-dark"></i>
+                                    </div>
+                                    <h5 class="card-title text-dark fw-bold">Soporte 24/7</h5>
+                                    <p class="card-text text-muted">
+                                        Nuestro equipo de soporte está disponible para 
+                                        ayudarte en cualquier momento.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estilos CSS específicos -->
+            <style>
+                .hero-section {
+                    position: relative;
+                    overflow: hidden;
+                }
+                
+                .info-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                }
+                
+                .vehicle-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+                }
+                
+                /* Mejorar el grid de vehículos */
+                #vehicles-grid {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 1.5rem;
+                }
+                
+                #vehicles-grid .col-xl-3 {
+                    flex: 0 0 calc(25% - 1.125rem);
+                    max-width: calc(25% - 1.125rem);
+                }
+                
+                #vehicles-grid .col-lg-4 {
+                    flex: 0 0 calc(33.333% - 1rem);
+                    max-width: calc(33.333% - 1rem);
+                }
+                
+                #vehicles-grid .col-md-6 {
+                    flex: 0 0 calc(50% - 0.75rem);
+                    max-width: calc(50% - 0.75rem);
+                }
+                
+                #vehicles-grid .col-sm-12 {
+                    flex: 0 0 100%;
+                    max-width: 100%;
+                }
+                
+                @media (max-width: 1200px) {
+                    #vehicles-grid .col-xl-3 {
+                        flex: 0 0 calc(33.333% - 1rem);
+                        max-width: calc(33.333% - 1rem);
+                    }
+                }
+                
+                @media (max-width: 992px) {
+                    #vehicles-grid .col-lg-4 {
+                        flex: 0 0 calc(50% - 0.75rem);
+                        max-width: calc(50% - 0.75rem);
+                    }
+                }
+                
+                @media (max-width: 768px) {
+                    #vehicles-grid .col-md-6 {
+                        flex: 0 0 100%;
+                        max-width: 100%;
+                    }
+                }
+                
+                /* Colores corporativos Sunset */
+                .btn-dark {
+                    background: #000000;
+                    border: none;
+                    color: #ffffff;
+                }
+                
+                .btn-dark:hover {
+                    background: #333333;
+                    transform: translateY(-1px);
+                    color: #ffffff;
+                }
+                
+                .text-dark {
+                    color: #000000 !important;
+                }
+                
+                .card {
+                    border: none;
+                    border-radius: 15px;
+                    transition: all 0.3s ease;
+                }
+                
+                .form-control:focus,
+                .form-select:focus {
+                    border-color: #FFD700;
+                    box-shadow: 0 0 0 0.2rem rgba(255, 215, 0, 0.25);
+                }
+                
+                .vehicle-card {
+                    border: 2px solid transparent;
+                    transition: all 0.3s ease;
+                }
+                
+                .vehicle-card:hover {
+                    border-color: #FFD700;
+                }
+                
+                .vehicle-image {
+                    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+                    height: 200px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                
+                .price-badge {
+                    background: #E6E6FA;
+                    color: #000000;
+                    font-weight: bold;
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                }
+                
+                @media (max-width: 768px) {
+                    .hero-section {
+                        min-height: 50vh;
+                    }
+                    
+                    .display-4 {
+                        font-size: 2.5rem;
+                    }
+                    
+                    .display-5 {
+                        font-size: 2rem;
+                    }
+                }
+                
+                /* Grid de vehículos */
+                .vehicle-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 1.5rem;
+                    padding: 1rem 0;
+                }
+                
+                @media (min-width: 1200px) {
+                    .vehicle-grid {
+                        grid-template-columns: repeat(4, 1fr);
+                    }
+                }
+                
+                @media (min-width: 992px) and (max-width: 1199px) {
+                    .vehicle-grid {
+                        grid-template-columns: repeat(3, 1fr);
+                    }
+                }
+                
+                @media (min-width: 768px) and (max-width: 991px) {
+                    .vehicle-grid {
+                        grid-template-columns: repeat(2, 1fr);
+                    }
+                }
+                
+                @media (max-width: 767px) {
+                    .vehicle-grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
+                
+                /* FORZAR GRID CON !IMPORTANT */
+                .vehicle-grid {
+                    display: grid !important;
+                    grid-template-columns: repeat(4, 1fr) !important;
+                    gap: 1.5rem !important;
+                    padding: 1rem 0 !important;
+                }
+                
+                @media (max-width: 1200px) {
+                    .vehicle-grid {
+                        grid-template-columns: repeat(3, 1fr) !important;
+                    }
+                }
+                
+                @media (max-width: 992px) {
+                    .vehicle-grid {
+                        grid-template-columns: repeat(2, 1fr) !important;
+                    }
+                }
+                
+                @media (max-width: 768px) {
+                    .vehicle-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+                }
+            </style>
+
+            <!-- JavaScript para funcionalidad -->
+            <script>
+                <![CDATA[
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Los vehículos ya están cargados desde el servidor
+                    console.log('Página de flota cargada');
+                });
+                
+                function selectVehicle(vehicleId, vehicleName, price, startDate, endDate) {
+                    // Redirigir al sistema de reservas con los datos
+                    const params = new URLSearchParams({
+                        vehicle_id: vehicleId,
+                        vehicle_name: vehicleName,
+                        price: price,
+                        start_date: startDate,
+                        end_date: endDate
+                    });
+                    
+                    window.location.href = `/web/booking-enquiry?${params.toString()}`;
+                }
+                ]]>
+            </script>
+        </t>
+    </template>
+</odoo>

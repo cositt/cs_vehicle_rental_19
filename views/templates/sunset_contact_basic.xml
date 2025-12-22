@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="sunset_contact_basic" name="Sunset Contact Basic">
+        <t t-call="website.layout">
+            <t t-set="title">Contacta con Nosotros - Sunset</t>
+            
+            <div class="container my-5">
+                <h1 class="text-center">Contacta con Nosotros</h1>
+                <p class="text-center">Sunset Rent a Car</p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h3>Información de Contacto</h3>
+                        <p><strong>Dirección:</strong> <span t-esc="contact_info['address']"/></p>
+                        <p><strong>Teléfono:</strong> <span t-esc="contact_info['phone']"/></p>
+                        <p><strong>Email:</strong> <span t-esc="contact_info['email']"/></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h3>Enviar Mensaje</h3>
+                        <form method="post" action="/contactus/enviar">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Nombre *</label>
+                                <input type="text" class="form-control" id="name" name="name" required="required"/>
+                            </div>
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email *</label>
+                                <input type="email" class="form-control" id="email" name="email" required="required"/>
+                            </div>
+                            <div class="mb-3">
+                                <label for="message" class="form-label">Mensaje *</label>
+                                <textarea class="form-control" id="message" name="message" rows="4" required="required"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Enviar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

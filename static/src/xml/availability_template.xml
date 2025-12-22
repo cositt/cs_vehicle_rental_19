@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="vehicle_rental.availability_vehicle" owl="1">
+        <section class="section vehicle_rental_dashboard">
+                <div class="row">
+                    <div class="col-md-12 mt32">
+                        <h4 class="tk-primary mx-2">Contratos de Vehículos</h4>
+                        <hr class="border-primary"/>
+                        <div class="tk-charts" id="availibilityChart">
+                        </div>
+                    </div>
+                </div>
+        </section>
+    </t>
+</templates>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Categorías de vehículos -->
+        <record id="fleet_vehicle_model_category_tipo_a" model="fleet.vehicle.model.category">
+            <field name="name">Tipo A - Combi 5 plazas</field>
+            <field name="sequence">1</field>
+        </record>
+        
+        <record id="fleet_vehicle_model_category_tipo_b" model="fleet.vehicle.model.category">
+            <field name="name">Tipo B - Moto 50cc</field>
+            <field name="sequence">2</field>
+        </record>
+        
+        <record id="fleet_vehicle_model_category_tipo_d" model="fleet.vehicle.model.category">
+            <field name="name">Tipo D - Furgoneta 4m³</field>
+            <field name="sequence">4</field>
+        </record>
+        
+        <record id="fleet_vehicle_model_category_tipo_e" model="fleet.vehicle.model.category">
+            <field name="name">Tipo E - Bici Eléctrica</field>
+            <field name="sequence">5</field>
+        </record>
+        
+        <record id="fleet_vehicle_model_category_tipo_f" model="fleet.vehicle.model.category">
+            <field name="name">Tipo F - Furgoneta 5/6m³</field>
+            <field name="sequence">6</field>
+        </record>
+        
+        <record id="fleet_vehicle_model_category_tipo_k" model="fleet.vehicle.model.category">
+            <field name="name">Tipo K - Camión 2.500kg</field>
+            <field name="sequence">11</field>
+        </record>
+        
+        <record id="fleet_vehicle_model_category_tipo_t" model="fleet.vehicle.model.category">
+            <field name="name">Tipo T - Furgoneta 6m³</field>
+            <field name="sequence">20</field>
+        </record>
+        
+        <record id="fleet_vehicle_model_category_tipo_v" model="fleet.vehicle.model.category">
+            <field name="name">Tipo V - Furgoneta 7m³</field>
+            <field name="sequence">22</field>
+        </record>
+        
+        <record id="fleet_vehicle_model_category_tipo_w" model="fleet.vehicle.model.category">
+            <field name="name">Tipo W - Furgoneta 9m³</field>
+            <field name="sequence">23</field>
+        </record>
+        
+        <record id="fleet_vehicle_model_category_tipo_x" model="fleet.vehicle.model.category">
+            <field name="name">Tipo X - Furgoneta 11m³</field>
+            <field name="sequence">24</field>
+        </record>
+        
+        <record id="fleet_vehicle_model_category_tipo_z" model="fleet.vehicle.model.category">
+            <field name="name">Tipo Z - Patinete Eléctrico</field>
+            <field name="sequence">26</field>
+        </record>
+        
+        <!-- Categoría de vehículo: Furgoneta (legacy) -->
+        <record id="fleet_vehicle_model_category_van" model="fleet.vehicle.model.category">
+            <field name="name">Furgoneta</field>
+            <field name="sequence">15</field>
+        </record>
+    </data>
+</odoo>

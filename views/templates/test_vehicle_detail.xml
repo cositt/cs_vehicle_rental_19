@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Test Vehicle Detail Template -->
+    <template id="test_vehicle_detail" name="Test Vehicle Detail">
+        <t t-call="website.layout">
+            <div class="container py-4">
+                <div class="alert alert-success">
+                    <h2>¡Vista detalle funcionando!</h2>
+                    <p>Vehículo: <span t-esc="vehicle_info.get('name', 'Sin nombre')"/></p>
+                    <p>Descripción: <span t-esc="vehicle_info.get('description', 'Sin descripción')"/></p>
+                    <p>Plazas: <span t-esc="vehicle_info.get('seats', 0)"/></p>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

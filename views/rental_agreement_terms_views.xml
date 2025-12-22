@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <!--Rental Agreement Terms-->
+        <record id="rental_agreement_terms_form_view" model="ir.ui.view">
+            <field name="name">rental.agreement.terms.form.view</field>
+            <field name="model">rental.agreement.terms</field>
+            <field name="arch" type="xml">
+                <form>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="e.g. Vehicle Rental Terms and Conditions.."
+                                       required="1"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="company_id" required="1"
+                                       options="{'no_create': True, 'no_create_edit': True}"
+                                       string="Compañía"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page name="rental_term" string="Términos y Condiciones">
+                                <field name="rental_terms"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+        <record id="rental_agreement_terms_tree_view" model="ir.ui.view">
+            <field name="name">rental.agreement.terms.tree.view</field>
+            <field name="model">rental.agreement.terms</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="name" string="Título"/>
+                    <field name="company_id" string="Compañía"/>
+                </list>
+            </field>
+        </record>
+        <record id="rental_agreement_terms_search_view" model="ir.ui.view">
+            <field name="name">rental.agreement.terms.search.view</field>
+            <field name="model">rental.agreement.terms</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="name"/>
+                </search>
+            </field>
+        </record>
+        <record id="action_rental_agreement_terms" model="ir.actions.act_window">
+            <field name="name">Términos de Acuerdo de Alquiler</field>
+            <field name="res_model">rental.agreement.terms</field>
+            <field name="view_mode">list,form,search</field>
+        </record>
+    </data>
+</odoo>

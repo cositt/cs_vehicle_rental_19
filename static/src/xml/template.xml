@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="vehicle_rental.rental_dashboard" owl="1">
+        <section class="section vehicle_rental_dashboard">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-12 mt32">
+                        <h4 class="tk-primary">Estadísticas Actuales</h4>
+                        <hr class="border-primary"/>
+                    </div>
+                    <div class="col-md-2 mb-4 mt8 mb16" t-on-click="() => this.viewFleetVehicleDetails('all')">
+                        <div class="card info-bg p-32">
+                            <div class="card-body info-bg tk-card-body">
+                                <img alt="users" width="40"
+                                     src="/vehicle_rental/static/src/img/dashboard/1-total.svg"/>
+                                <h4 class="tk-st-1 info-bg">Total Vehicles</h4>
+                                <h6 class="tk-st-2 info-bg">
+                                    <t t-esc="state.fleetVehicleStats['total_vehicle']"/>
+                                </h6>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 mb-4 mt8 mb16" t-on-click="() => this.viewFleetVehicleDetails('available')">
+                        <div class="card active-bg p-32">
+                            <div class="card-body active-bg tk-card-body">
+                                <img alt="users" width="40"
+                                     src="/vehicle_rental/static/src/img/dashboard/2-available.svg"/>
+                                <h4 class="tk-st-1 active-bg">Vehículos Operacionales</h4>
+                                <h6 class="tk-st-2 active-bg">
+                                    <t t-esc="state.fleetVehicleStats['available_vehicle']"/>
+                                </h6>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 mb-4 mt8 mb16"
+                         t-on-click="() => this.viewFleetVehicleDetails('in_maintenance')">
+                        <div class="card terminate-bg p-32">
+                            <div class="card-body terminate-bg tk-card-body">
+                                <img alt="users" width="40"
+                                     src="/vehicle_rental/static/src/img/dashboard/3-under.svg"/>
+                                <h4 class="tk-st-1 terminate-bg">Mantenimiento</h4>
+                                <h6 class="tk-st-2 terminate-bg">
+                                    <t t-esc="state.fleetVehicleStats['under_maintenance_vehicle']"/>
+                                </h6>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 mb-4 mt8 mb16" t-on-click="() => this.viewVehicleCustomers()">
+                        <div class="card all-bg p-32">
+                            <div class="card-body all-bg tk-card-body">
+                                <img alt="users" width="40"
+                                     src="/vehicle_rental/static/src/img/dashboard/8-customer.svg"/>
+                                <h4 class="tk-st-1 all-bg">Todos los Clientes</h4>
+                                <h6 class="tk-st-2 all-bg">
+                                    <t t-esc="state.vehicleCustomers['customers']"/>
+                                </h6>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 mb-4 mt8 mb16" t-on-click="() => this.viewCustomerInvoices()">
+                        <div class="card success-bg p-32">
+                            <div class="card-body success-bg tk-card-body">
+                                <img alt="users" width="40"
+                                     src="/vehicle_rental/static/src/img/dashboard/9-all.svg"/>
+                                <h4 class="tk-st-1 success-bg">Todas las<br/>Facturas</h4>
+                                <h6 class="tk-st-2 success-bg">
+                                    <t t-esc="state.customerInvoices['customer_invoice']"/>
+                                </h6>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 mb-4 mt8 mb16" t-on-click="() => this.viewPendingInvoices()">
+                        <div class="card warn-bg p-32">
+                            <div class="card-body warn-bg tk-card-body">
+                                <img alt="users" width="40"
+                                     src="/vehicle_rental/static/src/img/dashboard/10-pending.svg"/>
+                                <h4 class="tk-st-1 warn-bg">Facturas Pendientes</h4>
+                                <h6 class="tk-st-2 warn-bg">
+                                    <t t-esc="state.customerInvoices['pending_invoices']"/>
+                                </h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="row">
+                            <div class="col-md-12 mt32">
+                                <h4 class="tk-primary">Detalles de Contratos</h4>
+                                <hr class="border-primary"/>
+                            </div>
+                            <div class="col-md-6 mb-4 mt8 mb16"
+                                 t-on-click="() => this.viewVehicleContractStatus('all')">
+                                <div class="card info-bg p-32">
+                                    <div class="card-body info-bg tk-card-body">
+                                        <img alt="users" width="40"
+                                             src="/vehicle_rental/static/src/img/dashboard/4-contract.svg"/>
+                                        <h4 class="tk-st-1 info-bg">Contracts</h4>
+                                        <h6 class="tk-st-2 info-bg">
+                                            <t t-esc="state.vehicleContractStatus['draft_vehicle']"/>
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-4 mt8 mb16"
+                                 t-on-click="() => this.viewVehicleContractStatus('b_in_progress')">
+                                <div class="card warn-bg p-32">
+                                    <div class="card-body warn-bg tk-card-body">
+                                        <img alt="users" width="40"
+                                             src="/vehicle_rental/static/src/img/dashboard/5-progress.svg"/>
+                                        <h4 class="tk-st-1 warn-bg">In Progress</h4>
+                                        <h6 class="tk-st-2 warn-bg">
+                                            <t t-esc="state.vehicleContractStatus['in_progress_vehicle']"/>
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-4 mt8 mb16"
+                                 t-on-click="() => this.viewVehicleContractStatus('c_return')">
+                                <div class="card active-bg p-32">
+                                    <div class="card-body active-bg tk-card-body">
+                                        <img alt="users" width="40"
+                                             src="/vehicle_rental/static/src/img/dashboard/6-return.svg"/>
+                                        <h4 class="tk-st-1 active-bg">Devuelto</h4>
+                                        <h6 class="tk-st-2 active-bg">
+                                            <t t-esc="state.vehicleContractStatus['return_contract']"/>
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-4 mt8 mb16"
+                                 t-on-click="() => this.viewVehicleContractStatus('d_cancel')">
+                                <div class="card terminate-bg p-32">
+                                    <div class="card-body terminate-bg tk-card-body">
+                                        <img alt="users" width="40"
+                                             src="/vehicle_rental/static/src/img/dashboard/7-cancel.svg"/>
+                                        <h4 class="tk-st-1 terminate-bg">Cancelled</h4>
+                                        <h6 class="tk-st-2 terminate-bg">
+                                            <t t-esc="state.vehicleContractStatus['cancel_contract']"/>
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="row">
+                            <div class="col-md-12 mt32">
+                                <h4 class="tk-primary">Duración de contratos de alquiler en progreso</h4>
+                                <hr class="border-primary"/>
+                                <div class="tk-os-chart" t-ref="rent_contract_duration"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <h4 class="tk-primary">Ingresos mensuales de facturas de contratos</h4>
+                        <hr class="border-primary"/>
+                        <div class="tk-os-chart" t-ref="invoice_status_graph"/>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </t>
+</templates>

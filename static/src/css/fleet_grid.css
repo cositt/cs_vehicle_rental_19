@@ -1,0 +1,56 @@
+/* Grid de vehículos para Sunset Fleet */
+.vehicle-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+    gap: 1.5rem !important;
+    padding: 1rem 0 !important;
+}
+
+@media (min-width: 1200px) {
+    .vehicle-grid {
+        grid-template-columns: repeat(4, 1fr) !important;
+    }
+}
+
+@media (min-width: 992px) and (max-width: 1199px) {
+    .vehicle-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .vehicle-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+@media (max-width: 767px) {
+    .vehicle-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+.vehicle-card {
+    border: 2px solid transparent !important;
+    transition: all 0.3s ease !important;
+}
+
+.vehicle-card:hover {
+    border-color: #FFD700 !important;
+    transform: translateY(-5px) !important;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

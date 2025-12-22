@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    
+    <t t-name="vehicle_rental.FloatingNotification">
+        <div class="o_floating_notification" t-if="state.visible and state.count > 0" t-on-click="onClick">
+            <div class="o_notification_icon">
+                <img src="/vehicle_rental/static/description/icon.png" alt="Vehicle Rental"/>
+                <span class="o_notification_badge" t-if="state.count > 0">
+                    <t t-esc="state.count"/>
+                </span>
+            </div>
+        </div>
+    </t>
+
+</templates>
+

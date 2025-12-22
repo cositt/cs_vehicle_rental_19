@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vehicle Detail Template with Odoo Navbar -->
+    <template id="vehicle_detail_with_navbar" name="Vehicle Detail with Navbar">
+        <t t-call="website.layout">
+            <div class="container py-4">
+                <div class="mb-4">
+                    <button class="btn btn-outline-secondary" onclick="window.location.href='/web/booking-enquiry'">
+                        <i class="fa fa-arrow-left me-2"></i>Volver a categorías
+                    </button>
+                </div>
+                
+                <div class="row">
+                    <div class="col-lg-6">
+                        <img t-att-src="vehicle_info.get('image', '/vehicle_rental/static/description/img/tipos/default.png')" 
+                             t-att-alt="vehicle_info.get('name', 'Vehículo')" 
+                             class="img-fluid rounded shadow"/>
+                    </div>
+                    <div class="col-lg-6">
+                        <h2 t-esc="vehicle_info.get('name', 'Vehículo')"/>
+                        <p class="lead" t-esc="vehicle_info.get('description', 'Descripción no disponible')"/>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="text-center p-3 border rounded">
+                                    <i class="fa fa-users fa-2x text-primary mb-2"></i>
+                                    <h5 t-esc="str(vehicle_info.get('seats', 0)) + ' plazas'"/>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center p-3 border rounded">
+                                    <i class="fa fa-snowflake-o fa-2x text-primary mb-2"></i>
+                                    <h5 t-esc="'Aire acondicionado' if vehicle_info.get('ac', False) else 'Sin aire acondicionado'"/>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center p-3 border rounded">
+                                    <i class="fa fa-cube fa-2x text-primary mb-2"></i>
+                                    <h5 t-esc="vehicle_info.get('volume', 'Variable')"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-5">
+                    <div class="col-12">
+                        <h3>Ofertas de Alquiler</h3>
+                        <div class="row">
+                            <t t-foreach="vehicle_info.get('pricing', [])" t-as="offer" t-key="offer_index">
+                                <div class="col-lg-4 col-md-6 mb-4">
+                                    <div class="card h-100" t-att-class="'border-primary' if offer.get('popular') else ''">
+                                        <div class="card-body text-center">
+                                            <div class="badge bg-primary mb-2" t-if="offer.get('popular')">Más Popular</div>
+                                            <h4 class="card-title" t-esc="offer.get('duration', '')"/>
+                                            <div class="mb-3">
+                                                <span class="h3 text-primary" t-esc="'€' + str(offer.get('price', 0))"/>
+                                            </div>
+                                            <p class="text-muted mb-3" t-esc="offer.get('km', '')"/>
+                                            <ul class="list-unstyled">
+                                                <t t-foreach="offer.get('features', [])" t-as="feature" t-key="feature_index">
+                                                    <li class="mb-1">
+                                                        <i class="fa fa-check text-success me-2"></i>
+                                                        <span t-esc="feature"/>
+                                                    </li>
+                                                </t>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-5">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h4>Reservar este vehículo</h4>
+                            </div>
+                            <div class="card-body">
+                                <form method="post" action="/web/booking-confirmation">
+                                    <input type="hidden" name="category_id" t-att-value="category_id"/>
+                                    
+                                    <h5 class="mb-3">Datos de contacto</h5>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="customer_name" class="form-label">Nombre completo *</label>
+                                            <input type="text" class="form-control" id="customer_name" name="customer_name" required="required"/>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="customer_email" class="form-label">Email *</label>
+                                            <input type="email" class="form-control" id="customer_email" name="customer_email" required="required"/>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="customer_phone" class="form-label">Teléfono *</label>
+                                            <input type="tel" class="form-control" id="customer_phone" name="customer_phone" required="required"/>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="customer_company" class="form-label">Empresa (opcional)</label>
+                                            <input type="text" class="form-control" id="customer_company" name="customer_company"/>
+                                        </div>
+                                    </div>
+                                    
+                                    <hr class="my-4"/>
+                                    <h5 class="mb-3">Fechas de alquiler</h5>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="start_date" class="form-label">Fecha de inicio *</label>
+                                            <input type="date" class="form-control" id="start_date" name="start_date" required="required"/>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="end_date" class="form-label">Fecha de fin *</label>
+                                            <input type="date" class="form-control" id="end_date" name="end_date" required="required"/>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="start_time" class="form-label">Hora de inicio *</label>
+                                            <input type="time" class="form-control" id="start_time" name="start_time" required="required"/>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="end_time" class="form-label">Hora de fin *</label>
+                                            <input type="time" class="form-control" id="end_time" name="end_time" required="required"/>
+                                        </div>
+                                    </div>
+                                    <div class="text-center">
+                                        <button type="submit" class="btn btn-primary btn-lg">
+                                            <i class="fa fa-calendar-check-o me-2"></i>Continuar con la reserva
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

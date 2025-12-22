@@ -1,0 +1,1095 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <template id="vehicle_contract_report_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="contract">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <style>
+                            .primary-section-header {
+                            font-size: 15px;
+                            font-weight: bold;
+                            }
+
+                            .label {
+                            font-weight: bold;
+                            padding: 4px;
+                            width: 20%;
+                            white-space: nowrap;
+                            color: #51585e;
+                            }
+
+                            .value {
+                            padding: 4px !important;
+                            width: 30%;
+                            white-space: nowrap;
+                            background-color: #e9ecef !important;
+                            }
+
+                            .p_table td {
+                            padding: 4px !important;
+                            border: 1px solid #dee2e6 !important;
+                            font-size: 12px;
+                            }
+
+                            .main-heading-record {
+                            padding: 10px 0px 10px 0px;
+                            font-weight: bold;
+                            background-color: #e9ecef;
+                            margin-bottom:5px;
+                            border-radius:5px;
+                            font-size: 15px;
+                            }
+                        </style>
+
+                        <h2 style="text-align: center; color: #495057;">
+                            Contrato de Vehículo :
+                            <span t-field="contract.reference_no"/>
+                        </h2>
+                        <table class="table table-bordered p_table">
+                            <!-- Customer Details -->
+                            <tr style="border-bottom: 2px solid black;">
+                                <td colspan="4">
+                                    <span class="primary-section-header">
+                                        <i class="fa fa-user ms-1 me-1" aria-hidden="true"/>
+                                        Información del Cliente
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span class="label">Cliente:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.customer_id"/>
+                                </td>
+                                <td>
+                                    <span class="label">Teléfono:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.customer_phone"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span class="label">Email:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.customer_email"/>
+                                </td>
+                                <td>
+
+                                </td>
+                                <td class="value">
+                                </td>
+                            </tr>
+
+                            <!-- Pick-Up and Drop-Off Details -->
+                            <tr style="border-bottom: 2px solid black;">
+                                <td colspan="2">
+                                    <span class="primary-section-header">
+                                        <i class="fa fa-map-marker  ms-1 me-1" aria-hidden="true"/>
+                                        Información de Recogida
+                                    </span>
+                                </td>
+                                <td colspan="2">
+                                    <span class="primary-section-header">
+                                        <i class="fa fa-map-marker me-1" aria-hidden="true"/>
+                                        Información de Entrega
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span class="label">Fecha de Recogida:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.start_date"/>
+                                </td>
+                                <td>
+                                    <span class="label">Fecha de Entrega:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.end_date"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td rowspan="4">
+                                    <span class="label">Ubicación de Recogida:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.pick_up_street" t-if="contract.pick_up_street"/>
+                                </td>
+                                <td rowspan="4">
+                                    <span class="label">Ubicación de Entrega:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.drop_off_street" t-if="contract.drop_off_street"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="value">
+                                    <span t-field="contract.pick_up_street2"/>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.drop_off_street2"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="value">
+                                    <span t-field="contract.pick_up_city"/>
+                                    <t t-if="contract.pick_up_state_id">
+                                        ,&#160;
+                                        <span t-field="contract.pick_up_state_id"/>
+                                    </t>
+                                    <t t-if="contract.pick_up_zip">
+                                        ,&#160;
+                                        <span t-field="contract.pick_up_zip"/>
+                                    </t>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.drop_off_city"/>
+                                    <t t-if="contract.drop_off_state_id">
+                                        ,&#160;
+                                        <span t-field="contract.drop_off_state_id"/>
+                                    </t>
+                                    <t t-if="contract.drop_off_zip">
+                                        ,&#160;
+                                        <span t-field="contract.drop_off_zip"/>
+                                    </t>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="value">
+                                    <span t-field="contract.pick_up_country_id" t-if="contract.pick_up_country_id"/>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.drop_off_country_id" t-if="contract.drop_off_country_id"/>
+                                </td>
+                            </tr>
+
+                            <!-- Vehicle Details -->
+                            <tr style="border-bottom: 2px solid black;">
+                                <td colspan="4">
+                                    <span class="primary-section-header">
+                                        <i class="fa fa-cab ms-1 me-1" aria-hidden="true"/>
+                                        Información del Vehículo
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span class="label">Vehículo:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.vehicle_id"/>
+                                </td>
+                                <td>
+                                    <span class="label">Matrícula:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.vehicle_id.license_plate"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span class="label">Modelo:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.model_year"/>
+                                </td>
+                                <td>
+                                    <span class="label">Último Cuentakilómetros:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.last_odometer" class="me-1"/>
+                                    <span t-field="contract.odometer_unit"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span class="label">Tipo de Combustible:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.fuel_type"/>
+                                </td>
+                                <td>
+                                    <span class="label">Transmisión:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.transmission"/>
+                                </td>
+                            </tr>
+
+                            <!-- Driver Details -->
+                            <tr style="border-bottom: 2px solid black;" t-if="contract.is_driver_required">
+                                <td colspan="4">
+                                    <span class="primary-section-header">
+                                        <i class="fa fa-address-card ms-1 me-1" aria-hidden="true"/>
+                                        Información del Conductor
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr t-if="contract.is_driver_required">
+                                <td>
+                                    <span class="label">Conductor Requerido:</span>
+                                </td>
+                                <td class="value">
+                                    <t t-if="contract.is_driver_required">Sí</t>
+                                    <t t-else="">No</t>
+                                </td>
+                                <td>
+                                    <span class="label">Tipo de Cargo del Conductor:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.driver_charge_type"/>
+                                </td>
+                            </tr>
+                            <tr t-if="contract.is_driver_required">
+                                <td>
+                                    <span class="label">Conductor:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.driver_id"/>
+                                </td>
+                                <td t-if="contract.driver_charge_type == 'excluding'">
+                                    <span class="label">Cargos del Conductor:</span>
+                                </td>
+                                <td class="value" t-if="contract.driver_charge_type == 'excluding'">
+                                    <span t-field="contract.driver_charge"/>
+                                </td>
+                            </tr>
+
+                            <!-- Rent and Payment Details -->
+                            <tr style="border-bottom: 2px solid black;">
+                                <td colspan="2">
+                                    <span class="primary-section-header">
+                                        <i class="fa fa-handshake-o ms-1 me-1" aria-hidden="true"/>
+                                        Información de Alquiler
+                                    </span>
+                                </td>
+                                <td colspan="2">
+                                    <span class="primary-section-header">
+                                        <i class="fa fa-cc-visa me-1" aria-hidden="true"/>
+                                        Información de Pago
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span class="label">Tipo de Alquiler:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.rent_type"/>
+                                </td>
+                                <td>
+                                    <span class="label">Tipo de Pago:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.payment_type"/>
+                                </td>
+                            </tr>
+                            <tr t-if="contract.rent">
+                                <td>
+                                    <span class="label">Alquiler por
+                                        <t t-esc="contract.rent_type.capitalize() if contract.rent_type else ''"/>:
+                                    </span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.rent"/>
+                                </td>
+                                <td>
+                                    <span class="label">Artículo de Factura:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.invoice_item_id"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span class="label">Total
+                                        <t t-esc="contract.rent_type.capitalize() if contract.rent_type else ''"/>:
+                                    </span>
+                                </td>
+                                <td class="value">
+                                    <span t-if="contract.rent_type in ('hour', 'days')" t-field="contract.total_days"/>
+                                    <t t-elif="contract.rent_type in ('week', 'month', 'year')"
+                                       t-esc="'%.2f' % contract.total_days"/>
+                                    <span t-elif="contract.rent_type == 'km'" t-field="contract.total_km"/>
+                                    <span t-elif="contract.rent_type == 'mi'" t-field="contract.total_mi"/>
+                                </td>
+                                <td>
+                                    <span class="label">Si Hay Depósito:</span>
+                                </td>
+                                <td class="value">
+                                    <t t-if="contract.if_any_deposit">Sí</t>
+                                    <t t-else="">No</t>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span class="label">Total:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.total_vehicle_rent"/>
+                                </td>
+                                <td>
+                                    <span class="label">Diario de Depósito:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.journal_id" class="me-1"/>
+                                    <span t-field="contract.deposit" t-if="contract.deposit"/>
+                                </td>
+                            </tr>
+
+                            <!-- Extra Charges Details -->
+                            <tr style="border-bottom: 2px solid black;">
+                                <td colspan="2">
+                                    <span class="primary-section-header">
+                                        <i class="fa fa-money ms-1 me-1" aria-hidden="true"/>
+                                        Cargos Adicionales
+                                    </span>
+                                </td>
+                                <td colspan="2">
+                                    <span class="primary-section-header">
+                                        <i class="fa fa-building me-1" aria-hidden="true"/>
+                                        Información de la Empresa
+                                    </span>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td>
+                                    <span class="label">Si hay cargos adicionales:</span>
+                                </td>
+                                <td class="value">
+                                    <t t-if="contract.is_any_extra_charges">Sí</t>
+                                    <t t-else="">No</t>
+                                </td>
+                                <td>
+                                    <span class="label">Empresa:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.company_id"/>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td>
+                                    <span class="label" t-if="contract.is_any_extra_charges">Total Extra
+                                        <t t-esc="contract.rent_type.capitalize() if contract.rent_type else ''"/>:
+                                    </span>
+                                </td>
+                                <td class="value">
+                                    <span t-if="contract.is_any_extra_charges">
+                                        <t t-if="contract.rent_type == 'hour'">
+                                            <span t-field="contract.total_extra_hour"/>
+                                        </t>
+                                        <t t-if="contract.rent_type == 'days'">
+                                            <span t-field="contract.total_extra_days"/>
+                                        </t>
+                                        <t t-if="contract.rent_type == 'week'">
+                                            <span t-field="contract.total_extra_week"/>
+                                        </t>
+                                        <t t-if="contract.rent_type == 'month'">
+                                            <span t-field="contract.total_extra_month"/>
+                                        </t>
+                                        <t t-if="contract.rent_type == 'year'">
+                                            <span t-field="contract.total_extra_year"/>
+                                        </t>
+                                        <t t-if="contract.rent_type == 'km'">
+                                            <span t-field="contract.total_extra_km"/>
+                                        </t>
+                                        <t t-if="contract.rent_type == 'mi'">
+                                            <span t-field="contract.total_extra_mi"/>
+                                        </t>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="label">Responsable:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.responsible_id"/>
+                                </td>
+                            </tr>
+                            <tr t-if="contract.is_any_extra_charges">
+                                <td>
+                                    <span class="label">Cargo Extra por
+                                        <t t-esc="contract.rent_type.capitalize() if contract.rent_type else ''"/>:
+                                    </span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.extra_charge"/>
+                                </td>
+                                <td>
+                                </td>
+                                <td class="value">
+                                </td>
+                            </tr>
+
+                            <tr t-if="contract.is_any_extra_charges">
+                                <td>
+                                    <span class="label">
+                                        Total Cargos Extra:
+                                    </span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.total_extra_charges"/>
+                                </td>
+
+                                <td>
+                                </td>
+                                <td class="value">
+                                </td>
+                            </tr>
+                        </table>
+                        <p style="page-break-after: always;"/>
+
+                        <h6 class="main-heading-record" t-if="contract.vehicle_payment_option_ids">
+                            <i class="fa fa-paypal me-1 ms-2" aria-hidden="true"/>
+                            Detalles de Pago del Vehículo
+                        </h6>
+                        <table class="table table-borderless table-sm" style="font-size: 12px;"
+                               t-if="contract.vehicle_payment_option_ids">
+                            <tr style="border-bottom: 1px solid black; font-size: 13px;">
+                                <td style="padding: 2px;">
+                                    <strong>Nombre</strong>
+                                </td>
+                                <td style="padding: 2px;">
+                                    <strong>Fecha de Pago</strong>
+                                </td>
+                                <td style="padding: 2px; text-align: right;">
+                                    <strong>Cantidad de Pago</strong>
+                                </td>
+                                <td style="padding: 2px;">
+                                    <strong>Factura</strong>
+                                </td>
+                                <td style="padding: 2px;">
+                                    <strong>Estado de Pago</strong>
+                                </td>
+                            </tr>
+                            <tr t-foreach="contract.vehicle_payment_option_ids" t-as="payment"
+                                style="border-bottom: 1px solid #cdc2c2;">
+                                <td style="padding: 2px;">
+                                    <span t-field="payment.name"/>
+                                </td>
+                                <td style="padding: 2px;">
+                                    <span t-field="payment.payment_date"/>
+                                </td>
+                                <td style="padding: 2px; text-align: right;">
+                                    <span t-field="payment.payment_amount"/>
+                                </td>
+                                <td style="padding: 2px;">
+                                    <span t-field="payment.invoice_id"/>
+                                </td>
+                                <td style="padding: 2px;">
+                                    <span t-field="payment.payment_state"/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <h6 class="main-heading-record" t-if="contract.insurance_policy_ids">
+                            <i class="fa fa-get-pocket me-1 ms-2" aria-hidden="true"/>
+                            Póliza de Seguro
+                        </h6>
+                        <table class="table table-borderless table-sm" style="font-size: 12px;"
+                               t-if="contract.insurance_policy_ids">
+                            <tr style="border-bottom: 1px solid black; font-size: 13px;">
+                                <td style="padding: 2px;">
+                                    <strong>Número de Póliza</strong>
+                                </td>
+                                <td style="padding: 2px;">
+                                    <strong>Nombre</strong>
+                                </td>
+                                <td style="padding: 2px;">
+                                    <strong>Descripción</strong>
+                                </td>
+                                <td style="padding: 2px; text-align: right;">
+                                    <strong>Cantidad de Póliza</strong>
+                                </td>
+                            </tr>
+                            <tr t-foreach="contract.insurance_policy_ids" t-as="policy"
+                                style="border-bottom: 1px solid #cdc2c2;">
+                                <td style="padding: 2px;">
+                                    <span t-field="policy.policy_number"/>
+                                </td>
+                                <td style="padding: 2px;">
+                                    <span t-field="policy.policy_name"/>
+                                </td>
+                                <td style="padding: 2px;">
+                                    <span t-field="policy.description"/>
+                                </td>
+                                <td style="padding: 2px; text-align: right;">
+                                    <span t-field="policy.policy_amount"/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <h6 class="main-heading-record" t-if="contract.extra_service_ids">
+                            <i class="fa fa-list me-1 ms-2" aria-hidden="true"/>
+                            Servicios Extra
+                        </h6>
+                        <table class="table table-borderless table-sm" style="font-size: 12px;"
+                               t-if="contract.extra_service_ids">
+                            <tr style="border-bottom: 1px solid black; font-size: 13px;">
+                                <td style="padding: 2px;">
+                                    <strong>Producto</strong>
+                                </td>
+                                <td style="padding: 2px;">
+                                    <strong>Descripción</strong>
+                                </td>
+                                <td style="padding: 2px; text-align: right;">
+                                    <strong>Cantidad</strong>
+                                </td>
+                                <td style="padding: 2px; text-align: right;">
+                                    <strong>Cantidad</strong>
+                                </td>
+                                <td style="padding: 2px; text-align: right;">
+                                    <strong>Sub Total</strong>
+                                </td>
+                            </tr>
+                            <tr t-foreach="contract.extra_service_ids" t-as="extra"
+                                style="border-bottom: 1px solid #cdc2c2;">
+                                <td style="padding: 2px;">
+                                    <span t-field="extra.product_id"/>
+                                </td>
+                                <td style="padding: 2px;">
+                                    <span t-field="extra.description"/>
+                                </td>
+                                <td style="padding: 2px; text-align: right;">
+                                    <span t-field="extra.product_qty"/>
+                                </td>
+                                <td style="padding: 2px; text-align: right;">
+                                    <span t-field="extra.amount"/>
+                                </td>
+                                <td style="padding: 2px; text-align: right;">
+                                    <span t-field="extra.total_service_charge"/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <h6 class="main-heading-record" t-if="contract.rental_vehicle_image_ids">
+                            <i class="fa fa-picture-o me-1 ms-2" aria-hidden="true"/>
+                            Imágenes del Vehículo
+                        </h6>
+                        <table class="table table-borderless" style="font-size: 12px;"
+                               t-if="contract.rental_vehicle_image_ids">
+                            <t t-set="img_count" t-value="0"/>
+                            <tr>
+                                <td>
+                                    <t t-foreach="contract.rental_vehicle_image_ids" t-as="img">
+                                        <t t-set="img_count" t-value="img_count + 1"/>
+                                        <div style="display: inline-block; margin-left: 10px;">
+                                            <t t-if="img.avatar">
+                                                <img t-att-src="image_data_uri(img.avatar)"
+                                                     style="width: 160px; height: 160px;"/>
+                                            </t>
+                                            <h6>
+                                                <span t-field="img.name"/>
+                                            </h6>
+                                        </div>
+                                        <t t-if="img_count % 5 == 0">
+                                            <br/>
+                                        </t>
+                                    </t>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <h6 class="main-heading-record" t-if="contract.damage_amount">
+                            <i class="fa fa-fire me-1 ms-2" aria-hidden="true"/>
+                            Daños del Vehículo
+                        </h6>
+                        <table class="table table-borderless table-sm" style="font-size: 12px;"
+                               t-if="contract.damage_amount">
+                            <tr>
+                                <td style="padding: 4px !important;">
+                                    <span style="font-size: 14px;">
+                                        <strong>Total Cantidad de Daños:</strong>
+                                        <span t-field="contract.damage_amount"/>
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px !important;">
+                                    <span style="font-size: 14px;">
+                                        <strong>Descripciones:</strong>
+                                    </span>
+                                    <br/>
+                                    <span t-field="contract.description"/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <h6 class="main-heading-record" t-if="contract.vehicle_damage_image_ids">
+                            <i class="fa fa-picture-o me-1 ms-2" aria-hidden="true"/>
+                            Imágenes de Daños del Vehículo
+                        </h6>
+                        <table class="table table-borderless" style="font-size: 12px;"
+                               t-if="contract.vehicle_damage_image_ids">
+                            <t t-set="img_count" t-value="0"/>
+                            <tr>
+                                <td>
+                                    <t t-foreach="contract.vehicle_damage_image_ids" t-as="img">
+                                        <t t-set="img_count" t-value="img_count + 1"/>
+                                        <div style="display: inline-block; margin-left: 10px;">
+                                            <t t-if="img.avatar">
+                                                <img t-att-src="image_data_uri(img.avatar)"
+                                                     style="width: 160px; height: 160px;"/>
+                                            </t>
+                                            <h6>
+                                                <span t-field="img.name"/>
+                                            </h6>
+                                        </div>
+                                        <t t-if="img_count % 5 == 0">
+                                            <br/>
+                                        </t>
+                                    </t>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <h6 class="main-heading-record" t-if="contract.cancellation_policy_id">
+                            <i class="fa fa-times me-1 ms-2" aria-hidden="true"/>
+                            Política de Cancelación
+                        </h6>
+                        <table class="table table-borderless table-sm" style="font-size: 12px;">
+                            <tr t-if="contract.cancellation_policy_id">
+                                <td style="padding: 4px !important;">
+                                    <span style="font-size: 14px;">
+                                        <strong>Política:</strong>
+                                        <span t-field="contract.cancellation_policy_id"/>
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr t-if="contract.terms_and_conditions">
+                                <td style="padding: 4px !important;">
+                                    <span style="font-size: 14px;">
+                                        <strong>Términos y Condiciones:</strong>
+                                    </span>
+                                    <br/>
+                                    <span t-field="contract.terms_and_conditions"/>
+                                </td>
+                            </tr>
+                            <tr t-if="contract.cancellation_reason">
+                                <td style="padding: 4px !important;">
+                                    <span style="font-size: 14px;">
+                                        <strong>Razones de Cancelación:</strong>
+                                    </span>
+                                    <br/>
+                                    <span t-field="contract.cancellation_reason"/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <p style="page-break-after: always;"/>
+                        <h6 class="main-heading-record" t-if="contract.rental_agreement_terms_id">
+                            <i class="fa fa-hand-o-right me-1 ms-2" aria-hidden="true"/>
+                            Términos de Alquiler
+                        </h6>
+                        <table class="table table-borderless table-sm" style="font-size: 12px;">
+                            <tr t-if="contract.rental_agreement_terms_id">
+                                <td style="padding: 4px !important;">
+                                    <span style="font-size: 14px;">
+                                        <strong>Acuerdo de Alquiler:</strong>
+                                        <span t-field="contract.rental_agreement_terms_id"/>
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr t-if="contract.rental_terms">
+                                <td style="padding: 4px !important;">
+                                    <span style="font-size: 14px;">
+                                        <strong>Términos y Condiciones:</strong>
+                                    </span>
+                                    <br/>
+                                    <span t-field="contract.rental_terms"/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!--Vehicle Rental Self-Declaration Form-->
+                        <p style="page-break-after: always;"/>
+                        <h6 class="main-heading-record">
+                            <i class="fa fa-hand-o-right me-1 ms-2" aria-hidden="true"/>
+                            Formulario de Autodeclaración de Alquiler de Vehículo
+                        </h6>
+                        <table class="table table-borderless table-sm" style="font-size: 14px;">
+                            <tr>
+                                <td style="padding: 2px !important;">
+                                    <strong>Número de Referencia:</strong>
+                                    <span t-field="contract.reference_no"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 2px !important;">
+                                    <strong>Nombre Completo:</strong>
+                                    <span t-field="contract.customer_id"/>
+                                </td>
+                            </tr>
+                            <tr style="border-bottom: 2px solid black;">
+                                <td style="padding: 2px !important;">
+                                    <strong>Declaración de Autodeclaración</strong>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 2px !important;">
+                                    Yo,
+                                    <strong>
+                                        <span t-field="contract.customer_id"/>
+                                    </strong>
+                                    ,
+                                    por la presente declaro que:
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 2px !important;">
+                                    ☐ Confirmo que poseo una licencia de conducir válida y cumplo con todos los requisitos legales de conducción.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 2px !important;">
+                                    ☐ Acepto cumplir con todas las leyes y regulaciones de tráfico mientras opero el vehículo alquilado.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 2px !important;">
+                                    ☐ Entiendo que soy responsable de cualquier daño, pérdida o violación incurrida durante el período de alquiler.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 2px !important;">
+                                    ☐ Confirmo que devolveré el vehículo en la fecha acordada y en las mismas condiciones en que lo recibí.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 2px !important;">
+                                    ☐ Declaro que no estoy bajo la influencia de drogas, alcohol o cualquier sustancia intoxicante mientras conduzco.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 2px !important;">
+                                    ☐ Reconozco que cualquier violación de los términos de alquiler puede resultar en penalizaciones o cargos adicionales.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 2px !important;">
+                                    <strong>Fecha:</strong>
+                                    <span t-field="contract.date"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 2px !important;">
+                                    <strong>Firma:</strong>
+                                    <t t-if="contract.signature">
+                                        <img t-att-src="image_data_uri(contract.signature)" att="Logo"
+                                             style="width: 100px; height: 40px;"/>
+                                    </t>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!--Scratch Report Template Section-->
+                        <p style="page-break-after: always;"/>
+                        <h4 style="text-align: center;">
+                            Informe de Rayones
+                        </h4>
+                        <br/>
+                        <div id="information" class="row">
+                            <div class="col-auto col-4 mw-100 mb-2" t-if="contract.reference_no"
+                                 name="reference_no" style="text-align: left;">
+                                <strong>Número de Referencia</strong>
+                                <p class="m-0" t-field="contract.reference_no"/>
+                            </div>
+                            <div class="col-auto col-4 mw-100 mb-2" t-if="contract.vehicle_id"
+                                 name="vehicle_id" style="text-align: center;">
+                                <strong>Vehículo</strong>
+                                <p class="m-0" t-field="contract.vehicle_id"/>
+                            </div>
+                            <div class="col-auto col-4 mw-100 mb-2" t-if="contract.model_year" name="model_year"
+                                 style="text-align: right;">
+                                <strong>Modelo</strong>
+                                <p class="m-0" t-field="contract.model_year"/>
+                            </div>
+                        </div>
+                        <div id="information" class="row">
+                            <div class="col-auto col-4 mw-100 mb-2" t-if="contract.customer_id"
+                                 name="customer_id" style="text-align: left;">
+                                <strong>Cliente</strong>
+                                <p class="m-0" t-field="contract.customer_id"/>
+                            </div>
+                            <div class="col-auto col-4 mw-100 mb-2" t-if="contract.responsible_id"
+                                 name="responsible_id" style="text-align: center;">
+                                <strong>Responsable</strong>
+                                <p class="m-0" t-field="contract.responsible_id.name"/>
+                            </div>
+                            <div class="col-auto col-4 mw-100 mb-2" t-if="contract.last_odometer"
+                                 name="last_odometer" style="text-align: right;">
+                                <strong>Último Cuentakilómetros</strong>
+                                <p class="m-0" t-field="contract.last_odometer"/>
+                            </div>
+                        </div>
+                        <br/>
+                        <h6 style="text-align: center; margin: 0px;">
+                            Inspeccionar vehículo con el cliente, señalar y marcar en el diagrama cualquier daño o problema actual.
+                        </h6>
+                        <table class="table table-borderless" style="margin-top: 0px;">
+                            <tr style="border: 1px solid black;">
+                                <td style="width: 70%; vertical-align: top;">
+                                    <t t-if="contract.painted_damage_image">
+                                        <img t-att-src="'data:image/png;base64,%s' % contract.painted_damage_image.decode('utf-8')"
+                                             style="width: 34rem; height: 35rem; margin-left: 2rem; object-fit: cover;"/>
+                                    </t>
+                                    <t t-elif="contract.is_scratch_report">
+                                        <img t-att-src="'data:image/png;base64,%s' % contract.vehicle_scratch_report_id.avatar.decode('utf-8')"
+                                             style="width: 34rem; height: 35rem; margin-left: 2rem; object-fit: cover;"/>
+                                    </t>
+                                    <t t-else="">
+                                        <img src="/vehicle_rental/static/src/img/img.png"
+                                             style="width: 34rem; height: 35rem; margin-left: 2rem; object-fit: cover;"/>
+                                    </t>
+                                </td>
+                                <td style="width: 30%; vertical-align: top; border: 1px solid black;">
+                                    <table class="table table-borderless" style="margin-top: 0px; padding: 2px;">
+                                        <h4 style="text-align: center; border-bottom: 1px solid black; margin-bottom: 1rem;margin-left: 4rem; margin-right: 4rem;">
+                                            Leyenda
+                                        </h4>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black; margin-top: 5px;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    SH
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Remolinos / Hologramas
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    WS
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Manchas de Agua
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    OX
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Oxidación
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    CF
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Fallo de Barniz
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    DS
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Rayón Profundo
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    BD
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Excremento de Ave
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    RP
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Pintura Rugosa
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    UD
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Defecto Desconocido
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    PT
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Transferencia de Pintura
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    PC
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Astilla de Pintura
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    GS
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Rayón de Cristal
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    GC
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Astilla de Cristal
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    DD
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Abolladuras / Golpes
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    SS
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Golpe Lateral
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    CR
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Rayones de Bordillo
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    WD
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Daño de Rueda
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    GC
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Hendiduras / Pliegues
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                        <tr style="height: 1.2rem; border-bottom: 1px solid black;">
+                                            <td style="width: 20%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    LM
+                                                </strong>
+                                            </td>
+                                            <td style="width: 80%;padding: 2px; vertical-align: bottom;">
+                                                <strong>
+                                                    Moldura Suelta
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 2px; font-size: 18px;" colspan="2">
+                                    <strong>Notas:</strong>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+    <record id="action_vehicle_contract_report" model="ir.actions.report">
+        <field name="name">Contrato de Vehículo</field>
+        <field name="model">vehicle.contract</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">vehicle_rental.vehicle_contract_report_template</field>
+        <field name="report_file">vehicle_rental.vehicle_contract_report_template</field>
+        <field name="binding_model_id" ref="model_vehicle_contract"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

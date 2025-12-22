@@ -1,0 +1,1146 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <!--customer documents form view-->
+        <record id="customer_documents_form_view" model="ir.ui.view">
+            <field name="name">customer.documents.form.view</field>
+            <field name="model">customer.documents</field>
+            <field name="arch" type="xml">
+                <form create="0" edit="0">
+                    <sheet>
+                        <group string="Contract Document Details">
+                            <group>
+                                <field name="vehicle_contract_id"/>
+                                <field name="vehicle_id"/>
+                            </group>
+                            <group>
+                                <field name="document_type"/>
+                                <field name="avatar"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!--insurance policy form view-->
+        <record id="insurance_policy_form_view" model="ir.ui.view">
+            <field name="name">insurance.policy.form.view</field>
+            <field name="model">insurance.policy</field>
+            <field name="arch" type="xml">
+                <form create="0" edit="0">
+                    <sheet>
+                        <group string="Insurance Policy Details">
+                            <group>
+                                <field name="policy_number"/>
+                                <field name="policy_name"/>
+                                <field name="description"/>
+                            </group>
+                            <group>
+                                <field name="avatar"/>
+                                <field name="policy_amount"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!--extra service form view-->
+        <record id="extra_service_form_view" model="ir.ui.view">
+            <field name="name">extra.service.form.view</field>
+            <field name="model">extra.service</field>
+            <field name="arch" type="xml">
+                <form create="0" edit="0">
+                    <sheet>
+                        <group string="Extra Service Details">
+                            <group>
+                                <field name="product_id"/>
+                                <field name="description"/>
+                            </group>
+                            <group>
+                                <field name="currency_id" invisible="1"/>
+                                <field name="product_qty"/>
+                                <field name="amount"/>
+                                <field name="total_service_charge"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!--vehicle payment option form view-->
+        <record id="vehicle_payment_option_form_view" model="ir.ui.view">
+            <field name="name">vehicle.payment.option.form.view</field>
+            <field name="model">vehicle.payment.option</field>
+            <field name="arch" type="xml">
+                <form create="0" edit="0">
+                    <sheet>
+                        <group string="Vehicle Payment Details">
+                            <group>
+                                <field name="invoice_item_id"/>
+                                <field name="name"/>
+                                <field name="payment_date"/>
+                            </group>
+                            <group>
+                                <field name="payment_amount"/>
+                                <label for="invoice_id"/>
+                                <div name="invoice_id">
+                                    <field name="invoice_id" class="oe_inline"/>
+                                    <field name="payment_state" class="oe_inline ms-2" widget="badge"
+                                           decoration-success="payment_state == 'paid'"
+                                           decoration-danger="payment_state == 'not_paid'"
+                                           decoration-info="payment_state == 'in_payment'"
+                                           decoration-primary="payment_state == 'partial'"
+                                           decoration-warning="payment_state == 'reversed'"/>
+                                </div>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!--vehicle contract form view-->
+        <record id="vehicle_contract_form_view" model="ir.ui.view">
+            <field name="name">vehicle.contract.form.view</field>
+            <field name="model">vehicle.contract</field>
+            <field name="arch" type="xml">
+                <form duplicate="false">
+                    <header>
+                        <field name="status" widget="statusbar" statusbar_visible="a_draft,b_in_progress,c_return"/>
+                        <field name="installment_created" invisible="1"/>
+                        <button string="Update Vehicle Data" name="vehicle_details_update" class="oe_highlight"
+                                type="object" invisible="status in ['c_return', 'd_cancel']"/>
+
+                        <button string="In Progress" name="a_draft_to_b_in_progress" type="object"
+                                class="btn btn-warning" invisible="status != 'a_draft'"/>
+
+                        <button string="Deposit" name="action_vehicle_rent_deposit" class="btn btn-info" type="object"
+                                invisible="if_any_deposit == False or deposit_invoice_id != False"/>
+
+                        <button string="Create Extra Service Invoice" name="action_create_extra_service_charge_invoice"
+                                type="object" class="btn btn-primary"
+                                invisible="not extra_service_ids or extra_service_invoice_id != False or status in ['c_return', 'd_cancel']"/>
+
+                        <button name="action_create_vehicle_payment" type="object" string="Create Installment"
+                                class="oe_highlight"
+                                invisible="status == 'a_draft' or installment_created != False or status == 'd_cancel'"/>
+
+                        <button string="Crear Factura Automática" name="action_create_invoice_automatic" type="object"
+                                class="btn btn-success" icon="fa-magic" 
+                                invisible="invoice_id != False or status in ['a_draft', 'd_cancel']"
+                                help="Genera factura automática con todos los conceptos: vehículo, seguro, km extra y servicios"/>
+
+                        <button string="Return" name="b_in_progress_to_c_return" type="object" class="btn btn-success"
+                                invisible="status != 'b_in_progress' or not vehicle_payment_option_ids"/>
+
+                        <button string="Sustituir Vehículo" name="action_open_substitution_wizard" type="object" 
+                                class="btn btn-warning" icon="fa-refresh"
+                                invisible="status != 'b_in_progress'"/>
+
+                        <button name="%(action_vehicle_damage)d" string="Damage Invoice" type="action"
+                                class="oe_highlight" invisible="status != 'c_return' or is_invoice_done != False"/>
+
+                        <button name="%(action_return_deposit)d" string="Return Deposit Invoice" type="action"
+                                class="btn btn-info"
+                                invisible="if_any_deposit == False or deposit_invoice_id == False or status != 'c_return' or return_deposit_invoice_id != False"/>
+
+                        <button string="Create Trip Expense Reports" name="create_contract_trip_expense_report"
+                                class="btn btn-info" type="object"
+                                invisible="not contract_expense_ids or not is_driver_required or not is_any_trip_expense"/>
+
+                        <button string="Cancel" name="c_return_to_d_cancel" type="object" class="btn btn-outline-danger"
+                                invisible="status != 'b_in_progress'" icon="fa-ban"/>
+
+                        <button string="Cancellation Charge" name="cancellation_charge_invoice" class="oe_highlight"
+                                type="object" invisible="status != 'd_cancel' or cancellation_invoice_id != False"/>
+
+                        <!-- Botones de contrato: imprimir y enviar -->
+                        <button string="Imprimir Contrato" name="action_print_contract" type="object"
+                                class="btn btn-primary" icon="fa-print"/>
+                        <button string="Enviar Contrato" name="action_send_contract_email" type="object"
+                                class="btn btn-success" icon="fa-envelope"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box" position="inside">
+                            <button class="oe_stat_button" type="object" name="action_customer_document"
+                                    icon="fa-fw o_button_icon fa-id-card-o">
+                                <field string="Documents" name="document_count" widget="statinfo"/>
+                            </button>
+                            <button class="oe_stat_button" type="object" name="view_customer_invoice"
+                                    icon="fa-pencil-square-o" invisible="invoice_count == 0">
+                                <field string="Invoices" name="invoice_count" widget="statinfo"/>
+                                <field name="invoice_id" invisible="1"/>
+                                <field name="is_invoice_done" invisible="1"/>
+                            </button>
+                            <button class="oe_stat_button" type="object" name="action_view_substitutions"
+                                    icon="fa-refresh" invisible="substitution_count == 0">
+                                <field string="Sustituciones" name="substitution_count" widget="statinfo"/>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="reference_no"/>
+                            </h1>
+                        </div>
+                        <separator string="Customer Details" name="customer_details"/>
+                        <group>
+                            <group>
+                                <field name="crm_lead_id" invisible="crm_lead_id == False" readonly="1"/>
+                                <field name="customer_id" readonly="status != 'a_draft'" required="1"
+                                       options="{'no_create': True, 'no_create_edit': True}"/>
+                            </group>
+                            <group>
+                                <field name="customer_phone" readonly="status != 'a_draft'"/>
+                                <field name="customer_email" readonly="status != 'a_draft'"/>
+                            </group>
+                        </group>
+                        <separator string="Detalles de Recogida y Devolución" name="pick_drop_details"/>
+                        <group>
+                            <group>
+                                <field name="start_date" required="1" readonly="status != 'a_draft'"/>
+                                <span class="o_form_label o_td_label" name="address_name">Levantar Ubicación</span>
+                                <div class="o_address_format">
+                                    <field name="pick_up_street" placeholder="Dirección..." class="o_address_street" required="1"/>
+                                    <field name="pick_up_street2" placeholder="Dirección 2..." class="o_address_street"/>
+                                    <field name="pick_up_city" placeholder="Ciudad" class="o_address_city" required="1"/>
+                                    <field name="pick_up_state_id" class="o_address_state" placeholder="Provincia"
+                                           options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
+                                    <field name="pick_up_zip" placeholder="CP" class="o_address_zip"/>
+                                    <field name="pick_up_country_id" placeholder="País" class="o_address_country"
+                                           options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
+                                </div>
+                            </group>
+                            <group>
+                                <field name="end_date" required="1" readonly="status != 'a_draft'"/>
+                                <span class="o_form_label o_td_label" name="address_name">Dejar Ubicación</span>
+                                <div class="o_address_format">
+                                    <field name="drop_off_street" placeholder="Dirección..." class="o_address_street" required="1"/>
+                                    <field name="drop_off_street2" placeholder="Dirección 2..." class="o_address_street"/>
+                                    <field name="drop_off_city" placeholder="Ciudad" class="o_address_city" required="1"/>
+                                    <field name="drop_off_state_id" class="o_address_state" placeholder="Provincia"
+                                           options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
+                                    <field name="drop_off_zip" placeholder="CP" class="o_address_zip"/>
+                                    <field name="drop_off_country_id" placeholder="País" class="o_address_country"
+                                           options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
+                                </div>
+                            </group>
+                        </group>
+                        <separator string="Vehicle Details" name="vehicle_details"/>
+                        <group>
+                            <group>
+                                <field name="vehicle_id" required="start_date != False or end_date != False"
+                                       readonly="start_date == False or end_date == False or status != 'a_draft'"
+                                       options="{'no_create': True, 'no_create_edit': True}"/>
+                                <field name="license_plate" invisible="1"/>
+                                <field name="vehicle_ids" invisible="1"/>
+                                <field name="model_year" readonly="1" force_save="1"/>
+                                <field name="transmission" widget="radio" options="{'horizontal': True}" readonly="1"
+                                       force_save="1"/>
+                                <field name="fuel_type" readonly="1" force_save="1"/>
+                                <field name="vehicle_category" readonly="1" force_save="1" string="Categoría del Vehículo"/>
+                                <label for="last_odometer" string="Last Odometer"/>
+                                <div name="oe_inline">
+                                    <field name="last_odometer" class="oe_inline me-1" readonly="status == 'c_return'"/>
+                                    <strong>
+                                        <field name="odometer_unit" class="oe_inline" readonly="1"/>
+                                    </strong>
+                                </div>
+                            </group>
+                            <group>
+                                <field name="is_driver_required" readonly="installment_created != False"/>
+                                <field name="driver_id" options="{'no_create': True, 'no_create_edit': True}"
+                                       required="is_driver_required == True" widget="many2one_avatar"
+                                       readonly="installment_created != False" invisible="is_driver_required == False"/>
+                                <field name="driver_charge_type" invisible="is_driver_required == False"
+                                       widget="radio" options="{'horizontal': True}"
+                                       readonly="installment_created != False"/>
+                                <field name="driver_charge"
+                                       invisible="is_driver_required == False or driver_charge_type != 'excluding'"
+                                       readonly="installment_created != False"/>
+                                <field name="is_any_trip_expense" invisible="not is_driver_required"/>
+                                <field name="is_scratch_report" readonly="status == 'c_return'"/>
+                                <field name="vehicle_scratch_report_id" invisible="is_scratch_report == False"
+                                       options="{'no_create': True, 'no_create_edit': True}"
+                                       required="is_scratch_report == True" readonly="status == 'c_return'"/>
+                            </group>
+                        </group>
+
+                        <separator string="Rent Details" name="rent_details"/>
+                        <group>
+                            <field name="pricing_type" widget="radio" options="{'horizontal': true}"
+                                   readonly="invoice_id != False or installment_created != False"
+                                   string="Tipo de Tarifa"/>
+                            <div class="alert alert-warning" role="alert" 
+                                 invisible="flexirent_available or not flexirent_min_days">
+                                <i class="fa fa-exclamation-triangle"/> 
+                                <strong>FLEXIRENT no disponible:</strong> Requiere mínimo <field name="flexirent_min_days" readonly="1"/> días. 
+                                Su reserva es de <field name="total_days" readonly="1"/> días.
+                            </div>
+                        </group>
+                        <group>
+                            <field name="rent_type" widget="radio" options="{'horizontal': true}"
+                                   readonly="invoice_id != False or installment_created != False"
+                                   invisible="pricing_type == 'flexirent'"
+                                   string="Tipo de Alquiler"/>
+                        </group>
+                        <group>
+                            <group>
+                                <field name="rent" invisible="rent_type != 'days'"
+                                       readonly="installment_created != False" string="Alquiler por Día"/>
+                                <field name="rent" invisible="rent_type != 'week'"
+                                       readonly="installment_created != False" string="Rent per Week"/>
+                                <field name="rent" invisible="rent_type != 'month'"
+                                       readonly="installment_created != False" string="Rent per Month"/>
+
+                                <field name="rent" invisible="rent_type != 'hour'"
+                                       readonly="installment_created != False" string="Rent per Hour"/>
+                                <field name="rent" invisible="rent_type != 'year'"
+                                       readonly="installment_created != False" string="Rent per Year"/>
+
+                                <field name="rent" invisible="rent_type != 'km'" readonly="installment_created != False"
+                                       string="Rent per KM"/>
+                                <field name="rent" invisible="rent_type != 'mi'" readonly="installment_created != False"
+                                       string="Rent per MI"/>
+
+                                <field name="total_days" invisible="rent_type != 'days'" string="Total Days"/>
+                                <field name="total_days" invisible="rent_type != 'week'" string="Total Weeks"/>
+                                <field name="total_days" invisible="rent_type != 'month'" string="Total Months"/>
+
+                                <field name="total_days" invisible="rent_type != 'hour'" string="Total Hours"/>
+                                <field name="total_days" invisible="rent_type != 'year'" string="Total Years"/>
+
+                                <field name="total_km" invisible="rent_type != 'km'"
+                                       readonly="installment_created != False" string="Total Kilómetros"/>
+                                <field name="total_mi" invisible="rent_type != 'mi'"
+                                       readonly="installment_created != False" string="Total Millas"/>
+                                <field name="total_vehicle_rent" string="Total Renta del Vehículo"/>
+                                <field name="tax_ids" widget='many2many_tags'
+                                       options="{'no_create': True, 'no_create_edit': True}"
+                                       readonly="installment_created != False" string="Impuestos"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="Extra Charges Details">
+                                <field name="extra_charge_invoice_id" invisible="1"/>
+                                <field name="is_any_extra_charges" readonly="extra_charge_invoice_id != False"/>
+
+                                <field name="total_extra_days" readonly="extra_charge_invoice_id != False"
+                                       invisible="is_any_extra_charges == False or rent_type != 'days'"/>
+                                <field name="total_extra_week" readonly="extra_charge_invoice_id != False"
+                                       invisible="is_any_extra_charges == False or rent_type != 'week'"/>
+                                <field name="total_extra_month"
+                                       invisible="is_any_extra_charges == False or rent_type != 'month'"
+                                       readonly="extra_charge_invoice_id != False"/>
+
+                                <field name="total_extra_hour" readonly="extra_charge_invoice_id != False"
+                                       invisible="is_any_extra_charges == False or rent_type != 'hour'"/>
+                                <field name="total_extra_year"
+                                       invisible="is_any_extra_charges == False or rent_type != 'year'"
+                                       readonly="extra_charge_invoice_id != False"/>
+
+                                <field name="total_extra_km" readonly="extra_charge_invoice_id != False"
+                                       invisible="is_any_extra_charges == False or rent_type != 'km'"/>
+                                <field name="total_extra_mi"
+                                       invisible="is_any_extra_charges == False or rent_type != 'mi'"
+                                       readonly="extra_charge_invoice_id != False"/>
+
+                                <field name="extra_charge" string="Extra Charge per Day"
+                                       invisible="is_any_extra_charges == False or rent_type != 'days'"
+                                       readonly="extra_charge_invoice_id != False"/>
+                                <field name="extra_charge" string="Extra Charge per Week"
+                                       invisible="is_any_extra_charges == False or rent_type != 'week'"
+                                       readonly="extra_charge_invoice_id != False"/>
+                                <field name="extra_charge" string="Extra Charge per Month"
+                                       invisible="is_any_extra_charges == False or rent_type != 'month'"
+                                       readonly="extra_charge_invoice_id != False"/>
+
+                                <field name="extra_charge" string="Extra Charge per Hour"
+                                       invisible="is_any_extra_charges == False or rent_type != 'hour'"
+                                       readonly="extra_charge_invoice_id != False"/>
+                                <field name="extra_charge" string="Extra Charge per Year"
+                                       invisible="is_any_extra_charges == False or rent_type != 'year'"
+                                       readonly="extra_charge_invoice_id != False"/>
+
+                                <field name="extra_charge" string="Extra Charge per KM"
+                                       invisible="is_any_extra_charges == False or rent_type != 'km'"
+                                       readonly="extra_charge_invoice_id != False"/>
+                                <field name="extra_charge" string="Extra Charge per MI"
+                                       invisible="is_any_extra_charges == False or rent_type != 'mi'"
+                                       readonly="extra_charge_invoice_id != False"/>
+
+                                <label for="total_extra_charges" class="mt-1" string="Total Extra Charges"
+                                       invisible="is_any_extra_charges == False"/>
+                                <div name="total_extra_charges">
+                                    <field name="total_extra_charges" class="oe_inline"
+                                           invisible="is_any_extra_charges == False"/>
+                                </div>
+                            </group>
+
+                            <group string="Invoice Details">
+                                <label for="extra_charge_invoice_id" string="Extra Charge Invoice"
+                                       invisible="extra_charge_invoice_id == False"/>
+                                <div class="oe_inline"
+                                     invisible="is_any_extra_charges == False or extra_charge_invoice_id == False">
+                                    <field name="extra_charge_invoice_id" readonly="1" style="width: 35%;"/>
+                                    <field name="extra_charge_payment_state" widget="badge" style="width: 35%"
+                                           decoration-success="extra_charge_payment_state == 'paid'"
+                                           decoration-danger="extra_charge_payment_state == 'not_paid'"
+                                           decoration-info="extra_charge_payment_state == 'in_payment'"
+                                           decoration-primary="extra_charge_payment_state == 'partial'"
+                                           decoration-warning="extra_charge_payment_state == 'reversed'"/>
+                                </div>
+
+                                <label for="extra_service_invoice_id" string="Extra Service Invoice"
+                                       invisible="extra_service_invoice_id == False"/>
+                                <div class="oe_inline" invisible="extra_service_invoice_id == False">
+                                    <field name="extra_service_invoice_id" readonly="1" style="width: 35%;"/>
+                                    <field name="payment_state" widget="badge" style="width: 35%"
+                                           decoration-success="payment_state == 'paid'"
+                                           decoration-danger="payment_state == 'not_paid'"
+                                           decoration-info="payment_state == 'in_payment'"
+                                           decoration-primary="payment_state == 'partial'"
+                                           decoration-warning="payment_state == 'reversed'"/>
+                                </div>
+
+                                <label for="deposit_invoice_id" string="Deposit Invoice"
+                                       invisible="deposit_invoice_id == False"/>
+                                <div class="oe_inline" invisible="deposit_invoice_id == False">
+                                    <field name="deposit_invoice_id" readonly="1" style="width: 35%;"/>
+                                    <field name="deposit_payment_state" widget="badge" style="width: 35%"
+                                           decoration-success="deposit_payment_state == 'paid'"
+                                           decoration-danger="deposit_payment_state == 'not_paid'"
+                                           decoration-info="deposit_payment_state == 'in_payment'"
+                                           decoration-primary="deposit_payment_state == 'partial'"
+                                           decoration-warning="deposit_payment_state == 'reversed'"/>
+                                </div>
+
+                                <label for="return_deposit_invoice_id" string="Return Deposit"
+                                       invisible="return_deposit_invoice_id == False"/>
+                                <div class="oe_inline" invisible="return_deposit_invoice_id == False">
+                                    <field name="return_deposit_invoice_id" readonly="1" style="width: 35%;"/>
+                                    <field name="return_deposit_state" widget="badge" style="width: 35%"
+                                           decoration-success="return_deposit_state == 'paid'"
+                                           decoration-danger="return_deposit_state == 'not_paid'"
+                                           decoration-info="return_deposit_state == 'in_payment'"
+                                           decoration-primary="return_deposit_state == 'partial'"
+                                           decoration-warning="return_deposit_state == 'reversed'"/>
+                                </div>
+
+                                <label for="cancellation_invoice_id" string="Cancellation Invoice"
+                                       invisible="cancellation_invoice_id == False"/>
+                                <div class="oe_inline" invisible="cancellation_invoice_id == False">
+                                    <field name="cancellation_invoice_id" readonly="1" style="width: 35%;"/>
+                                    <field name="cancellation_invoice_state" widget="badge" style="width: 35%"
+                                           decoration-success="cancellation_invoice_state == 'paid'"
+                                           decoration-danger="cancellation_invoice_state == 'not_paid'"
+                                           decoration-info="cancellation_invoice_state == 'in_payment'"
+                                           decoration-primary="cancellation_invoice_state == 'partial'"
+                                           decoration-warning="cancellation_invoice_state == 'reversed'"/>
+                                </div>
+                            </group>
+                            <div class="row">
+                                <div class="col-6">
+                                    <button string="Extra Charge Invoice" name="action_create_extra_charge_invoice"
+                                            class="oe_highlight" type="object"
+                                            invisible="is_any_extra_charges == False or extra_charge_invoice_id != False"/>
+                                </div>
+                            </div>
+                        </group>
+                        <separator string="Payment Details" name="payment_details"/>
+                        <group>
+                            <field name="payment_type" widget="radio" options="{'horizontal': true}"
+                                   readonly="installment_created != False"/>
+                        </group>
+                        <group>
+                            <group>
+                                <field name="invoice_item_id" readonly="installment_created != False"/>
+                            </group>
+                            <group>
+                                <field name="if_any_deposit"
+                                       readonly="status == 'c_return' or deposit_invoice_id != False"/>
+                                <field name="deposit" invisible="if_any_deposit == False"
+                                       readonly="deposit_invoice_id != False"/>
+                                <field name="deposit_invoice_id" invisible="1"/>
+                                <field name="currency_id" invisible="1"/>
+                                <field name="company_id" invisible="1"/>
+                            </group>
+                        </group>
+                        <separator string="Detalles de la Compañía" name="company_details"/>
+                        <group>
+                            <group>
+                                <field name="company_id" required="1" readonly="status != 'a_draft'"/>
+                            </group>
+                            <group>
+                                <field name="responsible_id" widget="many2one_avatar_user" required="1"
+                                       readonly="status != 'a_draft'"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page name="vehicle_payment_details" string="Vehicle Payment Details">
+                                <field name="vehicle_payment_option_ids" readonly="1"
+                                       context="{'default_invoice_item_id': invoice_item_id}">
+                                    <form>
+                                        <sheet>
+                                            <div class="oe_title">
+                                                <label for="name"/>
+                                                <h1>
+                                                    <field name="name" placeholder="e.g. 1st Installment"/>
+                                                </h1>
+                                            </div>
+                                            <group>
+                                                <group>
+                                                    <field name="payment_date"/>
+                                                </group>
+                                                <group>
+                                                    <field name="payment_amount"/>
+                                                    <field name="company_id" invisible="1"/>
+                                                    <field name="currency_id" invisible="1"/>
+                                                    <label for="invoice_id" class="mt-1"
+                                                           invisible="invoice_id == False"/>
+                                                    <div name="invoice_id">
+                                                        <field name="invoice_id" readonly="1" class="oe_inline"
+                                                               force_save="1"
+                                                               style="width: auto;" invisible="invoice_id == False"/>
+                                                        <field name="payment_state" widget="badge"
+                                                               invisible="invoice_id == False"
+                                                               decoration-success="payment_state == 'paid'"
+                                                               decoration-danger="payment_state == 'not_paid'"
+                                                               decoration-info="payment_state == 'in_payment'"
+                                                               decoration-primary="payment_state == 'partial'"
+                                                               decoration-warning="payment_state == 'reversed'"
+                                                               style="margin-left: 10px; width: auto;"/>
+                                                    </div>
+                                                </group>
+                                            </group>
+                                        </sheet>
+                                    </form>
+                                    <list editable="bottom" create="false" open_form_view="True">
+                                        <field name="invoice_item_id"/>
+                                        <field name="name"/>
+                                        <field name="payment_date"/>
+                                        <field name="payment_amount" sum="payment_amount"/>
+                                        <field name="company_id" column_invisible="True"/>
+                                        <field name="currency_id" column_invisible="True"/>
+                                        <field name="invoice_id" readonly="1"/>
+                                        <field name="payment_state" widget="badge"
+                                               decoration-success="payment_state == 'paid'"
+                                               decoration-danger="payment_state == 'not_paid'"
+                                               decoration-info="payment_state == 'in_payment'"
+                                               decoration-primary="payment_state == 'partial'"
+                                               decoration-warning="payment_state == 'reversed'"/>
+                                        <button string="Create Invoice" name="action_create_payment_invoice"
+                                                type="object" class="oe_highlight" invisible="invoice_id != False"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page name="rental_terms" string="Términos de Alquiler">
+                                <group>
+                                    <group>
+                                        <field name="rental_agreement_terms_id"
+                                               readonly="status in ['c_return', 'd_cancel']"
+                                               options="{'no_create': True, 'no_create_edit': True}"/>
+                                    </group>
+                                </group>
+                                <separator string="Terms &amp; Conditions" name="terms_and_conditions"/>
+                                <field name="rental_terms" readonly="status in ['c_return', 'd_cancel']"/>
+                            </page>
+                            <page name="contract_trip_expenses" string="Trip Expenses"
+                                  invisible="not is_any_trip_expense">
+                                <field name="contract_expense_ids" context="{'default_driver_id': driver_id}">
+                                    <!--Inherit Form View-->
+                                    <form string="Expenses" js_class="hr_expense_form_view">
+                                        <header>
+                                            <!-- action_submit_expenses no existe en Odoo 19, usando action_submit -->
+                                            <!-- sheet_id puede no existir en Odoo 19, eliminada la condición -->
+                                            <button name="action_submit" string="Create Report" type="object"
+                                                    class="oe_highlight o_expense_submit"
+                                                    invisible="nb_attachment &lt;= 0" data-hotkey="v"/>
+                                            <!-- action_view_sheet eliminado temporalmente - no disponible en Odoo 19 -->
+                                            <widget name="attach_document" string="Attach Receipt"
+                                                    action="attach_document"
+                                                    invisible="nb_attachment &lt; 1"/>
+                                            <widget name="attach_document" string="Attach Receipt"
+                                                    action="attach_document"
+                                                    highlight="1" invisible="nb_attachment &gt;= 1"/>
+                                            <button name="action_submit" string="Create Report" type="object"
+                                                    class="o_expense_submit"
+                                                    invisible="nb_attachment &gt;= 1"
+                                                    data-hotkey="v"/>
+                                            <field name="state" widget="statusbar"
+                                                   statusbar_visible="draft,reported,submitted,approved,done"
+                                                   invisible="state == 'refused'"/>
+                                            <field name="state" widget="statusbar"
+                                                   statusbar_visible="draft,reported,submitted,refused"
+                                                   invisible="state != 'refused'"/>
+                                            <button name="action_split_wizard" string="Split Expense" type="object"
+                                                    invisible="product_has_cost"/>
+                                        </header>
+                                        <sheet>
+                                            <div class="oe_title">
+                                                <label for="name"/>
+                                                <h1>
+                                                    <field name="name" placeholder="e.g. Lunch with Customer"
+                                                           readonly="not is_editable"/>
+                                                </h1>
+                                            </div>
+                                            <group>
+                                                <group>
+                                                    <!-- sheet_id puede no existir en Odoo 19, comentado temporalmente -->
+                                                    <!-- <field name="sheet_id" invisible="1"/> -->
+                                                    <field name="product_has_cost" invisible="1"/>
+                                                    <field name="product_has_tax" invisible="1"/>
+                                                    <field name="is_multiple_currency" invisible="1"/>
+                                                    <field name="is_editable" invisible="1"/>
+                                                    <field name="currency_id" invisible="1"/>
+                                                    <field name="company_id" invisible="1"/>
+                                                    <field name="company_currency_id" invisible="1"/>
+                                                    <field name="tax_amount" invisible="1"/>
+                                                    <field name="price_unit" invisible="1"/>
+                                                    <field name="nb_attachment" invisible="1"/>
+                                                    <field name="total_amount" invisible="1"/>
+                                                    <field name="duplicate_expense_ids" invisible="1"/>
+                                                    <field name="currency_rate" invisible="1"/>
+                                                    <!-- product_uom_category_id no existe en Odoo 19, comentado temporalmente -->
+                                                    <!-- <field name="product_uom_category_id" invisible="1"/> -->
+                                                    <field name="vehicle_contract_id"
+                                                           invisible="vehicle_contract_id == False"
+                                                           readonly="1"/>
+                                                    <label for="product_id"/>
+                                                    <div>
+                                                        <field name="product_id" required="1" readonly="not is_editable"
+                                                               context="{'default_detailed_type': 'service', 'default_can_be_expensed': 1, 'tree_view_ref': 'hr_expense.product_product_expense_tree_view', 'form_view_ref': 'hr_expense.product_product_expense_form_view'}"
+                                                               class="w-100"/>
+                                                        <div class="fst-italic"
+                                                             invisible="not is_editable or not product_description or not product_id">
+                                                            <field name="product_description"/>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- CASE: product has a cost defined -> user input qty (always in company currency) -->
+                                                    <field name="price_unit" required="1" widget="monetary"
+                                                           options="{'currency_field': 'currency_id', 'field_digits': True}"
+                                                           invisible="not product_has_cost" readonly="True"/>
+                                                    <label for="quantity" invisible="not product_has_cost"/>
+                                                    <div invisible="not product_has_cost">
+                                                        <div class="o_row">
+                                                            <field name="quantity" class="oe_inline"
+                                                                   readonly="not is_editable"/>
+                                                            <field name="product_uom_id" required="1" force_save="1"
+                                                                   options="{'no_open': True, 'no_create': True}"
+                                                                   groups="uom.group_uom" readonly="not is_editable"/>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- CASE: product has no cost defined -> user input amount (in other currency if multi-currency) -->
+                                                    <label for="total_amount_currency" string="Total"
+                                                           invisible="product_has_cost" readonly="not is_editable"/>
+                                                    <div class="o_row" invisible="product_has_cost">
+                                                        <field name="total_amount_currency" widget="monetary"
+                                                               options="{'currency_field': 'currency_id'}"
+                                                               readonly="not is_editable" class="oe_inline mw-50 me-0"/>
+                                                        <field name="currency_id" class="mw-25 ms-0"
+                                                               groups="base.group_multi_currency"
+                                                               options="{'no_create': True}"
+                                                               readonly="not is_editable"/>
+                                                    </div>
+
+                                                    <!-- CASE: converter when currency is different than the company one -->
+                                                    <label for="total_amount" string=""
+                                                           invisible="not is_multiple_currency and not product_has_cost"/>
+                                                    <div class="o_row"
+                                                         invisible="not is_multiple_currency and not product_has_cost">
+                                                        <field name="total_amount" widget="monetary"
+                                                               options="{'currency_field': 'company_currency_id'}"
+                                                               force_save="1"
+                                                               readonly="not is_editable or product_has_cost"
+                                                               class="oe_inline"/>
+                                                        <field name="label_currency_rate" class="ps-0"/>
+                                                    </div>
+
+                                                    <label for="tax_ids"/>
+                                                    <div class="o_row">
+                                                        <field name="tax_ids" force_save="1" widget="many2many_tags"
+                                                               readonly="not is_editable"
+                                                               options="{'no_create': True}"/>
+                                                        <field name="tax_amount"/>
+                                                    </div>
+                                                    <field name="driver_id" widget="many2one_avatar" readonly="1"
+                                                           force_save="1"/>
+                                                    <field name="employee_ids" invisible="1"/>
+                                                    <t groups="hr_expense.group_hr_expense_team_approver">
+                                                        <field name="employee_id" groups="!hr.group_hr_user"
+                                                               context="{'default_company_id': company_id}"
+                                                               widget="many2one_avatar_employee"
+                                                               options="{'relation': 'hr.employee.public', 'no_create': True}"
+                                                               readonly="not is_editable"
+                                                               domain="[('id', 'in', employee_ids)]"/>
+                                                        <field name="employee_id" groups="hr.group_hr_user"
+                                                               context="{'default_company_id': company_id}"
+                                                               widget="many2one_avatar_employee"
+                                                               options="{'relation': 'hr.employee', 'no_create': True}"
+                                                               readonly="not is_editable"
+                                                               domain="[('id', 'in', employee_ids)]"/>
+                                                    </t>
+                                                </group>
+                                                <group>
+                                                    <field name="date" readonly="not is_editable" class="w-50"/>
+                                                    <field name="vendor_id"
+                                                           invisible="payment_mode != 'company_account'"/>
+                                                    <!-- accounting_date no existe en Odoo 19, comentado temporalmente -->
+                                                    <!-- <field name="accounting_date"
+                                                           invisible="not accounting_date or state not in ['approved', 'done']"
+                                                           readonly="not is_editable"/> -->
+                                                    <field name="account_id" options="{'no_create': True}"
+                                                           domain="[('account_type', 'not in', ('asset_receivable','liability_payable','asset_cash','liability_credit_card')), ('company_ids', 'parent_of', company_id)]"
+                                                           groups="account.group_account_readonly"
+                                                           readonly="not is_editable"
+                                                           context="{'default_company_id': company_id}"/>
+                                                    <field name="analytic_distribution" widget="analytic_distribution"
+                                                           groups="analytic.group_analytic_accounting"
+                                                           options="{'product_field': 'product_id', 'account_field': 'account_id', 'business_domain': 'expense'}"
+                                                           readonly="not is_editable"/>
+                                                    <field name="company_id" groups="base.group_multi_company"
+                                                           readonly="state != 'draft'"/>
+                                                </group>
+                                            </group>
+                                            <div>
+                                                <field name="description" placeholder="Notes..."
+                                                       readonly="not is_editable"/>
+                                            </div>
+                                        </sheet>
+                                    </form>
+
+                                    <!--Inherit List View-->
+                                    <list>
+                                        <field name="date"/>
+                                        <field name="name"/>
+                                        <field name="product_id"/>
+                                        <field name="employee_id"/>
+                                        <field name="total_amount" sum="total_amount"/>
+                                        <field name="nb_attachment" column_invisible="1"/>
+                                        <!-- sheet_id puede no existir en Odoo 19, comentado temporalmente -->
+                                        <!-- <field name="sheet_id" column_invisible="1"/> -->
+                                        <field name="state" widget="badge"
+                                               decoration-info="state in ['draft', 'reported']"
+                                               decoration-success="state in ['approved', 'done']"
+                                               decoration-warning="state == 'submitted'"
+                                               decoration-danger="state == 'refused'"/>
+                                        <field name="message_main_attachment_id" column_invisible="1" readonly="1"/>
+                                        <button name="action_view_expense_details" icon="fa-eye" type="object"
+                                                string="Expenses" class="btn btn-outline-primary"/>
+                                        <!-- action_view_sheet eliminado temporalmente - no disponible en Odoo 19 -->
+                                    </list>
+                                </field>
+                            </page>
+                            <page name="extra_service" string="Extra Services">
+                                <field name="extra_service_ids"
+                                       readonly="extra_service_invoice_id != False or status in ['c_return', 'd_cancel']">
+                                    <form>
+                                        <sheet>
+                                            <group>
+                                                <group>
+                                                    <field name="product_id"/>
+                                                    <field name="description"/>
+                                                </group>
+                                                <group>
+                                                    <field name="product_qty"/>
+                                                    <field name="amount"/>
+                                                    <field name="total_service_charge"/>
+                                                    <field name="company_id" invisible="1"/>
+                                                    <field name="currency_id" invisible="1"/>
+                                                </group>
+                                            </group>
+                                        </sheet>
+                                    </form>
+                                    <list editable="bottom" open_form_view="True">
+                                        <field name="product_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                                        <field name="product_qty"/>
+                                        <field name="description"/>
+                                        <field name="amount"/>
+                                        <field name="total_service_charge"/>
+                                        <field name="company_id" column_invisible="True"/>
+                                        <field name="currency_id" column_invisible="True"/>
+                                    </list>
+                                </field>
+                                <div class="row">
+                                    <div class="col-10">
+                                    </div>
+                                    <div class="col-2" style="text-align: right;">
+                                        <h6>
+                                            Total Service Charge
+                                            <hr style="margin: 0px;"/>
+                                        </h6>
+                                        Total:
+                                        <field name="extra_service_charge"/>
+                                        <field name="currency_id" invisible="1"/>
+                                    </div>
+                                </div>
+                            </page>
+                            <page name="rental_vehicle_image" string="Vehicle Images">
+                                <field name="rental_vehicle_image_ids" readonly="status == 'c_return'">
+                                    <form>
+                                        <sheet>
+                                            <div class="oe_title float-left">
+                                                <label for="name"/>
+                                                <h1>
+                                                    <field name="name" placeholder="e.g. Vehicle View."/>
+                                                </h1>
+                                            </div>
+                                            <div style="width: 40%; height: 40%;" class="float-right">
+                                                <field name="avatar" style="width: 40%; height: 40%;"
+                                                       class="img-thumbnail float-right" widget="image" required="1"/>
+                                            </div>
+                                        </sheet>
+                                    </form>
+                                    <kanban string="Kanban" class="">
+                                        <field name="id"/>
+                                        <field name="avatar"/>
+                                        <field name="name"/>
+                                        <templates>
+                                            <t t-name="card" class="border-0">
+                                                <div class="card oe_kanban_global_click p-0 border-0">
+                                                    <div class="row">
+                                                        <div class="col-8">
+                                                            <strong>
+                                                                <field name="name"/>
+                                                            </strong>
+                                                        </div>
+                                                        <div class="col-4 text-end">
+                                                            <!-- below 100 Kb: good -->
+                                                            <t t-if="record.avatar.raw_value.length &lt; 100*1000">
+                                                                <t t-set="size_status" t-value="'text-bg-success'"/>
+                                                                <t t-set="message">Acceptable file size</t>
+                                                            </t>
+                                                            <!-- below 1000 Kb: decent -->
+                                                            <t t-elif="record.avatar.raw_value.length &lt; 1000*1000">
+                                                                <t t-set="size_status" t-value="'text-bg-warning'"/>
+                                                                <t t-set="message">Huge file size. The image should be
+                                                                    optimized/reduced.
+                                                                </t>
+                                                            </t>
+                                                            <!-- above 1000 Kb: bad -->
+                                                            <t t-else="1">
+                                                                <t t-set="size_status"
+                                                                   t-value="'text-bg-danger'"/>
+                                                                <t t-set="message">Optimization required! Reduce the
+                                                                    image size or increase your compression settings.
+                                                                </t>
+                                                            </t>
+                                                            <span t-attf-class="badge #{size_status} o_product_image_size"
+                                                                  t-esc="record.avatar.value" t-att-title="message"/>
+                                                        </div>
+                                                    </div>
+                                                    <hr class="mb-1 mt-1"/>
+                                                    <div class="h-100 w-100">
+                                                        <field name="avatar" widget="image" class="card-img-top"
+                                                               style="height:223px;"
+                                                               options="{'img_class': 'object-fit-cover h-100 w-100', 'size': [360, 223]}"/>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                        </templates>
+                                    </kanban>
+                                </field>
+                            </page>
+                            <page name="insurance_policy" string="Insurance Policy">
+                                <field name="insurance_policy_ids" readonly="status == 'c_return'">
+                                    <form>
+                                        <sheet>
+                                            <div class="oe_title">
+                                                <label for="policy_name"/>
+                                                <h1>
+                                                    <field name="policy_name" placeholder="e.g. Third party insurance"/>
+                                                </h1>
+                                            </div>
+                                            <group>
+                                                <group>
+                                                    <field name="policy_number"/>
+                                                    <field name="description"/>
+                                                </group>
+                                                <group>
+                                                    <field name="file_name" invisible="1"/>
+                                                    <field name="avatar" filename="file_name" widget="binary"/>
+                                                    <field name="policy_amount"/>
+                                                    <field name="company_id" invisible="1"/>
+                                                    <field name="currency_id" invisible="1"/>
+                                                </group>
+                                            </group>
+                                        </sheet>
+                                    </form>
+                                    <list editable="bottom" open_form_view="True">
+                                        <field name="policy_number"/>
+                                        <field name="policy_name"/>
+                                        <field name="description"/>
+                                        <field name="file_name" column_invisible="True"/>
+                                        <field name="avatar" filename="file_name" widget="binary"/>
+                                        <field name="policy_amount"/>
+                                        <field name="company_id" column_invisible="True"/>
+                                        <field name="currency_id" column_invisible="True"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page name="cancellation_policy" string="Cancellation Policy"
+                                  invisible="status != 'd_cancel'">
+                                <separator string="Policy Details" name="policy_details"/>
+                                <group>
+                                    <group>
+                                        <field name="cancellation_policy_id" required="status == 'd_cancel'"
+                                               readonly="cancellation_invoice_id != False"
+                                               options="{'no_create': True, 'no_create_edit': True}"/>
+                                    </group>
+                                    <group>
+                                        <field name="cancellation_charge" readonly="cancellation_invoice_id != False"/>
+                                        <field name="cancellation_invoice_id" invisible="1"/>
+                                    </group>
+                                </group>
+                                <separator string="Terms &amp; Conditions" name="terms_and_conditions"/>
+                                <field name="terms_and_conditions" readonly="cancellation_invoice_id != False"/>
+                                <separator string="Cancellation Reasons" name="cancellation_reasons"/>
+                                <field name="cancellation_reason" readonly="cancellation_invoice_id != False"/>
+                            </page>
+                            <page name="vehicle_damage_painting" string="Daños del Vehículo">
+                                <group>
+                                    <group>
+                                        <field name="painted_damage_image" widget="image" readonly="1"/>
+                                    </group>
+                                    <group>
+                                        <button string="Abrir Editor de Daños" name="open_damage_painter"
+                                                type="object" class="oe_highlight"
+                                                icon="fa-paint-brush"/>
+                                        <button string="Limpiar Imagen" name="clear_damage_image"
+                                                type="object" class="oe_link"
+                                                icon="fa-eraser"
+                                                invisible="not painted_damage_image"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page name="damage" string="Vehicle Damages" invisible="is_invoice_done == False">
+                                <group>
+                                    <group>
+                                    </group>
+                                    <group>
+                                        <field name="damage_amount" readonly="is_invoice_done != False"/>
+                                    </group>
+                                </group>
+                                <separator string="Description" name="descriptions"/>
+                                <field name="description" readonly="is_invoice_done != False"/>
+                                <separator string="Damage Images" name="damage_images"/>
+                                <field name="vehicle_damage_image_ids">
+                                    <form>
+                                        <sheet>
+                                            <div class="oe_title float-left">
+                                                <label for="name"/>
+                                                <h1>
+                                                    <field name="name" placeholder="e.g. Vehicle View."/>
+                                                </h1>
+                                            </div>
+                                            <div style="width: 40%; height: 40%;" class="float-right">
+                                                <field name="avatar" style="width: 40%; height: 40%;"
+                                                       class="img-thumbnail float-right" widget="image" required="1"/>
+                                            </div>
+                                        </sheet>
+                                    </form>
+                                    <kanban string="Vehicle Damage Images">
+                                        <field name="id"/>
+                                        <field name="name"/>
+                                        <field name="avatar"/>
+                                        <templates>
+                                            <t t-name="card" class="border-0">
+                                                <div class="card oe_kanban_global_click p-0 border-0">
+                                                    <div class="row">
+                                                        <div class="col-8">
+                                                            <strong>
+                                                                <field name="name"/>
+                                                            </strong>
+                                                        </div>
+                                                        <div class="col-4 text-end">
+                                                            <!-- below 100 Kb: good -->
+                                                            <t t-if="record.avatar.raw_value.length &lt; 100*1000">
+                                                                <t t-set="size_status" t-value="'text-bg-success'"/>
+                                                                <t t-set="message">Acceptable file size</t>
+                                                            </t>
+                                                            <!-- below 1000 Kb: decent -->
+                                                            <t t-elif="record.avatar.raw_value.length &lt; 1000*1000">
+                                                                <t t-set="size_status" t-value="'text-bg-warning'"/>
+                                                                <t t-set="message">Huge file size. The image should be
+                                                                    optimized/reduced.
+                                                                </t>
+                                                            </t>
+                                                            <!-- above 1000 Kb: bad -->
+                                                            <t t-else="1">
+                                                                <t t-set="size_status"
+                                                                   t-value="'text-bg-danger'"/>
+                                                                <t t-set="message">Optimization required! Reduce the
+                                                                    image size or increase your compression settings.
+                                                                </t>
+                                                            </t>
+                                                            <span t-attf-class="badge #{size_status} o_product_image_size"
+                                                                  t-esc="record.avatar.value" t-att-title="message"/>
+                                                        </div>
+                                                    </div>
+                                                    <hr class="mb-1 mt-1"/>
+                                                    <div class="h-100 w-100">
+                                                        <field name="avatar" widget="image" class="card-img-top"
+                                                               style="height:223px;"
+                                                               options="{'img_class': 'object-fit-cover h-100 w-100', 'size': [360, 223]}"/>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                        </templates>
+                                    </kanban>
+                                </field>
+                            </page>
+                        </notebook>
+                        <br/>
+                        <div class="row">
+                            <div class="col-8">
+                            </div>
+                            <div class="col-4">
+                                <group>
+                                    <field name="date" string="Date" readonly="status == 'c_return'"/>
+                                </group>
+                                <field name="signature" widget="signature" readonly="status == 'c_return'"/>
+                                <br/>
+                                <h5 style="text-align: center;">
+                                    Signature
+                                </h5>
+                            </div>
+                        </div>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+        <record id="vehicle_contract_tree_view" model="ir.ui.view">
+            <field name="name">vehicle.contract.tree.view</field>
+            <field name="model">vehicle.contract</field>
+            <field name="arch" type="xml">
+                <list duplicate="false">
+                    <field name="reference_no"/>
+                    <field name="vehicle_id"/>
+                    <field name="customer_id"/>
+                    <field name="start_date"/>
+                    <field name="end_date"/>
+                    <field name="total_vehicle_rent"/>
+                    <field name="currency_id" column_invisible="True"/>
+                    <field name="company_id" column_invisible="True"/>
+                    <field name="status" widget="badge"
+                           decoration-info="status == 'a_draft'"
+                           decoration-warning="status == 'b_in_progress'"
+                           decoration-success="status == 'c_return'"
+                           decoration-danger="status == 'd_cancel'"/>
+                </list>
+            </field>
+        </record>
+        <record id="vehicle_contract_kanban_view" model="ir.ui.view">
+            <field name="name">vehicle.contract.kanban.view</field>
+            <field name="model">vehicle.contract</field>
+            <field name="arch" type="xml">
+                <kanban edit="false" group_create="0" records_draggable="0" class="o_slide_kanban" sample="1"
+                        quick_create="false">
+                    <field name="id"/>
+                    <field name="status"/>
+                    <field name="rent_type"/>
+                    <field name="vehicle_id"/>
+                    <field name="reference_no"/>
+                    <field name="customer_id"/>
+                    <field name="start_date"/>
+                    <field name="end_date"/>
+                    <field name="total_vehicle_rent"/>
+                    <field name="activity_ids"/>
+                    <field name="company_id"/>
+                    <field name="currency_id"/>
+                    <templates>
+                        <t t-name="card">
+                            <main>
+                                <!-- Header -->
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <field name="reference_no" class="fw-bold fs-5"/>
+                                    <field name="responsible_id" widget="many2one_avatar_user"
+                                           class="fw-bolder ms-auto"/>
+                                </div>
+                                <!--Center-->
+                                <div class="mb-2">
+                                    <div class="text-muted small">
+                                        <i class="fa fa-car me-1" title="Vehicle"/>
+                                        <field name="vehicle_id"/>
+                                    </div>
+                                    <div class="text-muted small">
+                                        <i class="fa fa-user me-1" title="Customer"/>
+                                        <field name="customer_id"/>
+                                    </div>
+                                    <div class="text-muted small">
+                                        <i class="fa fa-calendar me-1" title="Durations"/>
+                                        <field name="start_date" class="me-1"/>
+                                        -
+                                        <field name="end_date" class="ms-1"/>
+                                    </div>
+                                </div>
+                                <!-- Footer -->
+                                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                    <div class="text-muted small d-flex align-items-center flex-wrap">
+                                        <field name="activity_ids" widget="kanban_activity" class="me-1"/>
+                                        <strong>
+                                            <field name="total_vehicle_rent"/>
+                                        </strong>
+                                    </div>
+                                    <div class="fw-bold text-end">
+                                        <field name="status" widget="selection"/>
+                                    </div>
+                                </div>
+                            </main>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+        <record id="vehicle_contract_calendar_view" model="ir.ui.view">
+            <field name="name">vehicle.contract.calendar.view</field>
+            <field name="model">vehicle.contract</field>
+            <field name="arch" type="xml">
+                <calendar string="Vehicle Contract Calendar"
+                          date_start="start_date"
+                          event_open_popup="true"
+                          mode="month"
+                          color="vehicle_id"
+                          quick_create="False">
+                    <field name="vehicle_id"/>
+                    <field name="customer_id"/>
+                    <field name="start_date"/>
+                    <field name="end_date"/>
+                    <field name="responsible_id"/>
+                </calendar>
+            </field>
+        </record>
+        <record id="vehicle_contract_pivot_view" model="ir.ui.view">
+            <field name="name">vehicle.contract.pivot.view</field>
+            <field name="model">vehicle.contract</field>
+            <field name="priority">60</field>
+            <field name="arch" type="xml">
+                <pivot string="Vehicle Contract Details">
+                    <field name="status" type="col"/>
+                    <field name="vehicle_id" type="row"/>
+                </pivot>
+            </field>
+        </record>
+        <record id="vehicle_contract_search_view" model="ir.ui.view">
+            <field name="name">vehicle.contract.search.view</field>
+            <field name="model">vehicle.contract</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="reference_no"/>
+                    <field name="vehicle_id"/>
+                    <field name="customer_id"/>
+                </search>
+            </field>
+        </record>
+        <record id="action_vehicle_contract" model="ir.actions.act_window">
+            <field name="name">Contracts</field>
+            <field name="res_model">vehicle.contract</field>
+            <field name="view_mode">list,kanban,form,calendar,pivot,activity</field>
+        </record>
+    </data>
+</odoo>

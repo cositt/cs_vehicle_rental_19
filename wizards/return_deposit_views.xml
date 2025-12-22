@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <record id="return_deposit_form_view" model="ir.ui.view">
+            <field name="name">return.deposit.form.view</field>
+            <field name="model">return.deposit</field>
+            <field name="arch" type="xml">
+                <form>
+                    <group>
+                        <group>
+                            <field name="contract_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="total_deposit" readonly="1"/>
+                            <field name="return_deposit"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <footer>
+                        <button string="Create Invoice" name="create_return_deposit_invoice" type="object"
+                                class="oe_highlight"/>
+                        <button string="Cancel" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+        <record id="action_return_deposit" model="ir.actions.act_window">
+            <field name="name">Create Return Deposit Invoice</field>
+            <field name="res_model">return.deposit</field>
+            <field name="target">new</field>
+            <field name="view_id" ref="return_deposit_form_view"/>
+        </record>
+    </data>
+</odoo>

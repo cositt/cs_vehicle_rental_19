@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Acción personalizada para consultas de reserva pendientes -->
+        <record id="action_booking_enquiry_leads" model="ir.actions.act_window">
+            <field name="name">Consultas de Reserva</field>
+            <field name="res_model">crm.lead</field>
+            <field name="view_mode">kanban,form</field>
+            <field name="domain">[('name', 'ilike', '%Consulta de Reserva%'), ('stage_id', '=', 1)]</field>
+        </record>
+
+        <record id="booking_enquiry_crm_lead_inherit_form_view" model="ir.ui.view">
+            <field name="name">booking.enquiry.crm.lead.inherit.form.view</field>
+            <field name="model">crm.lead</field>
+            <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+            <field name="arch" type="xml">
+                <!-- Ocultar el botón morado nativo de Odoo para convertir leads -->
+                <xpath expr="//button[@name='action_set_won_rainbowman']" position="attributes">
+                    <attribute name="invisible">vehicle_id != False</attribute>
+                </xpath>
+                
+                <header>
+                    <!-- Botón para crear contrato desde oportunidades ganadas -->
+                    <button string="Crear Contrato" name="%(action_lead_rental_contract)d" type="action"
+                            class="oe_highlight"
+                            invisible="(type != 'opportunity' or probability &lt; 100) and (type != 'lead' or vehicle_id == False) or contract_id != False"/>
+                    <!-- Botón para convertir lead a oportunidad (REEMPLAZA al botón nativo morado) -->
+                    <button string="Convertir a Oportunidad" name="action_set_won" type="object"
+                            class="btn-secondary"
+                            invisible="type != 'lead' or vehicle_id == False or contract_id != False"/>
+                    <!-- Botones para imprimir y enviar contrato -->
+                    <button string="Imprimir Contrato" name="action_print_contract" type="object"
+                            class="btn-primary"
+                            invisible="contract_id == False"
+                            icon="fa-print"/>
+                    <button string="Enviar Contrato" name="action_send_contract" type="object"
+                            class="btn-success"
+                            invisible="contract_id == False"
+                            icon="fa-envelope"/>
+                </header>
+                <xpath expr="//field[@name='team_id']" position="after">
+                    <field name="access_token" invisible="1"/>
+                </xpath>
+                <xpath expr="//notebook/page[1]" position="after">
+                    <page name="booking_enquiry_details" string="Detalles de Consulta de Reserva">
+                        <group>
+                            <group>
+                                <field name="vehicle_id" options="{'no_create': True, 'no_create_edit': True}"
+                                       readonly="contract_id != False"/>
+                                <field name="category_id"/>
+                                <field name="seats"/>
+                            </group>
+                            <group>
+                                <field name="start_date" readonly="contract_id != False"/>
+                                <field name="end_date" readonly="contract_id != False"/>
+                                <field name="contract_id" invisible="contract_id == False" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="Datos de Identificación del Cliente">
+                            <group>
+                                <field name="customer_dni"/>
+                                <field name="customer_dni_expiry_date"/>
+                            </group>
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

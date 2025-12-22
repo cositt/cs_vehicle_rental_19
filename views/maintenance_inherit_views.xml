@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <!--vehicle maintenance service form view-->
+        <record id="vehicle_maintenance_service_form_view" model="ir.ui.view">
+            <field name="name">vehicle.maintenance.service.form.view</field>
+            <field name="model">vehicle.maintenance.service</field>
+            <field name="arch" type="xml">
+                <form create="0" edit="0">
+                    <sheet>
+                        <group string="Service Details">
+                            <group>
+                                <field name="product_id"/>
+                                <field name="description"/>
+                            </group>
+                            <group>
+                                <field name="currency_id" invisible="1"/>
+                                <field name="service_charge"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+
+        <!--vehicle maintenance part form view-->
+        <record id="vehicle_maintenance_part_form_view" model="ir.ui.view">
+            <field name="name">vehicle.maintenance.part.form.view</field>
+            <field name="model">vehicle.maintenance.part</field>
+            <field name="arch" type="xml">
+                <form create="0" edit="0">
+                    <sheet>
+                        <group string="Spare Part Details">
+                            <group>
+                                <field name="product_id"/>
+                                <field name="description"/>
+                                <field name="quantity"/>
+                            </group>
+                            <group>
+                                <field name="currency_id" invisible="1"/>
+                                <field name="price_unit"/>
+                                <field name="price_sub_total"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+
+        <!--Maintenance Request Inherit-->
+        <record id="vehicle_maintenance_request_inherit_form_view" model="ir.ui.view">
+            <field name="name">vehicle.maintenance.request.inherit.form.view</field>
+            <field name="model">maintenance.request</field>
+            <field name="inherit_id" ref="maintenance.hr_equipment_request_view_form"/>
+            <field name="arch" type="xml">
+                <form position="attributes">
+                    <attribute name="create">0</attribute>
+                </form>
+                <xpath expr="//form/header" position="inside">
+                    <button name="%(action_maintenance_request_bill)d" string="Create Bill" type="action"
+                            class="oe_highlight"
+                            invisible="not vehicle_maintenance_part_ids and not vehicle_maintenance_service_ids or bill_id != False"/>
+                </xpath>
+                <xpath expr="//sheet" position="inside">
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="action_vendor_bill_views" icon="fa-money"
+                                invisible="bill_id == False">
+                            <field string="Maintenance Bill" name="bill_count" widget="statinfo"/>
+                            <field name="bill_id" invisible="1"/>
+                        </button>
+                    </div>
+                </xpath>
+                <xpath expr="//field[@name='equipment_id']" position="before">
+                    <field name="fleet_vehicle_id" invisible="fleet_vehicle_id == False" readonly="1"/>
+                </xpath>
+                <xpath expr="//field[@name='maintenance_type']" position="after">
+                    <field name="maintenance_schedule_id" invisible="maintenance_schedule_id == False" readonly="1"/>
+                    <field name="upcoming_maintenance_date" invisible="upcoming_maintenance_date == False"
+                           readonly="1"/>
+                </xpath>
+                <xpath expr="//notebook/page[1]" position="after">
+                    <page name="used_parts_and_services" string="Piezas y Servicios Usados">
+                        <separator string="Repuestos de Vehículo Requeridos" name="required_vehicle_spare_parts"/>
+                        <field name="vehicle_maintenance_part_ids" readonly="bill_id != False">
+                            <form>
+                                <sheet>
+                                    <group>
+                                        <group>
+                                            <field name="product_id"/>
+                                            <field name="description"/>
+                                            <field name="quantity"/>
+                                        </group>
+                                        <group>
+                                            <field name="price_unit"/>
+                                            <field name="price_sub_total"/>
+                                            <field name="company_id" invisible="1"/>
+                                            <field name="currency_id" invisible="1"/>
+                                        </group>
+                                    </group>
+                                </sheet>
+                            </form>
+                            <list editable="bottom">
+                                <field name="product_id" required="1"/>
+                                <field name="description" required="1"/>
+                                <field name="quantity" required="1"/>
+                                <field name="price_unit"/>
+                                <field name="price_sub_total" sum="sub_total"/>
+                                <field name="company_id" column_invisible="True"/>
+                                <field name="currency_id" column_invisible="True"/>
+                            </list>
+                        </field>
+                        <separator string="Servicios de Vehículo Requeridos" name="required_vehicle_services"/>
+                        <field name="vehicle_maintenance_service_ids" readonly="bill_id != False">
+                            <form>
+                                <sheet>
+                                    <group>
+                                        <group>
+                                            <field name="product_id"/>
+                                            <field name="description"/>
+                                        </group>
+                                        <group>
+                                            <field name="service_charge"/>
+                                            <field name="company_id" invisible="1"/>
+                                            <field name="currency_id" invisible="1"/>
+                                        </group>
+                                    </group>
+                                </sheet>
+                            </form>
+                            <list editable="bottom">
+                                <field name="product_id" required="1"/>
+                                <field name="description"/>
+                                <field name="service_charge" sum="sub_total"/>
+                                <field name="company_id" column_invisible="True"/>
+                                <field name="currency_id" column_invisible="True"/>
+                            </list>
+                        </field>
+                        <div class="row">
+                            <div class="col-9">
+                            </div>
+                            <div class="col-3" style="text-align: right;">
+                                <h6>
+                                    Total Estimations
+                                    <hr style="margin: 5px;"/>
+                                </h6>
+                                Parts Price:
+                                <field name="part_price"/>
+                                <br/>
+                                Service Charges:
+                                <field name="service_charge"/>
+                                <br/>
+                                <hr style="margin: 5px;"/>
+                                <strong>
+                                    Total:
+                                </strong>
+                                <field name="sub_total"/>
+                                <field name="company_id" invisible="1"/>
+                                <field name="currency_id" invisible="1"/>
+                            </div>
+                        </div>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="vehicle_maintenance_request_inherit_tree_view" model="ir.ui.view">
+            <field name="name">vehicle.maintenance.request.inherit.tree.view</field>
+            <field name="model">maintenance.request</field>
+            <field name="inherit_id" ref="maintenance.hr_equipment_request_view_tree"/>
+            <field name="arch" type="xml">
+                <list position="attributes">
+                    <attribute name="create">0</attribute>
+                </list>
+                <list>
+                    <field name="fleet_vehicle_id"/>
+                    <field name="maintenance_schedule_id"/>
+                    <field name="upcoming_maintenance_date"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="vehicle_maintenance_request_inherit_kanban_view" model="ir.ui.view">
+            <field name="name">vehicle.maintenance.request.inherit.kanban.view</field>
+            <field name="model">maintenance.request</field>
+            <field name="inherit_id" ref="maintenance.hr_equipment_request_view_kanban"/>
+            <field name="arch" type="xml">
+                <kanban position="attributes">
+                    <attribute name="create">0</attribute>
+                    <attribute name="group_create">0</attribute>
+                    <attribute name="records_draggable">0</attribute>
+                </kanban>
+            </field>
+        </record>
+
+        <record id="action_maintenance_requests" model="ir.actions.act_window">
+            <field name="name">Maintenance Requests</field>
+            <field name="res_model">maintenance.request</field>
+            <field name="domain">[('fleet_vehicle_id', '!=', False)]</field>
+            <field name="context">{'default_fleet_vehicle_id': True}</field>
+            <field name="view_mode">kanban,list,form,pivot,graph,calendar,activity</field>
+        </record>
+    </data>
+</odoo>

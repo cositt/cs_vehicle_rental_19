@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <!--Customer Invoice-->
+        <record id="account_move_form_view" model="ir.ui.view">
+            <field name="name">account.move.form.view</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_move_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='payment_reference']" position="after">
+                    <field name="vehicle_contract_id" invisible="vehicle_contract_id == False" readonly="1"/>
+                    <field name="maintenance_request_id" invisible="maintenance_request_id == False" readonly="1"/>
+                    <field name="fleet_vehicle_id" invisible="1"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!--Customer Deposit-->
+        <record id="customer_deposit_payment_form_view" model="ir.ui.view">
+            <field name="name">customer.deposit.payment.form.view</field>
+            <field name="model">account.payment</field>
+            <field name="inherit_id" ref="account.view_account_payment_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='journal_id']" position="before">
+                    <field name="vehicle_contract_id" invisible="vehicle_contract_id == False" readonly="1"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Reporte PDF del contrato de vehículo -->
+        <record id="vehicle_contract_report" model="ir.actions.report">
+            <field name="name">Contrato de Vehículo</field>
+            <field name="model">vehicle.contract</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">vehicle_rental.vehicle_contract_report_template</field>
+            <field name="report_file">vehicle_rental.vehicle_contract_report_template</field>
+            <field name="binding_model_id" ref="model_vehicle_contract"/>
+            <field name="binding_type">report</field>
+        </record>
+
+        <!-- Template del reporte -->
+        <template id="vehicle_contract_report_template">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="contract">
+                    <div class="page">
+                        <div class="oe_structure"/>
+                        
+                        <!-- Encabezado -->
+                        <div class="row">
+                            <div class="col-6">
+                                <h2>CONTRATO DE ALQUILER DE VEHÍCULO</h2>
+                                <p><strong>Número de Contrato:</strong> <span t-field="contract.name"/></p>
+                                <p><strong>Fecha:</strong> <span t-field="contract.create_date" t-options="{'widget': 'date'}"/></p>
+                            </div>
+                            <div class="col-6 text-right">
+                                <h3>SUNSET RENT</h3>
+                                <p>Alquiler de Vehículos</p>
+                            </div>
+                        </div>
+                        
+                        <hr/>
+                        
+                        <!-- Datos del Cliente -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h4>DATOS DEL CLIENTE</h4>
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <td><strong>Nombre:</strong></td>
+                                        <td><span t-field="contract.partner_id.name"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Email:</strong></td>
+                                        <td><span t-field="contract.partner_id.email"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Teléfono:</strong></td>
+                                        <td><span t-field="contract.partner_id.phone"/></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Datos del Vehículo -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h4>DATOS DEL VEHÍCULO</h4>
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <td><strong>Vehículo:</strong></td>
+                                        <td><span t-field="contract.vehicle_id.name"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Modelo:</strong></td>
+                                        <td><span t-field="contract.vehicle_id.model_id.name"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Categoría:</strong></td>
+                                        <td><span t-field="contract.vehicle_id.model_id.category_id.name"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Matrícula:</strong></td>
+                                        <td><span t-field="contract.vehicle_id.license_plate"/></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Datos del Alquiler -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h4>DATOS DEL ALQUILER</h4>
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <td><strong>Fecha de Inicio:</strong></td>
+                                        <td><span t-field="contract.start_date"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Fecha de Fin:</strong></td>
+                                        <td><span t-field="contract.end_date"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Duración:</strong></td>
+                                        <td><span t-field="contract.duration_days"/> días</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Precio Total:</strong></td>
+                                        <td><span t-field="contract.total_amount"/> €</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Términos y Condiciones -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h4>TÉRMINOS Y CONDICIONES</h4>
+                                <ul>
+                                    <li>El vehículo debe ser devuelto en las mismas condiciones que fue entregado.</li>
+                                    <li>El cliente es responsable de cualquier daño causado al vehículo durante el período de alquiler.</li>
+                                    <li>El combustible no está incluido en el precio del alquiler.</li>
+                                    <li>Se requiere depósito de seguridad que será devuelto al finalizar el alquiler.</li>
+                                    <li>El cliente debe presentar documentación válida de identidad y carnet de conducir.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <!-- Firmas -->
+                        <div class="row" style="margin-top: 50px;">
+                            <div class="col-6">
+                                <p>_________________________</p>
+                                <p><strong>Firma del Cliente</strong></p>
+                            </div>
+                            <div class="col-6">
+                                <p>_________________________</p>
+                                <p><strong>Firma de SUNSET RENT</strong></p>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>
+

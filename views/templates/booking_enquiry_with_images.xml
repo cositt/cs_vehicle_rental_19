@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Booking Enquiry with Images Template -->
+    <template id="booking_enquiry_with_images" name="Booking Enquiry with Images">
+        <t t-call="website.layout">
+            <div class="container py-4">
+                <h2 class="mb-4 text-center text-dark">
+                    <i class="fa fa-car me-2"></i>
+                    Selecciona tu Categoría de Vehículo
+                </h2>
+                <p class="text-center text-muted mb-4">
+                    Elige la categoría que mejor se adapte a tus necesidades
+                </p>
+                
+                <div class="row g-4">
+                    <t t-foreach="vehicle_categories" t-as="category">
+                        <div class="col-lg-4 col-md-6 col-12">
+                            <div class="card h-100 category-card" 
+                                 style="cursor: pointer; transition: all 0.3s ease;"
+                                 t-att-onclick="'selectCategory(' + str(category.id) + ')'">
+                                <div class="card-img-top d-flex align-items-center justify-content-center" 
+                                     style="height: 200px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+                                    <img t-att-src="'/vehicle_rental/static/description/img/tipos/tipoA.png'"
+                                         t-att-alt="category.name"
+                                         style="max-height: 150px; max-width: 200px; object-fit: contain;" 
+                                         loading="lazy"/>
+                                </div>
+                                <div class="card-body text-center">
+                                    <h5 class="card-title" t-esc="category.name"/>
+                                    <p class="card-text text-muted">
+                                        Categoría de vehículo disponible
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </div>
+
+            <script>
+                function selectCategory(categoryId) {
+                    window.location.href = '/web/vehicle-detail/' + categoryId;
+                }
+            </script>
+        </t>
+    </template>
+</odoo>

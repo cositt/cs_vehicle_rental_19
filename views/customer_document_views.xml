@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <record id="customer_documents_tree_view" model="ir.ui.view">
+            <field name="name">customer.documents.tree.view</field>
+            <field name="model">customer.documents</field>
+            <field name="arch" type="xml">
+                <list editable="bottom">
+                    <field name="vehicle_contract_id" readonly="1"/>
+                    <field name="vehicle_id"/>
+                    <field name="document_type"/>
+                    <field name="file_name" column_invisible="True"/>
+                    <field name="avatar" filename="file_name" widget="binary"/>
+                </list>
+            </field>
+        </record>
+        <record id="customer_documents_search_view" model="ir.ui.view">
+            <field name="name">customer.documents.search.view</field>
+            <field name="model">customer.documents</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="document_type"/>
+                </search>
+            </field>
+        </record>
+        <record id="action_customer_documents" model="ir.actions.act_window">
+            <field name="name">Customer Documents</field>
+            <field name="res_model">customer.documents</field>
+            <field name="view_mode">list,search</field>
+        </record>
+    </data>
+</odoo>

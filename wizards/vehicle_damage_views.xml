@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <record id="vehicle_damage_form_view" model="ir.ui.view">
+            <field name="name">vehicle.damage.form.view</field>
+            <field name="model">vehicle.damage</field>
+            <field name="arch" type="xml">
+                <form>
+                    <group>
+                        <group>
+                        </group>
+                        <group>
+                            <field name="damage_amount"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="description" string="Descriptions">
+                            <field name="description"/>
+                        </page>
+                    </notebook>
+                    <footer>
+                        <button string="Create Invoice" name="vehicle_damage_amount" type="object"
+                                class="oe_highlight"/>
+                        <button string="Cancel" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+        <record id="action_vehicle_damage" model="ir.actions.act_window">
+            <field name="name">Damage Invoice</field>
+            <field name="res_model">vehicle.damage</field>
+            <field name="target">new</field>
+            <field name="view_id" ref="vehicle_damage_form_view"/>
+        </record>
+    </data>
+</odoo>

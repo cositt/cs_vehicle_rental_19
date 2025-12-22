@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================ -->
+    <!-- EXTENSIÓN DE VISTA DE CONTRATOS PARA PRICING AUTOMÁTICO 2025 -->
+    <!-- ============================================ -->
+
+    <record id="vehicle_contract_form_view_pricing_inherit" model="ir.ui.view">
+        <field name="name">vehicle.contract.form.pricing.inherit</field>
+        <field name="model">vehicle.contract</field>
+        <field name="inherit_id" ref="vehicle_rental.vehicle_contract_form_view"/>
+        <field name="arch" type="xml">
+            
+            <!-- BOTÓN ELIMINADO - Ya existe en vehicle_contract_views.xml -->
+
+            <!-- Añadir campos de pricing después de los campos de rent -->
+            <xpath expr="//field[@name='rent'][last()]" position="after">
+                <field name="calculated_rent" 
+                       readonly="1" 
+                       widget="monetary"
+                       string="💰 Precio Calculado Automáticamente"
+                       invisible="calculated_rent == 0"/>
+                <field name="price_manually_modified" invisible="1"/>
+                <div class="alert alert-warning" role="alert" 
+                     invisible="not price_manually_modified">
+                    <i class="fa fa-exclamation-triangle"/> 
+                    <strong>Precio Modificado Manualmente</strong>
+                    <p><field name="discount_reason" placeholder="Explicar motivo de la modificación..."/></p>
+                </div>
+            </xpath>
+
+            <!-- Añadir sección de Seguros después de los detalles de vehículo -->
+            <xpath expr="//separator[@name='pick_drop_details']" position="before">
+                <separator string="🛡️ Seguro y Cobertura" name="insurance_details"/>
+                <group>
+                    <group>
+                        <field name="insurance_type" 
+                               required="1"
+                               readonly="status != 'a_draft'"/>
+                        <field name="driver_special" 
+                               string="Conductor Especial (-25 años o +60 años)"
+                               readonly="status != 'a_draft'"/>
+                    </group>
+                    <group>
+                        <field name="insurance_price_per_day" 
+                               readonly="1"
+                               widget="monetary"
+                               string="Precio Seguro/Día"/>
+                        <field name="total_insurance_cost" 
+                               readonly="1"
+                               widget="monetary"
+                               string="Total Seguro"/>
+                    </group>
+                </group>
+                
+                <div class="alert alert-info" role="alert" invisible="insurance_type != 'basic'">
+                    <i class="fa fa-info-circle"/> 
+                    <strong>Seguro Básico:</strong> Franquicia de 300€ en caso de daños
+                </div>
+                <div class="alert alert-success" role="alert" invisible="insurance_type != 'no_franchise'">
+                    <i class="fa fa-check-circle"/> 
+                    <strong>Seguro Sin Franquicia:</strong> Cobertura total sin franquicia
+                </div>
+            </xpath>
+
+            <!-- NO MODIFICAR LOS CAMPOS ORIGINALES - DEJAR QUE LA VISTA BASE LOS MANEJE -->
+
+            <!-- Añadir campos de km extra en FLEXIRENT DESPUÉS de la sección de rent details -->
+            <xpath expr="//separator[@name='rent_details']" position="after">
+                <separator string="📦 FLEXIRENT - Kilómetros Extra" 
+                           invisible="rent_type != 'days' or not total_km"/>
+                <group invisible="rent_type != 'days' or not total_km">
+                    <group>
+                        <field name="extra_km_used" 
+                               readonly="status == 'a_draft'"
+                               string="Km Utilizados Extra"
+                               help="Kilómetros utilizados por encima del paquete FLEXIRENT"/>
+                        <field name="extra_km_price_unit" 
+                               readonly="1"
+                               widget="monetary"
+                               string="Precio por Km Extra"/>
+                    </group>
+                    <group>
+                        <field name="extra_km_cost" 
+                               readonly="1"
+                               widget="monetary"
+                               string="Total Km Extra"/>
+                    </group>
+                </group>
+                <div class="alert alert-warning" role="alert" 
+                     invisible="extra_km_cost == 0">
+                    <i class="fa fa-exclamation-circle"/> 
+                    Se han utilizado <field name="extra_km_used" readonly="1"/> km adicionales
+                </div>
+            </xpath>
+
+            <!-- Añadir total con IVA en la sección de totales -->
+            <xpath expr="//field[@name='total_vehicle_rent']" position="after">
+                <field name="grand_total_with_vat" 
+                       readonly="1" 
+                       widget="monetary"
+                       string="💎 TOTAL GENERAL (con IVA)"
+                       class="oe_subtotal_footer_separator"
+                       help="Incluye: Alquiler + Seguro + Km Extra + Servicios Adicionales"/>
+                <field name="grand_total_without_vat" 
+                       readonly="1" 
+                       widget="monetary"
+                       string="Total sin IVA"
+                       help="Total sin IVA"/>
+            </xpath>
+
+            <!-- Añadir campos de productos para referencia (invisibles) -->
+            <xpath expr="//field[@name='vehicle_id']" position="after">
+                <field name="pricing_product_id" invisible="1"/>
+                <field name="insurance_product_id" invisible="1"/>
+                <field name="applied_pricing_rule_id" invisible="1"/>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>
+

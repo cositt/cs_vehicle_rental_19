@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Test Vehicle Detail Template -->
+    <template id="vehicle_detail_test" name="Test Vehicle Detail View">
+        <t t-call="website.layout">
+            <div class="container py-4">
+                <h1>Vista Detalle del Vehículo - TEST</h1>
+                <p>Vehículo: <span t-esc="vehicle_info.get('name', 'Sin nombre')"/></p>
+                <p>Descripción: <span t-esc="vehicle_info.get('description', 'Sin descripción')"/></p>
+                
+                <button class="btn btn-primary" onclick="window.location.href='/web/booking-enquiry'">
+                    Volver a categorías
+                </button>
+            </div>
+        </t>
+    </template>
+</odoo>

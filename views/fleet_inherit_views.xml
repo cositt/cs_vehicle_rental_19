@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <!--Fleet Vehicle-->
+        <record id="vehicle_rental_form_view" model="ir.ui.view">
+            <field name="name">vehicle.rental.form.view</field>
+            <field name="model">fleet.vehicle</field>
+            <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='state_id']" position="attributes">
+                    <attribute name="invisible">True</attribute>
+                </xpath>
+                <xpath expr="//button[@name='return_action_to_open']" position='replace'>
+                    <button class="oe_stat_button" type="object" name="action_maintenances_request_view" icon="fa-gears"
+                            invisible="maintenance_request_count == 0">
+                        <field string="M. Requests" name="maintenance_request_count" widget="statinfo"/>
+                    </button>
+                    <button class="oe_stat_button" type="object" name="action_maintenance_bill_views" icon="fa-money"
+                            invisible="maintenance_bill_count == 0">
+                        <field string="Maintenance Bills" name="maintenance_bill_count" widget="statinfo"/>
+                    </button>
+                </xpath>
+                <xpath expr="//button[@name='open_assignation_logs']" position="before">
+                    <button class="oe_stat_button" type="object" name="action_rental_contract_view" icon="fa-taxi">
+                        <field string="Rental Contracts" name="rental_contract_count" widget="statinfo"/>
+                    </button>
+                </xpath>
+                <xpath expr="//header" position="inside">
+                    <field name="status" widget="statusbar"/>
+                    <button string="Under Maintenance" name="available_to_in_maintenance" type="object"
+                            invisible="status == 'in_maintenance'" class="btn btn-danger"/>
+                    <button string="Operational" name="in_maintenance_to_available" type="object"
+                            invisible="status == 'available'" class="btn btn-success"/>
+                    <button string="Crear Solicitud de Mantenimiento" name="action_create_maintenance_request"
+                            class="btn btn-warning" type="object"/>
+                </xpath>
+                <xpath expr="//field[@name='image_128']" position='before'>
+                    <widget name="web_ribbon" title="Operacional" bg_color="bg-success"
+                            invisible="status == 'in_maintenance'"/>
+                    <widget name="web_ribbon" title="En Mantenimiento" bg_color="bg-danger"
+                            invisible="status == 'available'"/>
+                </xpath>
+                <xpath expr="//field[@name='location']" position="after">
+                    <field name="maintenance_schedule_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                </xpath>
+                <xpath expr="//form/sheet/group" position="inside">
+                    <group string="Rent Details">
+                        <field name="rent_hour"/>
+                        <field name="rent_day"/>
+                        <field name="rent_week"/>
+                        <field name="rent_month"/>
+                        <field name="rent_year"/>
+                        <field name="rent_km"/>
+                        <field name="rent_mi"/>
+                    </group>
+                    <group string="Extra Charge Details">
+                        <field name="extra_charge_hour"/>
+                        <field name="extra_charge_day"/>
+                        <field name="extra_charge_week"/>
+                        <field name="extra_charge_month"/>
+                        <field name="extra_charge_year"/>
+                        <field name="extra_charge_km"/>
+                        <field name="extra_charge_mi"/>
+                    </group>
+                </xpath>
+
+                <!--Vehicle Expanses-->
+                <xpath expr="//field[@name='maintenance_schedule_id']" position="after">
+                    <field name="is_any_vehicle_expense"/>
+                </xpath>
+                <xpath expr="//page[@name='page_model']" position="after">
+                    <page name="fleet_vehicle_expenses" string="Vehicle Expenses"
+                          invisible="not is_any_vehicle_expense">
+                        <field name="fleet_expense_ids" context="{'default_driver_id': driver_id}">
+                            <!--Inherit Form View-->
+                            <form string="Expenses" js_class="hr_expense_form_view">
+                                <header>
+                                    <!-- action_submit_expenses no existe en Odoo 19, usando action_submit -->
+                                    <!-- sheet_id puede no existir en Odoo 19, eliminada la condición -->
+                                    <button name="action_submit" string="Create Report" type="object"
+                                            class="oe_highlight o_expense_submit"
+                                            invisible="nb_attachment &lt;= 0" data-hotkey="v"/>
+                                    <!-- action_view_sheet eliminado temporalmente - no disponible en Odoo 19 -->
+                                    <widget name="attach_document" string="Attach Receipt" action="attach_document"
+                                            invisible="nb_attachment &lt; 1"/>
+                                    <widget name="attach_document" string="Attach Receipt" action="attach_document"
+                                            highlight="1" invisible="nb_attachment &gt;= 1"/>
+                                    <!-- sheet_id puede no existir en Odoo 19, eliminada la condición -->
+                                    <button name="action_submit" string="Create Report" type="object"
+                                            class="o_expense_submit" invisible="nb_attachment &gt;= 1"
+                                            data-hotkey="v"/>
+                                    <field name="state" widget="statusbar"
+                                           statusbar_visible="draft,reported,submitted,approved,done"
+                                           invisible="state == 'refused'"/>
+                                    <field name="state" widget="statusbar"
+                                           statusbar_visible="draft,reported,submitted,refused"
+                                           invisible="state != 'refused'"/>
+                                    <!-- sheet_id puede no existir en Odoo 19, eliminada la condición -->
+                                    <button name="action_split_wizard" string="Split Expense" type="object"
+                                            invisible="product_has_cost"/>
+                                </header>
+                                <sheet>
+                                    <div class="oe_title">
+                                        <label for="name"/>
+                                        <h1>
+                                            <field name="name" placeholder="e.g. Lunch with Customer"
+                                                   readonly="not is_editable"/>
+                                        </h1>
+                                    </div>
+                                    <group>
+                                        <group>
+                                            <!-- sheet_id puede no existir en Odoo 19, comentado temporalmente -->
+                                            <!-- <field name="sheet_id" invisible="1"/> -->
+                                            <field name="product_has_cost" invisible="1"/>
+                                            <field name="product_has_tax" invisible="1"/>
+                                            <field name="is_multiple_currency" invisible="1"/>
+                                            <field name="is_editable" invisible="1"/>
+                                            <field name="currency_id" invisible="1"/>
+                                            <field name="company_id" invisible="1"/>
+                                            <field name="company_currency_id" invisible="1"/>
+                                            <field name="tax_amount" invisible="1"/>
+                                            <field name="price_unit" invisible="1"/>
+                                            <field name="nb_attachment" invisible="1"/>
+                                            <field name="total_amount" invisible="1"/>
+                                            <field name="duplicate_expense_ids" invisible="1"/>
+                                            <field name="currency_rate" invisible="1"/>
+                                            <!-- product_uom_category_id no existe en Odoo 19, comentado temporalmente -->
+                                            <!-- <field name="product_uom_category_id" invisible="1"/> -->
+                                            <field name="fleet_vehicle_id" invisible="fleet_vehicle_id == False"
+                                                   readonly="1"/>
+                                            <label for="product_id"/>
+                                            <div>
+                                                <field name="product_id" required="1" readonly="not is_editable"
+                                                       context="{'default_detailed_type': 'service', 'default_can_be_expensed': 1, 'tree_view_ref': 'hr_expense.product_product_expense_tree_view', 'form_view_ref': 'hr_expense.product_product_expense_form_view'}"
+                                                       class="w-100"/>
+                                                <div class="fst-italic"
+                                                     invisible="not is_editable or not product_description or not product_id">
+                                                    <field name="product_description"/>
+                                                </div>
+                                            </div>
+
+                                            <!-- CASE: product has a cost defined -> user input qty (always in company currency) -->
+                                            <field name="price_unit" required="1" widget="monetary"
+                                                   options="{'currency_field': 'currency_id', 'field_digits': True}"
+                                                   invisible="not product_has_cost" readonly="True"/>
+                                            <label for="quantity" invisible="not product_has_cost"/>
+                                            <div invisible="not product_has_cost">
+                                                <div class="o_row">
+                                                    <field name="quantity" class="oe_inline"
+                                                           readonly="not is_editable"/>
+                                                    <field name="product_uom_id" required="1" force_save="1"
+                                                           options="{'no_open': True, 'no_create': True}"
+                                                           groups="uom.group_uom" readonly="not is_editable"/>
+                                                </div>
+                                            </div>
+
+                                            <!-- CASE: product has no cost defined -> user input amount (in other currency if multi-currency) -->
+                                            <label for="total_amount_currency" string="Total"
+                                                   invisible="product_has_cost" readonly="not is_editable"/>
+                                            <div class="o_row" invisible="product_has_cost">
+                                                <field name="total_amount_currency" widget="monetary"
+                                                       options="{'currency_field': 'currency_id'}"
+                                                       readonly="not is_editable" class="oe_inline mw-50 me-0"/>
+                                                <field name="currency_id" class="mw-25 ms-0"
+                                                       groups="base.group_multi_currency" options="{'no_create': True}"
+                                                       readonly="not is_editable"/>
+                                            </div>
+
+                                            <!-- CASE: converter when currency is different than the company one -->
+                                            <label for="total_amount" string=""
+                                                   invisible="not is_multiple_currency and not product_has_cost"/>
+                                            <div class="o_row"
+                                                 invisible="not is_multiple_currency and not product_has_cost">
+                                                <field name="total_amount" widget="monetary"
+                                                       options="{'currency_field': 'company_currency_id'}"
+                                                       force_save="1" readonly="not is_editable or product_has_cost"
+                                                       class="oe_inline"/>
+                                                <field name="label_currency_rate" class="ps-0"/>
+                                            </div>
+
+                                            <label for="tax_ids"/>
+                                            <div class="o_row">
+                                                <field name="tax_ids" force_save="1" widget="many2many_tags"
+                                                       readonly="not is_editable" options="{'no_create': True}"/>
+                                                <field name="tax_amount"/>
+                                            </div>
+                                            <field name="driver_id" widget="many2one_avatar" readonly="1"
+                                                   force_save="1"/>
+                                            <field name="employee_ids" invisible="1"/>
+                                            <t groups="hr_expense.group_hr_expense_team_approver">
+                                                <field name="employee_id" groups="!hr.group_hr_user"
+                                                       context="{'default_company_id': company_id}"
+                                                       widget="many2one_avatar_employee"
+                                                       options="{'relation': 'hr.employee.public', 'no_create': True}"
+                                                       readonly="not is_editable"
+                                                       domain="[('id', 'in', employee_ids)]"/>
+                                                <field name="employee_id" groups="hr.group_hr_user"
+                                                       context="{'default_company_id': company_id}"
+                                                       widget="many2one_avatar_employee"
+                                                       options="{'relation': 'hr.employee', 'no_create': True}"
+                                                       readonly="not is_editable"
+                                                       domain="[('id', 'in', employee_ids)]"/>
+                                            </t>
+                                        </group>
+                                        <group>
+                                            <field name="date" readonly="not is_editable" class="w-50"/>
+                                            <field name="vendor_id" invisible="payment_mode != 'company_account'"/>
+                                            <!-- accounting_date no existe en Odoo 19, comentado temporalmente -->
+                                            <!-- <field name="accounting_date"
+                                                   invisible="not accounting_date or state not in ['approved', 'done']"
+                                                   readonly="not is_editable"/> -->
+                                            <field name="account_id" options="{'no_create': True}"
+                                                   domain="[('account_type', 'not in', ('asset_receivable','liability_payable','asset_cash','liability_credit_card')), ('company_ids', 'parent_of', company_id)]"
+                                                   groups="account.group_account_readonly" readonly="not is_editable"
+                                                   context="{'default_company_id': company_id}"/>
+                                            <field name="analytic_distribution" widget="analytic_distribution"
+                                                   groups="analytic.group_analytic_accounting"
+                                                   options="{'product_field': 'product_id', 'account_field': 'account_id', 'business_domain': 'expense'}"
+                                                   readonly="not is_editable"/>
+                                            <field name="company_id" groups="base.group_multi_company"
+                                                   readonly="state != 'draft'"/>
+                                        </group>
+                                    </group>
+                                    <div>
+                                        <field name="description" placeholder="Notes..." readonly="not is_editable"/>
+                                    </div>
+                                </sheet>
+                            </form>
+                            <!--Inherit List View-->
+                            <list>
+                                <field name="date"/>
+                                <field name="name"/>
+                                <field name="product_id"/>
+                                <field name="employee_id"/>
+                                <field name="total_amount" sum="total_amount"/>
+                                <field name="nb_attachment" column_invisible="1"/>
+                                <!-- sheet_id puede no existir en Odoo 19, comentado temporalmente -->
+                                <!-- <field name="sheet_id" column_invisible="1"/> -->
+                                <field name="state" widget="badge"
+                                       decoration-info="state in ['draft', 'reported']"
+                                       decoration-success="state in ['approved', 'done']"
+                                       decoration-warning="state == 'submitted'"
+                                       decoration-danger="state == 'refused'"/>
+                                <field name="message_main_attachment_id" column_invisible="1" readonly="1"/>
+                                <button name="action_view_expense_details" icon="fa-eye" type="object"
+                                        string="Expenses" class="btn btn-outline-primary"/>
+                                <!-- action_submit_expenses no existe en Odoo 19, usando action_submit -->
+                                <!-- sheet_id puede no existir en Odoo 19, eliminada la condición -->
+                                <button name="action_submit" string="Create Report" type="object"
+                                        class="btn btn-primary" invisible="nb_attachment &lt;= 0"/>
+                                <!-- action_view_sheet eliminado temporalmente - no disponible en Odoo 19 -->
+                            </list>
+                        </field>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+        <record id='vehicle_rental_tree_view' model='ir.ui.view'>
+            <field name="name">vehicle.rental.tree.view</field>
+            <field name="model">fleet.vehicle</field>
+            <field name="inherit_id" ref="fleet.fleet_vehicle_view_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='tag_ids']" position="after">
+                    <field name="status" widget="badge"
+                           decoration-success="status == 'available'"
+                           decoration-danger="status == 'in_maintenance'"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id='vehicle_rental_kanban_view' model='ir.ui.view'>
+            <field name="name">vehicle.rental.kanban.view</field>
+            <field name="model">fleet.vehicle</field>
+            <field name="inherit_id" ref="fleet.fleet_vehicle_view_kanban"/>
+            <field name="arch" type="xml">
+                <xpath expr="//footer" position="after">
+                    <div class="oe_kanban_bottom_right">
+                        <field name="status" widget="badge"
+                               decoration-success="status == 'available'"
+                               decoration-danger="status == 'in_maintenance'"/>
+                    </div>
+                </xpath>
+            </field>
+        </record>
+        <record id="action_fleet_vehicle" model="ir.actions.act_window">
+            <field name="res_model">fleet.vehicle</field>
+            <field name="view_mode">kanban,list,form,pivot,activity</field>
+        </record>
+
+        <!--Fleet Vehicle Log Contract-->
+        <record id="fleet_vehicle_log_contract_form_view_inherit" model="ir.ui.view">
+            <field name="name">fleet.vehicle.log.contract.form.view.inherit</field>
+            <field name="model">fleet.vehicle.log.contract</field>
+            <field name="inherit_id" ref="fleet.fleet_vehicle_log_contract_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='vehicle_id']" position="after">
+                    <field name="license_plate"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

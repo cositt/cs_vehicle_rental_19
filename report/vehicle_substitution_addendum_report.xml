@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!-- Reporte PDF del Addendum de Sustitución de Vehículo -->
+    <template id="vehicle_substitution_addendum_report_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="substitution">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <style>
+                            .addendum-title {
+                                text-align: center;
+                                font-size: 22px;
+                                font-weight: bold;
+                                color: #495057;
+                                margin-bottom: 30px;
+                                text-transform: uppercase;
+                                border-bottom: 3px solid #007bff;
+                                padding-bottom: 10px;
+                            }
+                            
+                            .section-title {
+                                font-size: 16px;
+                                font-weight: bold;
+                                color: #007bff;
+                                margin-top: 20px;
+                                margin-bottom: 10px;
+                                padding: 8px;
+                                background-color: #e7f3ff;
+                                border-left: 4px solid #007bff;
+                            }
+                            
+                            .info-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-bottom: 20px;
+                            }
+                            
+                            .info-table td {
+                                padding: 8px;
+                                border: 1px solid #dee2e6;
+                                font-size: 12px;
+                            }
+                            
+                            .info-label {
+                                font-weight: bold;
+                                width: 30%;
+                                background-color: #f8f9fa;
+                                color: #495057;
+                            }
+                            
+                            .info-value {
+                                width: 70%;
+                            }
+                            
+                            .highlight-box {
+                                background-color: #fff3cd;
+                                border: 2px solid #ffc107;
+                                padding: 15px;
+                                margin: 20px 0;
+                                border-radius: 5px;
+                            }
+                            
+                            .signature-box {
+                                border: 1px solid #dee2e6;
+                                padding: 15px;
+                                min-height: 100px;
+                                margin-top: 10px;
+                                text-align: center;
+                            }
+                            
+                            .legal-text {
+                                font-size: 11px;
+                                line-height: 1.6;
+                                text-align: justify;
+                                color: #6c757d;
+                                margin: 20px 0;
+                            }
+                        </style>
+
+                        <!-- Título Principal -->
+                        <div class="addendum-title">
+                            ADDENDUM / ANEXO AL CONTRATO DE ALQUILER
+                            <br/>
+                            <span style="font-size: 16px; font-weight: normal;">Sustitución de Vehículo</span>
+                        </div>
+
+                        <!-- Información del Contrato Original -->
+                        <div class="section-title">
+                            <i class="fa fa-file-text-o"/> INFORMACIÓN DEL CONTRATO ORIGINAL
+                        </div>
+                        <table class="info-table">
+                            <tr>
+                                <td class="info-label">Contrato N°:</td>
+                                <td class="info-value"><strong><span t-field="substitution.contract_id.reference_no"/></strong></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Cliente:</td>
+                                <td class="info-value"><span t-field="substitution.contract_id.customer_id"/></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Fecha del Contrato:</td>
+                                <td class="info-value"><span t-field="substitution.contract_id.date"/></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Periodo de Alquiler:</td>
+                                <td class="info-value">
+                                    Desde: <span t-field="substitution.contract_id.start_date"/> 
+                                    hasta: <span t-field="substitution.contract_id.end_date"/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Información de la Sustitución -->
+                        <div class="section-title">
+                            <i class="fa fa-refresh"/> DETALLES DE LA SUSTITUCIÓN
+                        </div>
+                        <table class="info-table">
+                            <tr>
+                                <td class="info-label">Fecha de Sustitución:</td>
+                                <td class="info-value"><span t-field="substitution.substitution_date"/></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Motivo de Sustitución:</td>
+                                <td class="info-value">
+                                    <span t-if="substitution.reason == 'breakdown'">Avería del Vehículo</span>
+                                    <span t-if="substitution.reason == 'accident'">Accidente</span>
+                                    <span t-if="substitution.reason == 'maintenance'">Mantenimiento Programado</span>
+                                    <span t-if="substitution.reason == 'upgrade'">Mejora de Categoría</span>
+                                    <span t-if="substitution.reason == 'downgrade'">Reducción de Categoría</span>
+                                    <span t-if="substitution.reason == 'customer_request'">Solicitud del Cliente</span>
+                                    <span t-if="substitution.reason == 'other'">Otro Motivo</span>
+                                </td>
+                            </tr>
+                            <tr t-if="substitution.reason_notes">
+                                <td class="info-label">Notas:</td>
+                                <td class="info-value"><span t-field="substitution.reason_notes"/></td>
+                            </tr>
+                        </table>
+
+                        <!-- Vehículo Original (Devuelto) -->
+                        <div class="section-title">
+                            <i class="fa fa-car"/> VEHÍCULO DEVUELTO
+                        </div>
+                        <table class="info-table">
+                            <tr>
+                                <td class="info-label">Vehículo:</td>
+                                <td class="info-value"><span t-field="substitution.old_vehicle_id"/></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Matrícula:</td>
+                                <td class="info-value"><span t-field="substitution.old_vehicle_id.license_plate"/></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Kilometraje de Devolución:</td>
+                                <td class="info-value"><span t-field="substitution.old_vehicle_odometer"/> km</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Nivel de Combustible:</td>
+                                <td class="info-value">
+                                    <span t-if="substitution.old_vehicle_fuel_level == '0'">Vacío</span>
+                                    <span t-if="substitution.old_vehicle_fuel_level == '1'">1/4</span>
+                                    <span t-if="substitution.old_vehicle_fuel_level == '2'">2/4 (Medio)</span>
+                                    <span t-if="substitution.old_vehicle_fuel_level == '3'">3/4</span>
+                                    <span t-if="substitution.old_vehicle_fuel_level == '4'">Lleno</span>
+                                </td>
+                            </tr>
+                            <tr t-if="substitution.old_vehicle_has_damage">
+                                <td class="info-label">Daños Reportados:</td>
+                                <td class="info-value">
+                                    <strong style="color: #dc3545;">SÍ</strong>
+                                    <span t-if="substitution.old_vehicle_damage_amount"> - Monto: <span t-field="substitution.old_vehicle_damage_amount" t-options='{"widget": "monetary", "display_currency": substitution.currency_id}'/></span>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Vehículo Nuevo (Entregado) -->
+                        <div class="section-title">
+                            <i class="fa fa-car"/> VEHÍCULO ENTREGADO
+                        </div>
+                        <table class="info-table">
+                            <tr>
+                                <td class="info-label">Vehículo:</td>
+                                <td class="info-value"><strong><span t-field="substitution.new_vehicle_id"/></strong></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Matrícula:</td>
+                                <td class="info-value"><strong><span t-field="substitution.new_vehicle_id.license_plate"/></strong></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Kilometraje de Entrega:</td>
+                                <td class="info-value"><span t-field="substitution.new_vehicle_odometer"/> km</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Nivel de Combustible:</td>
+                                <td class="info-value">
+                                    <span t-if="substitution.new_vehicle_fuel_level == '0'">Vacío</span>
+                                    <span t-if="substitution.new_vehicle_fuel_level == '1'">1/4</span>
+                                    <span t-if="substitution.new_vehicle_fuel_level == '2'">2/4 (Medio)</span>
+                                    <span t-if="substitution.new_vehicle_fuel_level == '3'">3/4</span>
+                                    <span t-if="substitution.new_vehicle_fuel_level == '4'">Lleno</span>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Diferencia de Precio (si aplica) -->
+                        <div t-if="substitution.has_price_difference and substitution.price_difference != 0" class="highlight-box">
+                            <strong><i class="fa fa-money"/> AJUSTE DE PRECIO:</strong><br/>
+                            <span t-if="substitution.price_difference &gt; 0">
+                                El cliente deberá pagar un <strong>cargo adicional</strong> de 
+                                <span t-field="substitution.price_difference" t-options='{"widget": "monetary", "display_currency": substitution.currency_id}'/> 
+                                por la diferencia en la categoría del vehículo.
+                            </span>
+                            <span t-if="substitution.price_difference &lt; 0">
+                                Se aplicará un <strong>reembolso</strong> de 
+                                <span t-esc="abs(substitution.price_difference)" t-options='{"widget": "monetary", "display_currency": substitution.currency_id}'/> 
+                                al cliente por la diferencia en la categoría del vehículo.
+                            </span>
+                        </div>
+
+                        <!-- Texto Legal -->
+                        <div class="legal-text">
+                            <p>
+                                <strong>ACUERDO DE SUSTITUCIÓN:</strong> Las partes acuerdan que mediante el presente addendum se sustituye 
+                                el vehículo originalmente contratado por el vehículo descrito anteriormente, manteniendo vigentes todas las 
+                                demás cláusulas, términos y condiciones del contrato original de alquiler número <strong><span t-field="substitution.contract_id.reference_no"/></strong>.
+                            </p>
+                            <p>
+                                El arrendatario (cliente) reconoce haber recibido el vehículo sustituto en las condiciones descritas y se 
+                                compromete a devolverlo en las mismas condiciones, salvo el desgaste normal por el uso, en la fecha de 
+                                finalización del contrato original o en la fecha que acuerden posteriormente las partes.
+                            </p>
+                            <p>
+                                La empresa arrendadora se compromete a que el vehículo sustituto cumple con todas las condiciones de seguridad 
+                                y mantenimiento necesarias para su correcto uso.
+                            </p>
+                        </div>
+
+                        <!-- Firmas -->
+                        <div style="margin-top: 50px;">
+                            <table style="width: 100%;">
+                                <tr>
+                                    <td style="width: 48%; vertical-align: top;">
+                                        <div class="section-title">FIRMA DEL CLIENTE</div>
+                                        <div class="signature-box">
+                                            <img t-if="substitution.customer_signature" 
+                                                 t-att-src="'data:image/png;base64,' + substitution.customer_signature.decode('utf-8')"
+                                                 style="max-height: 80px;"/>
+                                        </div>
+                                        <div style="margin-top: 10px; text-align: center;">
+                                            <strong><span t-field="substitution.contract_id.customer_id"/></strong><br/>
+                                            <span t-field="substitution.signature_date" t-options='{"widget": "datetime"}'/>
+                                        </div>
+                                    </td>
+                                    <td style="width: 4%;"></td>
+                                    <td style="width: 48%; vertical-align: top;">
+                                        <div class="section-title">FIRMA DE LA EMPRESA</div>
+                                        <div class="signature-box">
+                                            <img t-if="substitution.company_signature" 
+                                                 t-att-src="'data:image/png;base64,' + substitution.company_signature.decode('utf-8')"
+                                                 style="max-height: 80px;"/>
+                                        </div>
+                                        <div style="margin-top: 10px; text-align: center;">
+                                            <strong><span t-field="substitution.company_id.name"/></strong><br/>
+                                            <span t-field="substitution.signature_date" t-options='{"widget": "datetime"}'/>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Pie de página -->
+                        <div style="margin-top: 30px; padding-top: 10px; border-top: 1px solid #dee2e6; font-size: 10px; text-align: center; color: #6c757d;">
+                            Documento generado automáticamente el <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%d/%m/%Y %H:%M')"/>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- Action del Reporte -->
+    <record id="action_report_vehicle_substitution_addendum" model="ir.actions.report">
+        <field name="name">Addendum de Sustitución de Vehículo</field>
+        <field name="model">vehicle.contract.substitution</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">vehicle_rental.vehicle_substitution_addendum_report_template</field>
+        <field name="report_file">vehicle_rental.vehicle_substitution_addendum_report_template</field>
+        <field name="print_report_name">'Addendum_Sustitución_%s' % (object.contract_id.reference_no)</field>
+        <field name="binding_model_id" ref="model_vehicle_contract_substitution"/>
+        <field name="binding_type">report</field>
+    </record>
+
+</odoo>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

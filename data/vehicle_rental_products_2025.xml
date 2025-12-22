@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data noupdate="1">
+        <!-- ============================================ -->
+        <!-- PRODUCTOS DE ALQUILER POR CATEGORÍA -->
+        <!-- ============================================ -->
+        
+        <!-- Tipo A - Combi 5 plazas -->
+        <record id="product_rental_tipo_a" model="product.template">
+            <field name="name">Alquiler Tipo A - Combi 5 plazas</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+
+        <!-- Tipo C - Furgoneta 3m³ -->
+        <record id="product_rental_tipo_c" model="product.template">
+            <field name="name">Alquiler Tipo C - Furgoneta 3m³</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+
+        <!-- Tipo F - Furgoneta 5/6m³ -->
+        <record id="product_rental_tipo_f" model="product.template">
+            <field name="name">Alquiler Tipo F - Furgoneta 5/6m³</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+
+        <!-- Tipo P - Furgoneta 8/10m³ -->
+        <record id="product_rental_tipo_p" model="product.template">
+            <field name="name">Alquiler Tipo P - Furgoneta 8/10m³</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+
+        <!-- Tipo G - Gran Volumen 12/14m³ -->
+        <record id="product_rental_tipo_g" model="product.template">
+            <field name="name">Alquiler Tipo G - Gran Volumen 12/14m³</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+
+        <!-- Tipo M - Camión 3.500kg -->
+        <record id="product_rental_tipo_m" model="product.template">
+            <field name="name">Alquiler Tipo M - Camión 3.500kg</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+
+        <!-- Tipo B - Moto 50cc -->
+        <record id="product_rental_tipo_b" model="product.template">
+            <field name="name">Alquiler Tipo B - Moto 50cc</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+
+        <!-- Tipo S - Moto 125cc -->
+        <record id="product_rental_tipo_s" model="product.template">
+            <field name="name">Alquiler Tipo S - Moto 125cc</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+
+        <!-- Tipo Q - Moto Premium +125cc -->
+        <record id="product_rental_tipo_q" model="product.template">
+            <field name="name">Alquiler Tipo Q - Moto Premium +125cc</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+
+        <!-- Tipo E - Bici Eléctrica -->
+        <record id="product_rental_tipo_e" model="product.template">
+            <field name="name">Alquiler Tipo E - Bici Eléctrica</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+
+        <!-- Tipo Z - Patinete Eléctrico -->
+        <record id="product_rental_tipo_z" model="product.template">
+            <field name="name">Alquiler Tipo Z - Patinete Eléctrico</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+
+        <!-- ============================================ -->
+        <!-- PRODUCTOS DE SEGUROS -->
+        <!-- ============================================ -->
+
+        <!-- Seguro Básico -->
+        <record id="product_insurance_basic" model="product.template">
+            <field name="name">Seguro Básico - Franquicia 300€</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+            <field name="active">True</field>
+            <field name="list_price">5.0</field>
+            <field name="standard_price">5.0</field>
+            <field name="sale_ok">True</field>
+            <field name="purchase_ok">False</field>
+            <field name="invoice_policy">order</field>
+            <field name="taxes_id" eval="[(6, 0, [ref('l10n_es.1_sale_tax_21s')])]"/>
+            <field name="supplier_taxes_id" eval="[(6, 0, [])]"/>
+            <field name="description">Seguro básico con franquicia de 300€ en caso de daños</field>
+        </record>
+
+        <!-- Seguro Sin Franquicia -->
+        <record id="product_insurance_no_franchise" model="product.template">
+            <field name="name">Seguro Sin Franquicia</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+            <field name="active">True</field>
+            <field name="list_price">15.0</field>
+            <field name="standard_price">15.0</field>
+            <field name="sale_ok">True</field>
+            <field name="purchase_ok">False</field>
+            <field name="invoice_policy">order</field>
+            <field name="taxes_id" eval="[(6, 0, [ref('l10n_es.1_sale_tax_21s')])]"/>
+            <field name="supplier_taxes_id" eval="[(6, 0, [])]"/>
+            <field name="description">Seguro completo sin franquicia</field>
+        </record>
+
+        <!-- ============================================ -->
+        <!-- PRODUCTO KM EXTRA FLEXIRENT -->
+        <!-- ============================================ -->
+
+        <!-- Kilómetros Extra - FLEXIRENT -->
+        <record id="product_extra_km_flexirent" model="product.template">
+            <field name="name">Kilómetros Extra - FLEXIRENT</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Working Vehicle Detail Template -->
+    <template id="vehicle_detail_working" name="Working Vehicle Detail View">
+        <t t-call="website.layout">
+            <div class="container py-5">
+                <!-- Botón de regreso -->
+                <div class="mb-4">
+                    <button class="btn btn-outline-secondary" onclick="goBackToCategories()">
+                        <i class="fa fa-arrow-left me-2"></i>Volver a categorías
+                    </button>
+                </div>
+
+                <!-- Vista detalle del vehículo -->
+                <div class="row">
+                    <!-- Imagen del vehículo -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="vehicle-image-container">
+                            <img t-att-src="vehicle_info.get('image', '/vehicle_rental/static/description/img/tipos/default.png')" 
+                                 t-att-alt="vehicle_info.get('name', 'Vehículo')"
+                                 class="img-fluid rounded shadow"/>
+                        </div>
+                    </div>
+
+                    <!-- Información del vehículo -->
+                    <div class="col-lg-6">
+                        <h1 class="h2 mb-3" t-esc="vehicle_info.get('name', 'Vehículo')"/>
+                        
+                        <div class="mb-4">
+                            <p class="lead" t-esc="vehicle_info.get('description', 'Descripción no disponible')"/>
+                        </div>
+
+                        <!-- Características -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="characteristic-box text-center p-3 border rounded">
+                                    <i class="fa fa-users fa-2x text-primary mb-2"></i>
+                                    <h5 t-esc="vehicle_info.get('seats', 0) + ' plazas'"/>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="characteristic-box text-center p-3 border rounded">
+                                    <i class="fa fa-snowflake-o fa-2x text-primary mb-2"></i>
+                                    <h5 t-if="vehicle_info.get('ac', False)">Aire acondicionado</h5>
+                                    <h5 t-else="">Sin aire acondicionado</h5>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="characteristic-box text-center p-3 border rounded">
+                                    <i class="fa fa-cube fa-2x text-primary mb-2"></i>
+                                    <h5 t-esc="vehicle_info.get('volume', 'Variable')"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ofertas de alquiler -->
+                <div class="row mt-5">
+                    <div class="col-12">
+                        <h3 class="mb-4">Ofertas de Alquiler</h3>
+                        <div class="row">
+                            <t t-foreach="vehicle_info.get('pricing', [])" t-as="offer" t-key="offer_index">
+                                <div class="col-lg-4 col-md-6 mb-4">
+                                    <div class="rental-offer-card card h-100" t-att-class="'border-primary' if offer.get('popular') else ''">
+                                        <div class="card-body text-center">
+                                            <div t-if="offer.get('popular')" class="badge bg-primary mb-2">Más Popular</div>
+                                            <h4 class="card-title" t-esc="offer.get('duration', '')"/>
+                                            <div class="price-display mb-3">
+                                                <span class="h3 text-primary" t-esc="'€' + str(offer.get('price', 0))"/>
+                                            </div>
+                                            <p class="text-muted mb-3" t-esc="offer.get('km', '')"/>
+                                            <ul class="list-unstyled">
+                                                <t t-foreach="offer.get('features', [])" t-as="feature" t-key="feature_index">
+                                                    <li class="mb-1">
+                                                        <i class="fa fa-check text-success me-2"></i>
+                                                        <span t-esc="feature"/>
+                                                    </li>
+                                                </t>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulario de reserva -->
+                <div class="row mt-5">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h4 class="mb-0">Reservar este vehículo</h4>
+                            </div>
+                            <div class="card-body">
+                                <form method="post" action="/web/booking-enquiry">
+                                    <input type="hidden" name="category_id" t-att-value="selected_category.id"/>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="start_date" class="form-label">Fecha de inicio</label>
+                                            <input type="date" class="form-control" id="start_date" name="start_date" required="required"/>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="end_date" class="form-label">Fecha de fin</label>
+                                            <input type="date" class="form-control" id="end_date" name="end_date" required="required"/>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="start_time" class="form-label">Hora de inicio</label>
+                                            <input type="time" class="form-control" id="start_time" name="start_time" required="required"/>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="end_time" class="form-label">Hora de fin</label>
+                                            <input type="time" class="form-control" id="end_time" name="end_time" required="required"/>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-center">
+                                        <button type="submit" class="btn btn-primary btn-lg">
+                                            <i class="fa fa-calendar-check-o me-2"></i>Continuar con la reserva
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <style>
+                .vehicle-image-container {
+                    position: relative;
+                    overflow: hidden;
+                    border-radius: 10px;
+                }
+                
+                .vehicle-image-container img {
+                    width: 100%;
+                    height: 400px;
+                    object-fit: cover;
+                    transition: transform 0.3s ease;
+                }
+                
+                .vehicle-image-container:hover img {
+                    transform: scale(1.05);
+                }
+                
+                .characteristic-box {
+                    background: #f8f9fa;
+                    transition: all 0.3s ease;
+                }
+                
+                .characteristic-box:hover {
+                    background: #e9ecef;
+                    transform: translateY(-2px);
+                }
+                
+                .rental-offer-card {
+                    transition: all 0.3s ease;
+                    border: 2px solid #dee2e6;
+                }
+                
+                .rental-offer-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                }
+                
+                .rental-offer-card.border-primary {
+                    border-color: #007bff !important;
+                }
+                
+                .price-display {
+                    font-size: 1.5rem;
+                    font-weight: bold;
+                }
+            </style>
+
+            <script>
+                function goBackToCategories() {
+                    window.location.href = '/web/booking-enquiry';
+                }
+            </script>
+        </t>
+    </template>
+</odoo>

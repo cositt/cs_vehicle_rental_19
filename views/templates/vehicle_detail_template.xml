@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vehicle Detail Template using Odoo standard navbar and footer -->
+    <template id="vehicle_detail_template" name="Vehicle Detail Template">
+        <t t-call="website.layout">
+            <t t-set="title" t-value="'Vista Detalle del Vehículo'"/>
+            <!-- Añadir Bootstrap y FontAwesome adicionales si es necesario -->
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+            <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
+            <!-- Contenido HTML inyectado - website.layout ya incluye el main y footer -->
+            <t t-raw="content_html"/>
+            <!-- Script de Bootstrap al final para no interferir con el footer -->
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+        </t>
+    </template>
+</odoo>
+
