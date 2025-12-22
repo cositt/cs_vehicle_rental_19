@@ -11,8 +11,15 @@ class SunsetHomeController(http.Controller):
 
     @http.route('/', type='http', auth='public', website=True)
     def sunset_home(self, **kw):
-        """Página principal - renderiza website.homepage para ambos dominios"""
-        return request.render('website.homepage', {})
+        """Página principal - detecta dominio y renderiza vista correcta"""
+        current_domain = request.httprequest.headers.get('X-Forwarded-Host', request.httprequest.host)
+        
+        if 'pinveco' in current_domain.lower():
+            # Renderizar vista vacía de Pinveco (será editada en CMS)
+            return request.render('website.homepage', {})
+        else:
+            # Renderizar vista vacía de Sunset (será editada en CMS)
+            return request.render('website.homepage', {})
 
     @http.route('/sunset', type='http', auth='public', website=True)
     def sunset_home_alt(self, **kw):
