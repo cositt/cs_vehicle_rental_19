@@ -4,6 +4,22 @@
 <template id="booking_enquiry_simple" name="Simple Booking Enquiry">
             <t t-set="img_folder" t-value="'tipos_pinveco' if is_pinveco else 'tipos'" />
     <t t-call="website.layout">
+        <style>
+            .category-card {
+                border: none !important;
+                transition: all 0.3s ease !important;
+            }
+            
+            .category-card:hover {
+                border: 1px solid #ddd !important;
+                border-radius: 8px !important;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+            }
+            
+            .category-card:hover .card-img-top {
+                border-radius: 8px 8px 0 0 !important;
+            }
+        </style>
         <div class="container py-4">
             <h2 class="mb-4 text-center text-dark">
                 <i class="fa fa-car me-2"></i>
@@ -17,85 +33,85 @@
                 <t t-foreach="vehicle_categories" t-as="category">
                     <div class="col-lg-4 col-md-6 col-12">
                         <div class="card h-100 category-card" 
-                             style="cursor: pointer; transition: all 0.3s ease;"
+                             style="cursor: pointer; transition: all 0.3s ease; border: none; border-radius: 0; box-shadow: none; overflow: hidden;"
                              t-att-onclick="'selectCategory(' + str(category.id) + ')'">
                             <div class="card-img-top d-flex align-items-center justify-content-center" 
-                                 t-attf-style="height: 200px; background: linear-gradient(135deg, #{primary_color} 0%, #{secondary_color} 100%);">
+                                 t-attf-style="height: 200px; background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 50%, #{primary_color} 85%, #{secondary_color} 100%); position: relative; overflow: visible;">
                                 <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoA.png"
                                      t-att-alt="category.name"
-                                     style="max-height: 150px; max-width: 200px; object-fit: contain;" 
+                                     style="max-height: 220px; max-width: 280px; object-fit: contain; margin-top: -30px; position: relative; z-index: 10;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo A' in category.name"/>
                                 <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoB.png"
                                      t-att-alt="category.name"
-                                     style="max-height: 150px; max-width: 200px; object-fit: contain;" 
+                                     style="max-height: 220px; max-width: 280px; object-fit: contain; margin-top: -30px; position: relative; z-index: 10;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo B' in category.name"/>
                                 <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoC.png"
                                      t-att-alt="category.name"
-                                     style="max-height: 150px; max-width: 200px; object-fit: contain;" 
+                                     style="max-height: 220px; max-width: 280px; object-fit: contain; margin-top: -30px; position: relative; z-index: 10;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo C' in category.name"/>
                                 <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoD.png"
                                      t-att-alt="category.name"
-                                     style="max-height: 150px; max-width: 200px; object-fit: contain;" 
+                                     style="max-height: 220px; max-width: 280px; object-fit: contain; margin-top: -30px; position: relative; z-index: 10;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo D' in category.name"/>
                                 <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoE.png"
                                      t-att-alt="category.name"
-                                     style="max-height: 150px; max-width: 200px; object-fit: contain;" 
+                                     style="max-height: 220px; max-width: 280px; object-fit: contain; margin-top: -30px; position: relative; z-index: 10;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo E' in category.name"/>
                                 <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoF.png"
                                      t-att-alt="category.name"
-                                     style="max-height: 150px; max-width: 200px; object-fit: contain;" 
+                                     style="max-height: 220px; max-width: 280px; object-fit: contain; margin-top: -30px; position: relative; z-index: 10;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo F' in category.name"/>
                                 <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoK.png"
                                      t-att-alt="category.name"
-                                     style="max-height: 150px; max-width: 200px; object-fit: contain;" 
+                                     style="max-height: 220px; max-width: 280px; object-fit: contain; margin-top: -30px; position: relative; z-index: 10;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo K' in category.name"/>
                                 <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoT.png"
                                      t-att-alt="category.name"
-                                     style="max-height: 150px; max-width: 200px; object-fit: contain;" 
+                                     style="max-height: 220px; max-width: 280px; object-fit: contain; margin-top: -30px; position: relative; z-index: 10;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo T' in category.name"/>
                                 <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoV.png"
                                      t-att-alt="category.name"
-                                     style="max-height: 150px; max-width: 200px; object-fit: contain;" 
+                                     style="max-height: 220px; max-width: 280px; object-fit: contain; margin-top: -30px; position: relative; z-index: 10;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo V' in category.name"/>
                                 <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoW.png"
                                      t-att-alt="category.name"
-                                     style="max-height: 150px; max-width: 200px; object-fit: contain;" 
+                                     style="max-height: 220px; max-width: 280px; object-fit: contain; margin-top: -30px; position: relative; z-index: 10;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo W' in category.name"/>
                                 <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoX.png"
                                      t-att-alt="category.name"
-                                     style="max-height: 150px; max-width: 200px; object-fit: contain;" 
+                                     style="max-height: 220px; max-width: 280px; object-fit: contain; margin-top: -30px; position: relative; z-index: 10;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo X' in category.name"/>
                                 <img t-attf-src="/vehicle_rental/static/description/img/#{img_folder}/tipoZ.png"
                                      t-att-alt="category.name"
-                                     style="max-height: 150px; max-width: 200px; object-fit: contain;" 
+                                     style="max-height: 220px; max-width: 280px; object-fit: contain; margin-top: -30px; position: relative; z-index: 10;" 
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo Z' in category.name"/>
                                 <i class="fa fa-car fa-4x text-white" style="display: none;"></i>
                             </div>
-                            <div class="card-body text-center">
+                            <div class="card-body text-center" style="border-top: 1px solid #e0e0e0;">
                                 <h5 class="card-title" t-esc="category.name"/>
                                 <p class="card-text text-muted">
                                     <t t-if="'Tipo A' in category.name">
@@ -136,5 +152,6 @@
             }
         </script>
     </t>
+
 </template>
 </odoo>
