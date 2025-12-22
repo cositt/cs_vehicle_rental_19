@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- PÁGINA PRINCIPAL SUNSET - VERSIÓN SIMPLE -->
+    <!-- PÁGINA PRINCIPAL SUNSET - HOME SIMPLE -->
     <template id="sunset_home_simple" name="Sunset Home Simple">
         <t t-call="website.layout">
+            <t t-set="logged_user"
+               t-value="request.env.user.id != request.env.ref('base.public_user').id"/>
             
             <!-- HERO SECTION -->
             <div class="hero-section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 80vh; display: flex; align-items: center;">
@@ -64,13 +66,51 @@
                                 <i class="fa fa-truck fa-4x text-dark"></i>
                             </div>
                             <div class="card-body text-center">
-                                <h5 class="card-title text-dark fw-bold">Furgonetas de carga</h5>
+                                <h5 class="card-title text-dark fw-bold">Furgoneta</h5>
                                 <p class="card-text text-muted">
-                                    Tenemos furgonetas en alquiler que se adapta a cualquiera que sean las necesidades de tu negocio.
+                                    Perfecta para mudanzas y transporte de carga
                                 </p>
                             </div>
                         </div>
                     </div>
+                    
+                    <div class="col-lg-4 col-md-6">
+                        <div class="category-card card h-100 shadow-sm" style="transition: all 0.3s ease;">
+                            <div class="card-img-top d-flex align-items-center justify-content-center" 
+                                 style="height: 200px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+                                <i class="fa fa-truck fa-4x text-dark"></i>
+                            </div>
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-dark fw-bold">Furgoneta</h5>
+                                <p class="card-text text-muted">
+                                    Perfecta para mudanzas y transporte de carga
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4 col-md-6">
+                        <div class="category-card card h-100 shadow-sm" style="transition: all 0.3s ease;">
+                            <div class="card-img-top d-flex align-items-center justify-content-center" 
+                                 style="height: 200px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+                                <i class="fa fa-truck fa-4x text-dark"></i>
+                            </div>
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-dark fw-bold">Furgoneta</h5>
+                                <p class="card-text text-muted">
+                                    Perfecta para mudanzas y transporte de carga
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DELEGACIONES -->
+            <div class="delegations-section py-5" style="background-color: #f8f9fa;">
+                <div class="container">
+                    <div class="row text-center mb-5">
+                        <div class="col-12">
                             <h2 class="display-5 fw-bold text-primary mb-3">
                                 <i class="fa fa-map-marker me-2"></i>
                                 Nuestras Delegaciones
@@ -209,7 +249,7 @@
                 </div>
             </div>
 
-            <!-- Estilos CSS específicos -->
+            <!-- Estilos CSS específicos para la página principal -->
             <style>
                 .hero-section {
                     position: relative;
@@ -277,6 +317,20 @@
                     font-weight: 600;
                     text-transform: uppercase;
                     letter-spacing: 0.5px;
+                }
+                
+                @media (max-width: 768px) {
+                    .hero-section {
+                        min-height: 60vh;
+                    }
+                    
+                    .display-4 {
+                        font-size: 2.5rem;
+                    }
+                    
+                    .display-5 {
+                        font-size: 2rem;
+                    }
                 }
             </style>
         </t>
