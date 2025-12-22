@@ -2,39 +2,141 @@
 <odoo>
     <template id="sunset_contact_basic" name="Sunset Contact Basic">
         <t t-call="website.layout">
-            <t t-set="title">Contacta con Nosotros - Sunset</t>
+            <t t-set="title">Contacto - Sunset Rent a Car</t>
             
-            <div class="container my-5">
-                <h1 class="text-center">Contacta con Nosotros</h1>
-                <p class="text-center">Sunset Rent a Car</p>
-                
+            <!-- Hero Section - EDITABLE -->
+            <section class="hero-section o_editable" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); padding: 80px 0; text-align: center;">
+                <div class="container">
+                    <h1 class="display-4 fw-bold text-dark mb-4">Contáctanos</h1>
+                    <p class="lead text-dark">Estamos aquí para ayudarte. Ponte en contacto con nosotros</p>
+                </div>
+            </section>
+            
+            <!-- Contact Info & Form Section - EDITABLE -->
+            <section class="container py-5 o_editable">
                 <div class="row">
-                    <div class="col-md-6">
-                        <h3>Información de Contacto</h3>
-                        <p><strong>Dirección:</strong> <span t-esc="contact_info['address']"/></p>
-                        <p><strong>Teléfono:</strong> <span t-esc="contact_info['phone']"/></p>
-                        <p><strong>Email:</strong> <span t-esc="contact_info['email']"/></p>
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="contact-card card h-100 shadow-sm border-0 o_editable">
+                            <div class="card-body text-center p-4">
+                                <div class="mb-3">
+                                    <i class="fa fa-phone fa-3x text-dark"></i>
+                                </div>
+                                <h5 class="card-title fw-bold text-dark">Teléfono</h5>
+                                <p class="card-text text-muted">+34 957 322 664</p>
+                                <p class="card-text text-muted">Lunes a Viernes: 9:00 - 18:00</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-6">
-                        <h3>Enviar Mensaje</h3>
-                        <form method="post" action="/contactus/enviar">
-                            <div class="mb-3">
-                                <label for="name" class="form-label">Nombre *</label>
-                                <input type="text" class="form-control" id="name" name="name" required="required"/>
+                    
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="contact-card card h-100 shadow-sm border-0 o_editable">
+                            <div class="card-body text-center p-4">
+                                <div class="mb-3">
+                                    <i class="fa fa-envelope fa-3x text-dark"></i>
+                                </div>
+                                <h5 class="card-title fw-bold text-dark">Email</h5>
+                                <p class="card-text text-muted">info@sunsetrentacar.com</p>
+                                <p class="card-text text-muted">Respuesta en 24 horas</p>
                             </div>
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Email *</label>
-                                <input type="email" class="form-control" id="email" name="email" required="required"/>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="contact-card card h-100 shadow-sm border-0 o_editable">
+                            <div class="card-body text-center p-4">
+                                <div class="mb-3">
+                                    <i class="fa fa-map-marker fa-3x text-dark"></i>
+                                </div>
+                                <h5 class="card-title fw-bold text-dark">Dirección</h5>
+                                <p class="card-text text-muted">Av. de la Libertad, 123</p>
+                                <p class="card-text text-muted">14005 Córdoba, España</p>
                             </div>
-                            <div class="mb-3">
-                                <label for="message" class="form-label">Mensaje *</label>
-                                <textarea class="form-control" id="message" name="message" rows="4" required="required"></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Enviar</button>
-                        </form>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </section>
+            
+            <!-- Form Section - EDITABLE -->
+            <section class="form-section py-5 o_editable" style="background-color: #f8f9fa;">
+                <div class="container">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8">
+                            <h2 class="display-6 fw-bold text-dark text-center mb-4">Formulario de Contacto</h2>
+                            <p class="lead text-center text-muted mb-4">Completa el formulario y nos pondremos en contacto contigo</p>
+                            
+                            <div class="card shadow-sm border-0 p-4">
+                                <form t-attf-action="/web/contactus" method="POST">
+                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                    
+                                    <div class="mb-3">
+                                        <label for="name" class="form-label fw-bold">Nombre</label>
+                                        <input type="text" class="form-control" id="name" name="name" required="required" placeholder="Tu nombre"/>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="email" class="form-label fw-bold">Email</label>
+                                        <input type="email" class="form-control" id="email" name="email_from" required="required" placeholder="tu@email.com"/>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="phone" class="form-label fw-bold">Teléfono</label>
+                                        <input type="tel" class="form-control" id="phone" name="phone" placeholder="+34 657 123 456"/>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="subject" class="form-label fw-bold">Asunto</label>
+                                        <input type="text" class="form-control" id="subject" name="subject" required="required" placeholder="Asunto del mensaje"/>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="message" class="form-label fw-bold">Mensaje</label>
+                                        <textarea class="form-control" id="message" name="description" rows="5" required="required" placeholder="Tu mensaje..."></textarea>
+                                    </div>
+                                    
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-dark btn-lg">
+                                            <i class="fa fa-send me-2"></i>
+                                            Enviar Mensaje
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <style>
+                .hero-section {
+                    position: relative;
+                }
+                
+                .contact-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                }
+                
+                .btn-dark {
+                    background: #000000;
+                    border: none;
+                    color: #ffffff;
+                }
+                
+                .btn-dark:hover {
+                    background: #333333;
+                    color: #ffffff;
+                }
+                
+                .form-control {
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                }
+                
+                .form-control:focus {
+                    border-color: #FFD700;
+                    box-shadow: 0 0 0 0.2rem rgba(255, 215, 0, 0.25);
+                }
+            </style>
         </t>
     </template>
 </odoo>
