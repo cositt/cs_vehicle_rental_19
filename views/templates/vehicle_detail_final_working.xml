@@ -96,7 +96,6 @@
                             <div class="card-body">
                                 <form method="post" action="/web/booking-enquiry">
                                     <input type="hidden" name="category_id" t-att-value="selected_category.id"/>
-                                    
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
                                             <label for="start_date" class="form-label">Fecha de inicio</label>

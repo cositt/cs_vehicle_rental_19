@@ -3,7 +3,7 @@
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 {
     'name': "Sunset",
-    'version': "19.0.5.8",
+    'version': "19.0.5.9",
     'description': "A car rental, hire car or car hire agency is a company that rents automobiles for short periods.",
     'summary': "Vehicle Rental Management",
     'author': 'Cositt',
@@ -19,6 +19,9 @@
         'crm',
         'website',
         'portal',
+        'account',           # NUEVO - para account.move
+        'payment',           # NUEVO - para payment.transaction
+        'payment_redsys',    # NUEVO - para integración Redsys
     ],
     'data': [
         # Data
@@ -101,6 +104,7 @@
         'views/templates/test_fleet_page.xml',
         'views/templates/simple_fleet_page.xml',
         'views/templates/debug_fleet_page.xml',
+        'views/redsys_payment_form.xml',
         # Menus
         'views/menus.xml',
     ],

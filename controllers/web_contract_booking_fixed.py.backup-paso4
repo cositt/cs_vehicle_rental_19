@@ -1673,24 +1673,22 @@ class WebsiteContractBookingFixed(http.Controller):
                             container.innerHTML = '';
                             
                             vehicles.forEach(vehicle => {{
-                                // Usar categoría para determinar imagen
-                                const categoryName = vehicle.category_name || vehicle.name;
-                                // Extraer nombre sin matrícula (quitar la última parte)
-                                const nameParts = vehicle.name.split('/');
-                                const vehicleName = nameParts.length > 1 ? nameParts.slice(0, -1).join('/') : vehicle.name;
+                                // Extraer marca del nombre del vehículo
+                                const brandName = vehicle.name.split(' ')[0]; // Primera palabra del nombre
+                                const vehicleName = vehicle.name.replace(brandName + ' ', ''); // Resto del nombre
                                 
-                                // Detectar si es Pinveco o Sunset
-                                const currentDomain = window.location.hostname;
-                                const isPinveco = currentDomain.includes('pinveco');
-                                const imgDir = isPinveco ? '/vehicle_rental/static/description/img/tipos_pinveco' : '/vehicle_rental/static/description/img/tipos';
-                                
-                                // Extraer tipo de la categoría (Tipo B -> B)
-                                const typeMatch = categoryName.match(/Tipo\s+([A-Z])/);
-                                let brandImage = '/vehicle_rental/static/description/img/marcas/ford.svg'; // fallback
-                                
-                                if (typeMatch && typeMatch[1]) {{
-                                    const typeId = typeMatch[1]; // B, A, D, etc.
-                                    brandImage = `${{imgDir}}/tipo${{typeId}}.png`;
+                                // Determinar imagen de marca
+                                let brandImage = self._get_image_path('default');
+                                if (brandName.toLowerCase() === 'ford') {{
+                                    brandImage = '/vehicle_rental/static/description/img/marcas/ford.svg';
+                                }} else if (brandName.toLowerCase() === 'iveco') {{
+                                    brandImage = '/vehicle_rental/static/description/img/marcas/iveco.svg';
+                                }} else if (brandName.toLowerCase() === 'mercedes-benz') {{
+                                    brandImage = '/vehicle_rental/static/description/img/marcas/mercedes.svg';
+                                }} else if (brandName.toLowerCase() === 'renault') {{
+                                    brandImage = '/vehicle_rental/static/description/img/marcas/renault.svg';
+                                }} else if (brandName.toLowerCase() === 'volkswagen') {{
+                                    brandImage = '/vehicle_rental/static/description/img/marcas/volkswagen.svg';
                                 }}
                                 
                                 const vehicleCard = document.createElement('div');
@@ -1698,7 +1696,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                 vehicleCard.innerHTML = `
                                     <div class="card h-100 vehicle-card" style="cursor: pointer;" onclick="selectVehicle(${{vehicle.id}}, '${{vehicle.name}}', '${{vehicle.license_plate}}')">
                                         <div class="card-body text-center">
-                                            <img src="${{brandImage}}" class="card-img-top mb-3" style="height: 120px; object-fit: contain;" alt="${{categoryName}}">
+                                            <img src="${{brandImage}}" class="card-img-top mb-3" style="height: 120px; object-fit: contain;" alt="${{brandName}}">
                                             <h6 class="card-title">${{vehicleName}}</h6>
                                         </div>
                                     </div>
@@ -2276,10 +2274,6 @@ class WebsiteContractBookingFixed(http.Controller):
             
             vehicles_data = []
             for vehicle in vehicles:
-                # Obtener categoría
-                category_id = vehicle.category_id.id if vehicle.category_id else (vehicle.model_id.category_id.id if vehicle.model_id and vehicle.model_id.category_id else None)
-                category_name = vehicle.category_id.name if vehicle.category_id else (vehicle.model_id.category_id.name if vehicle.model_id and vehicle.model_id.category_id else 'Sin categoría')
-                
                 vehicles_data.append({
                     'id': vehicle.id,
                     'name': vehicle.name,
@@ -2288,8 +2282,6 @@ class WebsiteContractBookingFixed(http.Controller):
                     'seats': vehicle.seats,
                     'fuel_type': vehicle.fuel_type,
                     'transmission': vehicle.transmission,
-                    'category_id': category_id,
-                    'category_name': category_name,
                     'image': f'/web/image/fleet.vehicle/{vehicle.id}/image_128' if hasattr(vehicle, 'image_128') else self._get_image_path('default')
                 })
             
