@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="redsys_payment_checkout" name="Redsys Payment Checkout">
+        <t t-name="vehicle_rental.redsys_payment_checkout">
+            <html>
+                <head>
+                    <meta charset="utf-8"/>
+                    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                    <title>Procesando pago con Redsys...</title>
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            height: 100vh;
+                            margin: 0;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        }
+                        .container {
+                            background: white;
+                            padding: 40px;
+                            border-radius: 8px;
+                            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+                            text-align: center;
+                            max-width: 500px;
+                        }
+                        .spinner {
+                            border: 4px solid #f3f3f3;
+                            border-top: 4px solid #667eea;
+                            border-radius: 50%;
+                            width: 40px;
+                            height: 40px;
+                            animation: spin 1s linear infinite;
+                            margin: 20px auto;
+                        }
+                        @keyframes spin {
+                            0% { transform: rotate(0deg); }
+                            100% { transform: rotate(360deg); }
+                        }
+                        h2 { color: #333; margin-top: 0; }
+                        p { color: #666; }
+                        #payment_form { display: none; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h2>Procesando tu pago...</h2>
+                        <div class="spinner"></div>
+                        <p>Serás redirigido a <t t-out="provider.name"/> en unos momentos.</p>
+                        <p style="font-size: 12px; color: #999;">Por favor no cierres esta página.</p>
+                        
+                        <form id="payment_form" method="POST" action="https://sis-t.redsys.es:25443/sis/realizarPago">
+                            <input type="hidden" name="Ds_SignVersion" value="HMAC_SHA256_V1"/>
+                            <input type="hidden" name="Ds_MerchantParameters" t-att-value="merchant_params"/>
+                            <input type="hidden" name="Ds_Signature" t-att-value="signature"/>
+                        </form>
+                        
+                        <script>
+                            (function() {
+                                'use strict';
+                                setTimeout(function() {
+                                    var form = document.getElementById('payment_form');
+                                    if (form) {
+                                        console.log('Enviando formulario a Redsys...');
+                                        form.submit();
+                                    } else {
+                                        console.error('Formulario no encontrado');
+                                    }
+                                }, 800);
+                            })();
+                        </script>
+                    </div>
+                </body>
+            </html>
+        </t>
+    </template>
+</odoo>

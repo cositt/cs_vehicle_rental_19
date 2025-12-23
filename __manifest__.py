@@ -105,6 +105,7 @@
         'views/templates/simple_fleet_page.xml',
         'views/templates/debug_fleet_page.xml',
         'views/redsys_payment_form.xml',
+        'views/redsys_checkout.xml',
         # Menus
         'views/menus.xml',
     ],

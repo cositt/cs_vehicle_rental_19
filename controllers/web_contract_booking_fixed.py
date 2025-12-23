@@ -2576,6 +2576,49 @@ DETALLES DE LA RESERVA:
             km_included = selected_km_included if selected_km_included else "0"
             package_days = selected_package_days if selected_package_days else "0"
             
+            # Generar parámetros Redsys
+            import base64, hashlib, hmac, json
+            merchant_code = "369056973"
+            terminal = "1"
+            secret_key = "sq7HjrUOBfKmC576ILgskD5srU870gJ7"
+            
+            # Crear datos del pedido
+            import time
+            order_number = f"{int(time.time())}".zfill(12)[-12:]
+            amount_cents = int(price * 100)
+            
+            merchant_data = {
+                "DS_MERCHANT_AMOUNT": str(amount_cents),
+                "DS_MERCHANT_ORDER": order_number,
+                "DS_MERCHANT_MERCHANTCODE": merchant_code,
+                "DS_MERCHANT_CURRENCY": "978",
+                "DS_MERCHANT_TRANSACTIONTYPE": "0",
+                "DS_MERCHANT_TERMINAL": terminal,
+                "DS_MERCHANT_MERCHANTURL": "https://sunsetrent.es/web/redsys-webhook",
+            }
+            
+            merchant_json = json.dumps(merchant_data, separators=(',', ':'))
+            merchant_params = base64.b64encode(merchant_json.encode()).decode()
+            
+            secret_key_bytes = base64.b64decode(secret_key)
+            signature_bytes = hmac.new(secret_key_bytes, merchant_params.encode(), hashlib.sha256).digest()
+            signature = base64.b64encode(signature_bytes).decode()
+            
+            # Guardar booking data en sesión
+            request.session['booking_data'] = {
+                'customer_name': customer_name,
+                'customer_email': customer_email,
+                'category_id': int(category_id),
+                'start_date': start_date,
+                'end_date': end_date,
+                'selected_price': price,
+            }
+            
+            return request.render('vehicle_rental.redsys_checkout', {
+                'merchant_params': merchant_params,
+                'signature': signature,
+            })
+            
             return f"""
             <!DOCTYPE html>
             <html>
