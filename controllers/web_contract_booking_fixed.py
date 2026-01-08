@@ -2576,17 +2576,22 @@ DETALLES DE LA RESERVA:
             km_included = selected_km_included if selected_km_included else "0"
             package_days = selected_package_days if selected_package_days else "0"
             
-            # Generar parámetros Redsys
-            import base64, hashlib, hmac, json
+            # Generar parámetros Redsys - CORRECCIÓN SIS0008
+            import base64, hashlib, hmac, json, time
+            
             merchant_code = "369056973"
             terminal = "1"
             secret_key = "sq7HjrUOBfKmC576ILgskD5srU870gJ7"
             
-            # Crear datos del pedido
-            import time
-            order_number = f"{int(time.time())}".zfill(12)[-12:]
-            amount_cents = int(price * 100)
+            # Crear número de pedido único (12 dígitos sin caracteres especiales)
+            order_number = str(int(time.time()) % 1000000000000).zfill(12)
             
+            # Convertir cantidad a céntimos
+            amount_cents = int(float(price) * 100)
+            if amount_cents < 1:
+                amount_cents = 1
+            
+            # Datos del comerciante (SOLO campos requeridos por Redsys)
             merchant_data = {
                 "DS_MERCHANT_AMOUNT": str(amount_cents),
                 "DS_MERCHANT_ORDER": order_number,
@@ -2597,12 +2602,14 @@ DETALLES DE LA RESERVA:
                 "DS_MERCHANT_MERCHANTURL": "https://sunsetrent.es/web/redsys-webhook",
             }
             
+            # Codificar JSON sin espacios
             merchant_json = json.dumps(merchant_data, separators=(',', ':'))
-            merchant_params = base64.b64encode(merchant_json.encode()).decode()
+            merchant_params = base64.b64encode(merchant_json.encode('utf-8')).decode('utf-8')
             
+            # Generar firma HMAC_SHA256
             secret_key_bytes = base64.b64decode(secret_key)
-            signature_bytes = hmac.new(secret_key_bytes, merchant_params.encode(), hashlib.sha256).digest()
-            signature = base64.b64encode(signature_bytes).decode()
+            signature_bytes = hmac.new(secret_key_bytes, merchant_params.encode('utf-8'), hashlib.sha256).digest()
+            signature = base64.b64encode(signature_bytes).decode('utf-8')
             
             # Guardar booking data en sesión
             request.session['booking_data'] = {
@@ -2612,11 +2619,15 @@ DETALLES DE LA RESERVA:
                 'start_date': start_date,
                 'end_date': end_date,
                 'selected_price': price,
+                'order_number': order_number,
             }
             
             return request.render('vehicle_rental.redsys_checkout', {
                 'merchant_params': merchant_params,
                 'signature': signature,
+                'merchant_code': merchant_code,
+                'terminal': terminal,
+                'order_number': order_number,
             })
             
             return f"""
