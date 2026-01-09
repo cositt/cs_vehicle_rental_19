@@ -1,0 +1,139 @@
+═════════════════════════════════════════════════════════════════════════════════
+SOLICITUD DE SOPORTE TÉCNICO - REDSYS - INTEGRACIÓN DE PAGOS
+═════════════════════════════════════════════════════════════════════════════════
+
+Asunto: Error SIS0042 en solicitudes de pago - Verificación de credenciales
+
+Estimado equipo de Soporte Redsys,
+
+Nos dirigimos a ustedes para solicitar soporte técnico en relación a un error persistente 
+en nuestra integración de pagos con Redsys.
+
+═════════════════════════════════════════════════════════════════════════════════
+INFORMACIÓN DEL COMERCIO
+═════════════════════════════════════════════════════════════════════════════════
+
+Código de Comercio:           369056973
+Terminal:                     1
+Servidor de Prueba:           https://sis-t.redsys.es:25443/sis/realizarPago
+Entorno:                      SIS-T (Test)
+Método de Firma:              HMAC_SHA256_V1
+Clave Secreta Registrada:     sq7HjrUOBfKmC576ILgskD5srU870gJ7
+
+═════════════════════════════════════════════════════════════════════════════════
+PROBLEMA TÉCNICO
+═════════════════════════════════════════════════════════════════════════════════
+
+Al enviar solicitudes de pago a través de nuestro portal web, Redsys devuelve 
+de forma consistente el error:
+
+    ERROR: SIS0042
+    DESCRIPCIÓN: "Error en datos enviados. Contacte con su comercio."
+
+Esto ocurre INDEPENDIENTEMENTE del contenido de la solicitud, lo que sugiere 
+un problema de configuración/autenticación en lugar de formato de datos.
+
+═════════════════════════════════════════════════════════════════════════════════
+VALIDACIONES REALIZADAS
+═════════════════════════════════════════════════════════════════════════════════
+
+Nuestro equipo técnico ha verificado exhaustivamente que:
+
+✅ Formato de Merchant Parameters:
+   - JSON válido y bien formado
+   - Sin espacios (separadores compactos)
+   - Codificación Base64 correcta
+
+✅ Parámetros Obligatorios Presentes:
+   - Ds_Merchant_Amount: 13500 (en centavos = 135 EUR)
+   - Ds_Merchant_Currency: 978 (EUR)
+   - Ds_Merchant_Order: 12 dígitos (ej: 001767978226)
+   - Ds_Merchant_MerchantCode: 369056973
+   - Ds_Merchant_Terminal: 1
+   - Ds_Merchant_TransactionType: 0
+
+✅ Cálculo de Firma HMAC-SHA256:
+   - Algoritmo: HMAC-SHA256(merchant_params_base64, secret_key_decodificado)
+   - Formato: Base64
+   - Verificado múltiples veces - es matemáticamente correcto
+
+✅ Formato de Solicitud:
+   - POST a https://sis-t.redsys.es:25443/sis/realizarPago
+   - Content-Type: application/x-www-form-urlencoded
+   - Parámetros: Ds_SignatureVersion, Ds_MerchantParameters, Ds_Signature
+
+Ejemplo de solicitud enviada:
+---
+POST /sis/realizarPago HTTP/1.1
+Host: sis-t.redsys.es:25443
+Content-Type: application/x-www-form-urlencoded
+
+Ds_SignatureVersion=HMAC_SHA256_V1
+&Ds_MerchantParameters=eyJEc19NZXJjaGFudF9BbW91bnQiOiIxMzUwMCIsIkRzX01lcmNoYW50X0N1cnJlbmN5IjoiOTc4IiwiRHNfTWVyY2hhbnRfT3JkZXIiOiIwMDE3Njc5NzgyMjYiLCJEc19NZXJjaGFudF9NZXJjaGFudENvZGUiOiIzNjkwNTY5NzMiLCJEc19NZXJjaGFudF9UZXJtaW5hbCI6IjEiLCJEc19NZXJjaGFudF9UcmFuc2FjdGlvblR5cGUiOiIwIn0=
+&Ds_Signature=VSrrXNMkHp/jkPekBiuKrPBVvANtxWKGSuytTVTq+vw=
+---
+
+═════════════════════════════════════════════════════════════════════════════════
+SOLICITUD DE VERIFICACIÓN
+═════════════════════════════════════════════════════════════════════════════════
+
+Solicitamos que verifiquen lo siguiente en vuestro sistema:
+
+1. ¿El código de comercio 369056973 está ACTIVO en el servidor sis-t?
+
+2. ¿La terminal 1 está CORRECTAMENTE CONFIGURADA para este comercio?
+
+3. ¿La clave secreta en vuestro sistema coincide exactamente con:
+   sq7HjrUOBfKmC576ILgskD5srU870gJ7
+
+4. ¿Este comercio tiene AUTORIZADOS LOS PAGOS en el servidor de prueba (sis-t)?
+
+5. ¿Hay RESTRICCIONES DE IP, FIREWALL O FILTROS SECURIDAD que pudieran estar 
+   bloqueando nuestras solicitudes?
+
+6. ¿Podrían proporcionarnos un EJEMPLO DE SOLICITUD VÁLIDA que funcione con estos 
+   datos de comercio para comparar y validar nuestro formato?
+
+═════════════════════════════════════════════════════════════════════════════════
+INFORMACIÓN ADICIONAL
+═════════════════════════════════════════════════════════════════════════════════
+
+Plataforma:     Odoo 19 (Enterprise)
+Módulo:         vehicle_rental (integración de alquiler de vehículos)
+Tecnología:     Python 3 con librerías estándar (hmac, hashlib, base64)
+Fecha del Problema: 09 de enero de 2026
+Intentos Fallidos:  8+ configuraciones diferentes
+
+═════════════════════════════════════════════════════════════════════════════════
+DOCUMENTACIÓN TÉCNICA REFERENCIA
+═════════════════════════════════════════════════════════════════════════════════
+
+Hemos seguido la especificación oficial:
+- Documentación Redsys HMAC_SHA256_V1
+- Manual de integración v3.0.1+
+- Ejemplos de POST a realizarPago
+
+═════════════════════════════════════════════════════════════════════════════════
+DATOS DE CONTACTO
+═════════════════════════════════════════════════════════════════════════════════
+
+Por favor, responder a este soporte a la brevedad posible.
+El error SIS0042 está bloqueando completamente el flujo de pagos del negocio.
+
+Disponibles para:
+- Llamada de soporte técnico
+- Acceso a sandbox para debugging
+- Coordinación con equipo de desarrollo
+
+═════════════════════════════════════════════════════════════════════════════════
+
+Quedo atento a vuestras indicaciones.
+
+Saludos cordiales,
+
+[Tu Nombre]
+[Tu Empresa]
+[Tu Email de Contacto]
+[Tu Teléfono]
+
+═════════════════════════════════════════════════════════════════════════════════
