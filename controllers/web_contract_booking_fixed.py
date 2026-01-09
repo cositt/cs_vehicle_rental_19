@@ -2855,11 +2855,14 @@ class WebsiteContractBookingFixed(http.Controller):
             merchant_params = base64.b64encode(merchant_json.encode()).decode()
             
 
-            # Generar firma HMAC-SHA256 (especificación oficial Redsys)
-            # Firma = Base64(HMAC-SHA256(merchant_params_b64, secret_key))
+
+            # Generar firma HMAC-SHA256 (especificación Redsys)
+            # La clave secreta se decodifica desde base64
+            # Firma = Base64(HMAC-SHA256(merchant_params_b64, base64_decode(secret_key)))
             try:
+                secret_key_bytes = base64.b64decode(secret_key)
                 signature = hmac.new(
-                    secret_key.encode(),
+                    secret_key_bytes,
                     merchant_params.encode(),
                     hashlib.sha256
                 ).digest()
@@ -2868,7 +2871,6 @@ class WebsiteContractBookingFixed(http.Controller):
             except Exception as e:
                 _logger.error(f"Error generating signature: {e}", exc_info=True)
                 signature_b64 = ''
-
 
 
 
