@@ -2737,6 +2737,7 @@ class WebsiteContractBookingFixed(http.Controller):
         _logger = logging.getLogger(__name__)
         
         try:
+            _logger.error(f"RENTAL_PAYMENT_INPUT: {kw}")
             # Extraer parámetros
             category_id = int(kw.get('category_id', 0))
             selected_price_str = kw.get('selected_price', '').strip()
