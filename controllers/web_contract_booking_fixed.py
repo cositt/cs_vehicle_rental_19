@@ -2635,7 +2635,8 @@ class WebsiteContractBookingFixed(http.Controller):
     #         # Obtener datos de la reserva
     #         category_id = int(kw.get('category_id', 0))
             _logger.warning(f"RENTAL_PAYMENT_PARAMS: {kw}")
-    #         selected_price = float(kw.get('selected_price', 0))
+    #         selected_price_str = kw.get('selected_price', '').strip()
+            selected_price = float(selected_price_str) if selected_price_str else 0
             # Recalcular precio si falta o es 0
             if not selected_price or selected_price <= 0:
                 _logger.warning(f"selected_price está vacío, usando precio por defecto: 135")
@@ -2737,7 +2738,8 @@ class WebsiteContractBookingFixed(http.Controller):
         try:
             # Extraer parámetros
             category_id = int(kw.get('category_id', 0))
-            selected_price = float(kw.get('selected_price', 0))
+            selected_price_str = kw.get('selected_price', '').strip()
+            selected_price = float(selected_price_str) if selected_price_str else 0
             customer_email = kw.get('customer_email', '').strip()
             customer_name = kw.get('customer_name', 'Guest').strip()
             customer_phone = kw.get('customer_phone', '').strip()
