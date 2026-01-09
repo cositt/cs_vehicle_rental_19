@@ -1203,7 +1203,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                 <h4>Reservar este vehículo</h4>
                                             </div>
                                             <div class="card-body">
-                                                <form method="post" action="/web/booking-confirmation" id="booking_form">
+                                                <form method="post" action="/rental/payment" id="booking_form">
                                                     <input type="hidden" name="category_id" value="{category_id}"/>
                                                     <input type="hidden" name="location" id="booking_location" value=""/>
                                                     <input type="hidden" name="selected_pricing_type" id="selected_pricing_type" value=""/>
@@ -2804,9 +2804,91 @@ class WebsiteContractBookingFixed(http.Controller):
             
             _logger.info(f"Created payment.transaction: {tx.id}")
             
-            # Redirigir a formulario de pago
-            return request.redirect(f'/payment/process/{tx.id}')
+            # Generar formulario Redsys directamente
+            import base64
+            import hmac
+            import hashlib
+            import subprocess
+            import tempfile
+            import os
+            import binascii
             
+            merchant_code = '369056973'
+            terminal = '978'
+            secret_key_b64 = 'sq7HjrUOBfKmC576IqabNdJMPDHRojN7'
+            
+            amount_cents = int(selected_price * 100)
+            currency = '978'  # EUR
+            
+            merchant_data = {
+                'Ds_Merchant_Amount': str(amount_cents),
+                'Ds_Merchant_Currency': currency,
+                'Ds_Merchant_Order': order_number.zfill(12),
+                'Ds_Merchant_MerchantCode': merchant_code,
+                'Ds_Merchant_Terminal': terminal,
+                'Ds_Merchant_TransactionType': '0',
+                'Ds_Merchant_MerchantURL': f'https://sunsetrent.es/payment/webhook/{tx.id}',
+                'Ds_Merchant_UrlOK': f'https://sunsetrent.es/rental/success',
+                'Ds_Merchant_UrlKO': f'https://sunsetrent.es/rental/error',
+            }
+            
+            merchant_json = json.dumps(merchant_data)
+            merchant_params = base64.b64encode(merchant_json.encode()).decode()
+            
+            try:
+                secret_bytes = base64.b64decode(secret_key_b64)
+                order_bytes = order_number.zfill(12).encode()
+                
+                with tempfile.NamedTemporaryFile(delete=False) as f:
+                    f.write(order_bytes)
+                    f.flush()
+                    key_hex = binascii.hexlify(secret_bytes).decode()
+                
+                out_path = tempfile.mktemp()
+                try:
+                    subprocess.check_call([
+                        'openssl', 'enc', '-des-ede3-cbc',
+                        '-K', key_hex,
+                        '-iv', '0000000000000000',
+                        '-nopad',
+                        '-in', f.name,
+                        '-out', out_path
+                    ])
+                    with open(out_path, 'rb') as out:
+                        key_3des = base64.b64encode(out.read()).decode()
+                finally:
+                    os.unlink(f.name)
+                    if os.path.exists(out_path):
+                        os.unlink(out_path)
+                
+                signature = hmac.new(key_3des.encode(), merchant_params.encode(), hashlib.sha256).digest()
+                signature_b64 = base64.b64encode(signature).decode()
+            except Exception as e:
+                _logger.error(f"Error generating signature: {e}")
+                signature_b64 = ''
+            
+            redsys_url = 'https://sis-t.redsys.es:25443/sis/realizarPago'
+            
+            html = f'''<!DOCTYPE html>
+<html>
+<head>
+    <title>Procesando pago...</title>
+</head>
+<body onload="document.redsysForm.submit();">
+    <form name="redsysForm" action="{redsys_url}" method="POST">
+        <input type="hidden" name="Ds_SignatureVersion" value="HMAC_SHA256_V1"/>
+        <input type="hidden" name="Ds_MerchantParameters" value="{merchant_params}"/>
+        <input type="hidden" name="Ds_Signature" value="{signature_b64}"/>
+        <noscript>
+            <p>Por favor haz clic en el botón para continuar:</p>
+            <input type="submit" value="Continuar"/>
+        </noscript>
+    </form>
+</body>
+</html>'''
+            
+            return Response(html, mimetype='text/html')
+
         except Exception as e:
             _logger.error(f"RENTAL PAYMENT ERROR: {str(e)}", exc_info=True)
             return Response(
