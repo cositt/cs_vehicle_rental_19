@@ -2791,7 +2791,7 @@ class WebsiteContractBookingFixed(http.Controller):
                     'name': customer_name or partner.name,
                 })
             
-            order_number = f'ORD{int(time_mod.time())}'
+            order_number = str(int(time_mod.time()))
             
             # Buscar provider Redsys
             provider = request.env['payment.provider'].sudo().search([('code', '=', 'redsys')], limit=1)
