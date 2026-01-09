@@ -2657,36 +2657,19 @@ class WebsiteContractBookingFixed(http.Controller):
             # Guardar en sesión
             request.session['booking_data'] = booking_data
             
-            # Buscar provider Redsys dinámicamente
-            providers = request.env['payment.provider'].search([('code', '=', 'redsys')], limit=1)
+            # DEBUG: Solo guardar en sesión, no crear transacción aún
+            _logger.info(f"DEBUG RENTAL PAYMENT: Datos guardados en sesión para {order_number}")
             
-            payment_data = {
-                'amount': selected_price,
-                'currency_id': request.env.company.currency_id.id,
-                'partner_id': request.env.user.partner_id.id,
-                'reference': order_number,
-                'booking_data_json': json.dumps(booking_data),
-            }
-            
-            if providers:
-                payment_data['provider_id'] = providers.id
-                _logger.info(f"DEBUG: Found Redsys provider ID={providers.id}")
-            else:
-                _logger.warning("DEBUG: No Redsys provider found")
-            
-            # Crear transacción
-            payment_tx = request.env['payment.transaction'].sudo().create(payment_data)
-            
-            _logger.info(f"DEBUG RENTAL PAYMENT: payment.transaction created with ID {payment_tx.id}")
-            
-            # Redirigir
-            return request.redirect(f'/payment/process/{payment_tx.id}')
+            # Redirigir al payment procesamiento (Odoo lo creará)
+            return f"OK: Booking data saved. Order: {order_number}"
             
         except Exception as e:
             import logging
+            import traceback
             _logger = logging.getLogger(__name__)
-            _logger.error(f"ERROR en rental_payment_gateway: {str(e)}", exc_info=True)
-            return f"<h1>Error</h1><p>{str(e)}</p>", 500
+            error_detail = traceback.format_exc()
+            _logger.error(f"ERROR en rental_payment_gateway: {error_detail}")
+            return f"<h1>Error</h1><p>{str(e)}</p><pre>{error_detail}</pre>", 500
     @http.route('/test/rental-endpoint', auth='public', website=True, type='http')
     def test_rental_endpoint(self):
         return "TEST RENTAL ENDPOINT WORKS"
