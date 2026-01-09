@@ -2636,6 +2636,17 @@ class WebsiteContractBookingFixed(http.Controller):
     #         category_id = int(kw.get('category_id', 0))
             _logger.warning(f"RENTAL_PAYMENT_PARAMS: {kw}")
     #         selected_price = float(kw.get('selected_price', 0))
+            # Recalcular precio si falta o es 0
+            if not selected_price or selected_price == 0:
+                try:
+                    # Buscar tarifa de la categoría
+                    category = request.env['vehicle.category'].sudo().browse(int(category_id))
+                    if category and hasattr(category, 'base_price'):
+                        selected_price = category.base_price
+                        _logger.info(f"Precio recalculado desde tarifa: {selected_price}")
+                except Exception as e:
+                    _logger.warning(f"No se pudo recalcular precio: {e}")
+            
     #         customer_name = kw.get('customer_name', '')
     #         customer_email = kw.get('customer_email', '')
     #         customer_phone = kw.get('customer_phone', '')
