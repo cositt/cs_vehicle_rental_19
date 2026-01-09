@@ -2591,7 +2591,7 @@ class WebsiteContractBookingFixed(http.Controller):
 #         try:
 #             merchant_code = '369056973'
 #             terminal = '1'
-#             secret_key = 'sq7HjrUOBfKmC576IqabNdJMPDHRojN7'
+#             secret_key = 'sq7HjrUOBfKmC576ILgskD5srU870gJ7'
 #             
 #             amount_cents = int(float(kw.get('selected_price', 0)) * 100)
 #             if amount_cents < 1: amount_cents = 1
@@ -2819,8 +2819,8 @@ class WebsiteContractBookingFixed(http.Controller):
             
             # Generar formulario Redsys usando HMAC-SHA256_V1
             merchant_code = '369056973'
-            terminal = '978'
-            secret_key = 'sq7HjrUOBfKmC576IqabNdJMPDHRojN7'
+            terminal = '1'
+            secret_key = 'sq7HjrUOBfKmC576ILgskD5srU870gJ7'
             
             amount_cents = int(selected_price * 100)
             currency = '978'  # EUR
@@ -2913,11 +2913,11 @@ class WebsiteContractBookingFixed(http.Controller):
         
         # Test data
         merchant_code = '369056973'
-        terminal = '978'
+        terminal = '1'
         order_number = 'TESTORD123456'
         selected_price = 150.00
         tx_id = 999
-        secret_key = 'sq7HjrUOBfKmC576IqabNdJMPDHRojN7'
+        secret_key = 'sq7HjrUOBfKmC576ILgskD5srU870gJ7'
         
         amount_cents = int(selected_price * 100)
         currency = '978'
