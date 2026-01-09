@@ -2750,7 +2750,7 @@ class WebsiteContractBookingFixed(http.Controller):
             end_time = kw.get('end_time', '')
             
             # Validar campos requeridos
-            if not category_id or selected_price <= 0 or not customer_email:
+            if not category_id or not customer_email:
                 return Response(
                     json.dumps({"error": "Missing required fields"}),
                     status=400,
