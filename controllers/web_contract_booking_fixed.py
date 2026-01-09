@@ -2632,6 +2632,8 @@ class WebsiteContractBookingFixed(http.Controller):
         """
         try:
             import logging
+            import json
+            import time
             _logger = logging.getLogger(__name__)
             
             # Obtener datos de la reserva desde el formulario
@@ -2642,9 +2644,22 @@ class WebsiteContractBookingFixed(http.Controller):
             customer_phone = kw.get('customer_phone', '')
             start_date = kw.get('start_date', '')
             end_date = kw.get('end_date', '')
-            order_number = kw.get('order_number', f'RENT-{int(__import__("time").time())}')
+            order_number = kw.get('order_number', f'RENT-{int(time.time())}')
             
             _logger.info(f"DEBUG RENTAL PAYMENT: Creating payment.transaction for order {order_number}")
+            
+            # Preparar datos de booking
+            booking_data = {
+                'category_id': category_id,
+                'customer_name': customer_name,
+                'customer_email': customer_email,
+                'customer_phone': customer_phone,
+                'start_date': start_date,
+                'end_date': end_date,
+            }
+            
+            # Guardar en sesión para que el webhook pueda acceder
+            request.session['booking_data'] = booking_data
             
             # Crear payment.transaction
             payment_tx = request.env['payment.transaction'].sudo().create({
@@ -2654,7 +2669,7 @@ class WebsiteContractBookingFixed(http.Controller):
                 'partner_id': request.env.user.partner_id.id,
                 'reference': order_number,
                 'state': 'draft',
-                'booking_data': f'{{"category_id": {category_id}, "customer_name": "{customer_name}", "customer_email": "{customer_email}", "customer_phone": "{customer_phone}", "start_date": "{start_date}", "end_date": "{end_date}"}}',
+                'booking_data_json': json.dumps(booking_data),
             })
             
             _logger.info(f"DEBUG RENTAL PAYMENT: payment.transaction created with ID {payment_tx.id}")
