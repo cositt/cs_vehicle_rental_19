@@ -2637,15 +2637,11 @@ class WebsiteContractBookingFixed(http.Controller):
             _logger.warning(f"RENTAL_PAYMENT_PARAMS: {kw}")
     #         selected_price_str = kw.get('selected_price', '').strip()
             selected_price = float(selected_price_str) if selected_price_str else 0
+
+            # Recalcular a precio por defecto si está vacío
+            if not selected_price or selected_price <= 0:
+                selected_price = 135.00
             
-            # Recalcular precio si es 0
-            if not selected_price or selected_price <= 0:
-                selected_price = 135.00  # Precio por defecto
-                _logger.warning(f"selected_price está vacío, usando precio por defecto: 135 EUR")
-            # Recalcular precio si falta o es 0
-            if not selected_price or selected_price <= 0:
-                _logger.warning(f"selected_price está vacío, usando precio por defecto: 135")
-                selected_price = 135.00  # Precio por defecto (del alquiler actual)
             
     #         customer_name = kw.get('customer_name', '')
     #         customer_email = kw.get('customer_email', '')
