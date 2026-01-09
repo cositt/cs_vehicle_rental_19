@@ -2623,7 +2623,7 @@ class WebsiteContractBookingFixed(http.Controller):
 #             return f"<h1>Error en booking_confirmation</h1><pre>{str(e)}</pre>"
 
     # ===== NUEVO FLUJO: Usar payment_redsys nativo =====
-    @http.route('/web/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
+    @http.route('/api/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def rental_payment_gateway(self, **kw):
         """
         Create payment.transaction for vehicle rental booking.
@@ -2684,3 +2684,6 @@ class WebsiteContractBookingFixed(http.Controller):
             return request.render('website.error', {
                 'error': f'Error creating payment: {str(e)}'
             })
+    @http.route('/test/rental-endpoint', auth='public', website=True, type='http')
+    def test_rental_endpoint(self):
+        return "TEST RENTAL ENDPOINT WORKS"
