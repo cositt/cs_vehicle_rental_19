@@ -2853,6 +2853,7 @@ class WebsiteContractBookingFixed(http.Controller):
             # Generar formulario HTML para Redsys
             redsys_url = 'https://sis-t.redsys.es:25443/sis/realizarPago'
             
+            from html import escape
             html_form = f'''<!DOCTYPE html>
 <html>
 <head>
@@ -2861,8 +2862,8 @@ class WebsiteContractBookingFixed(http.Controller):
 <body onload="document.redsysForm.submit();">
     <form name="redsysForm" action="{redsys_url}" method="POST">
         <input type="hidden" name="Ds_SignatureVersion" value="HMAC_SHA256_V1"/>
-        <input type="hidden" name="Ds_MerchantParameters" value="{merchant_params}"/>
-        <input type="hidden" name="Ds_Signature" value="{signature_b64}"/>
+        <input type="hidden" name="Ds_MerchantParameters" value="{escape(merchant_params)}"/>
+        <input type="hidden" name="Ds_Signature" value="{escape(signature_b64)}"/>
         <noscript>
             <p>Por favor haz clic en el botón para continuar:</p>
             <input type="submit" value="Continuar"/>
