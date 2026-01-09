@@ -4,6 +4,7 @@ from odoo.http import request
 import logging
 import json
 import time
+import traceback
 
 _logger = logging.getLogger(__name__)
 
@@ -46,12 +47,15 @@ class PaymentGatewayController(http.Controller):
             if not providers:
                 raise Exception("No payment provider available")
             
+            _logger.info(f"DEBUG: Using provider {providers.name} (ID {providers.id})")
+            
             # Obtener payment_method para el provider
             payment_methods = request.env['payment.method'].search([
                 ('provider_ids', 'in', providers.id)
             ], limit=1)
             
             if not payment_methods:
+                _logger.info(f"DEBUG: No payment.method found for provider {providers.id}, creating one")
                 # Si no existe, crear uno genérico
                 # Imagen base64 mínima (1x1 PNG blanco)
                 minimal_image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
@@ -62,18 +66,23 @@ class PaymentGatewayController(http.Controller):
                     'image': minimal_image,
                     'provider_ids': [(4, providers.id)],
                 })
-                _logger.info(f"DEBUG: Created payment.method {payment_methods.id} with provider {providers.id}")
+                _logger.info(f"DEBUG: Created payment.method {payment_methods.id}")
+            else:
+                _logger.info(f"DEBUG: Found payment.method {payment_methods.id}")
             
             # Crear payment.transaction
-            payment_tx = request.env['payment.transaction'].sudo().create({
+            tx_vals = {
                 'provider_id': providers.id,
                 'payment_method_id': payment_methods.id,
                 'amount': selected_price,
                 'currency_id': request.env.company.currency_id.id,
                 'partner_id': request.env.user.partner_id.id,
                 'reference': order_number,
-                'booking_data_json': json.dumps(booking_data),
-            })
+            }
+            
+            _logger.info(f"DEBUG: Creating payment.transaction with values: {tx_vals}")
+            
+            payment_tx = request.env['payment.transaction'].sudo().create(tx_vals)
             
             _logger.info(f"DEBUG RENTAL PAYMENT: payment.transaction created with ID {payment_tx.id}")
             
@@ -81,8 +90,8 @@ class PaymentGatewayController(http.Controller):
             return request.redirect(f'/payment/process/{payment_tx.id}')
             
         except Exception as e:
-            import traceback
             error_detail = traceback.format_exc()
-            _logger.error(f"ERROR en rental_payment_gateway: {error_detail}")
-            return f"<h1>Error</h1><p>{str(e)}</p><pre>{error_detail}</pre>", 500
+            _logger.error(f"ERROR en rental_payment_gateway:\n{error_detail}")
+            # Devolver como texto plano para ver el error en curl
+            return error_detail, 500, [('Content-Type', 'text/plain')]
 

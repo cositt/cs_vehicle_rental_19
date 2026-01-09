@@ -2714,3 +2714,78 @@ class WebsiteContractBookingFixed(http.Controller):
     @http.route('/rental/payment/test', auth='public', website=False, type='http', methods=['POST'], csrf=False)
     def test_rental_payment(self):
         return "TEST RENTAL PAYMENT OK"
+
+    @http.route('/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
+    def rental_payment(self, **kw):
+        """Create payment transaction for vehicle rental"""
+        import logging
+        import traceback
+        import time as time_mod
+        _logger = logging.getLogger(__name__)
+        try:
+            category_id = int(kw.get('category_id', 0))
+            selected_price = float(kw.get('selected_price', 0))
+            customer_name = kw.get('customer_name', '')
+            customer_email = kw.get('customer_email', '')
+            customer_phone = kw.get('customer_phone', '')
+            start_date = kw.get('start_date', '')
+            end_date = kw.get('end_date', '')
+            order_number = kw.get('order_number', f'RENT-{int(time_mod.time())}')
+            
+            _logger.info(f"DEBUG RENTAL PAYMENT: order {order_number}")
+            
+            request.session['booking_data'] = {
+                'category_id': category_id,
+                'customer_name': customer_name,
+                'customer_email': customer_email,
+                'customer_phone': customer_phone,
+                'start_date': start_date,
+                'end_date': end_date,
+            }
+            
+            providers = request.env['payment.provider'].search([('code', '=', 'redsys')], limit=1)
+            if not providers:
+                providers = request.env['payment.provider'].search([], limit=1)
+            if not providers:
+                raise Exception("No provider")
+            
+            _logger.info(f"DEBUG: Provider {providers.name}")
+            
+            payment_methods = request.env['payment.method'].search([('provider_ids', 'in', providers.id)], limit=1)
+            
+            if not payment_methods:
+                _logger.info(f"DEBUG: Creating payment method")
+                minimal_image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
+                payment_methods = request.env['payment.method'].sudo().create({
+                    'name': 'Card',
+                    'code': 'card',
+                    'image': minimal_image,
+                    'provider_ids': [(4, providers.id)],
+                })
+            
+            _logger.info(f"DEBUG: Using method {payment_methods.id}")
+            
+            # Usar partner_id del usuario actual o el website user
+            partner = request.env.user.partner_id if request.env.user.partner_id else request.env['res.partner'].create({
+                'name': customer_name or 'Guest',
+                'email': customer_email,
+                'phone': customer_phone,
+            })
+            
+            payment_tx = request.env['payment.transaction'].sudo().create({
+                'provider_id': providers.id,
+                'payment_method_id': payment_methods.id,
+                'amount': selected_price,
+                'currency_id': request.env.company.currency_id.id,
+                'partner_id': partner.id,
+                'reference': order_number,
+            })
+            
+            _logger.info(f"DEBUG: TX {payment_tx.id} created")
+            return request.redirect(f'/payment/process/{payment_tx.id}')
+            
+        except Exception as e:
+            error_detail = traceback.format_exc()
+            _logger.error(f"ERROR: {error_detail}")
+            return error_detail, 500, [('Content-Type', 'text/plain')]
+
