@@ -2854,13 +2854,32 @@ class WebsiteContractBookingFixed(http.Controller):
             merchant_json = json.dumps(merchant_data, separators=(",", ":"))
             merchant_params = base64.b64encode(merchant_json.encode()).decode()
             
-            # Generar firma HMAC-SHA256
+
+            # Generar firma HMAC-SHA256 según especificación Redsys
+            # Derivar clave: HMAC-SHA256(order_number, secret_key)
+            # Firmar: HMAC-SHA256(merchant_params, derived_key)
             try:
-                signature = hmac.new(secret_key.encode(), merchant_params.encode(), hashlib.sha256).digest()
+                derived_key_bytes = hmac.new(
+                    order_number.encode(),
+                    secret_key.encode(),
+                    hashlib.sha256
+                ).digest()
+                signature = hmac.new(
+                    derived_key_bytes,
+                    merchant_params.encode(),
+                    hashlib.sha256
+                ).digest()
                 signature_b64 = base64.b64encode(signature).decode()
                 _logger.info(f"Signature generated: {signature_b64[:20]}...")
             except Exception as e:
                 _logger.error(f"Error generating signature: {e}", exc_info=True)
+                signature_b64 = ''
+
+
+
+
+
+
                 signature_b64 = ''
             
             # Generar formulario HTML para Redsys
