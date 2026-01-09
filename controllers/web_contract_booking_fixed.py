@@ -2872,6 +2872,9 @@ class WebsiteContractBookingFixed(http.Controller):
 </body>
 </html>'''
             
+            _logger.warning(f'REDSYS_FORM_HTML: {html_form}')
+            _logger.warning(f'REDSYS_PARAMS: merchant_params={merchant_params}')
+            _logger.warning(f'REDSYS_SIG: signature_b64={signature_b64}')
             return Response(html_form, mimetype='text/html')
             
         except Exception as e:
