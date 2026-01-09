@@ -2634,6 +2634,7 @@ class WebsiteContractBookingFixed(http.Controller):
     #     try:
     #         # Obtener datos de la reserva
     #         category_id = int(kw.get('category_id', 0))
+            _logger.warning(f"RENTAL_PAYMENT_PARAMS: {kw}")
     #         selected_price = float(kw.get('selected_price', 0))
     #         customer_name = kw.get('customer_name', '')
     #         customer_email = kw.get('customer_email', '')
@@ -2715,7 +2716,6 @@ class WebsiteContractBookingFixed(http.Controller):
     def test_rental_payment(self):
         return "TEST RENTAL PAYMENT OK"
 
-    @http.route('/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     @http.route('/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def rental_payment(self, **kw):
         """Create payment transaction for vehicle rental"""
