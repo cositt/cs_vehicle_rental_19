@@ -2875,8 +2875,8 @@ class WebsiteContractBookingFixed(http.Controller):
 <body onload="document.redsysForm.submit();">
     <form name="redsysForm" action="{redsys_url}" method="POST">
         <input type="hidden" name="Ds_SignatureVersion" value="HMAC_SHA256_V1"/>
-        <input type="hidden" name="Ds_MerchantParameters" value="{escape(merchant_params)}"/>
-        <input type="hidden" name="Ds_Signature" value="{escape(signature_b64)}"/>
+        <input type="hidden" name="Ds_MerchantParameters" value="{merchant_params}"/>
+        <input type="hidden" name="Ds_Signature" value="{signature_b64}"/>
         <noscript>
             <p>Por favor haz clic en el botón para continuar:</p>
             <input type="submit" value="Continuar"/>
