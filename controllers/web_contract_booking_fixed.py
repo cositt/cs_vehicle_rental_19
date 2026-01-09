@@ -2851,7 +2851,7 @@ class WebsiteContractBookingFixed(http.Controller):
             }
             
             # Codificar merchant_data en base64
-            merchant_json = json.dumps(merchant_data)
+            merchant_json = json.dumps(merchant_data, separators=(",", ":"))
             merchant_params = base64.b64encode(merchant_json.encode()).decode()
             
             # Generar firma HMAC-SHA256
@@ -2951,7 +2951,7 @@ class WebsiteContractBookingFixed(http.Controller):
             'Ds_Merchant_UrlKO': f'https://sunsetrent.es/rental/error',
         }
         
-        merchant_json = json.dumps(merchant_data)
+        merchant_json = json.dumps(merchant_data, separators=(",", ":"))
         merchant_params = base64.b64encode(merchant_json.encode()).decode()
         
         signature = hmac.new(secret_key.encode(), merchant_params.encode(), hashlib.sha256).digest()
