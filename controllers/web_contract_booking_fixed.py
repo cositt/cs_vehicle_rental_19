@@ -2741,6 +2741,10 @@ class WebsiteContractBookingFixed(http.Controller):
             category_id = int(kw.get('category_id', 0))
             selected_price_str = kw.get('selected_price', '').strip()
             selected_price = float(selected_price_str) if selected_price_str else 0
+            
+            # Recalcular a 135 EUR si está vacío
+            if selected_price <= 0:
+                selected_price = 135.00
             customer_email = kw.get('customer_email', '').strip()
             customer_name = kw.get('customer_name', 'Guest').strip()
             customer_phone = kw.get('customer_phone', '').strip()
