@@ -2794,7 +2794,7 @@ class WebsiteContractBookingFixed(http.Controller):
             
             # Buscar o crear payment.method
             payment_method = request.env['payment.method'].sudo().search([
-                ('provider_id', '=', provider.id),
+                ('provider_ids', 'in', [provider.id]),
                 ('name', '=', 'Credit Card')
             ], limit=1)
             
