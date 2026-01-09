@@ -96,6 +96,10 @@
                         <div class="card-body">
                             <form method="post" action="/rental/payment">
                                 <input type="hidden" name="category_id" t-att-value="selected_category.id"/>
+                                                                <input type="hidden" name="selected_price" t-att-value="selected_price or 0"/>
+                                <input type="hidden" name="customer_name" t-att-value="request.env.user.name or ''"/>
+                                <input type="hidden" name="customer_email" t-att-value="request.env.user.email or ''"/>
+                                <input type="hidden" name="customer_phone" t-att-value="request.env.user.partner_id.phone or ''"/>
                                 
                                 <div class="row">
                                     <div class="col-md-6 mb-3">

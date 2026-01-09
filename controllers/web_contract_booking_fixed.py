@@ -2658,15 +2658,15 @@ class WebsiteContractBookingFixed(http.Controller):
     #         request.session['booking_data'] = booking_data
 
     #         # Obtener provider Redsys
-    #         providers = request.env['payment.provider'].search([('code', '=', 'redsys')], limit=1)
+    #         providers = request.env['payment.provider'].sudo().search([('code', '=', 'redsys')], limit=1)
     #         if not providers:
-    #             providers = request.env['payment.provider'].search([], limit=1)
+    #             providers = request.env['payment.provider'].sudo().search([], limit=1)
 
     #         if not providers:
     #             raise Exception("No payment provider available")
 
     #         # Obtener payment_method para el provider
-    #         payment_methods = request.env['payment.method'].search([
+    #         payment_methods = request.env['payment.method'].sudo().search([
     #             ('provider_ids', 'in', providers.id)
     #         ], limit=1)
 
@@ -2717,12 +2717,103 @@ class WebsiteContractBookingFixed(http.Controller):
 
     @http.route('/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def rental_payment(self, **kw):
+        """Create payment transaction for vehicle rental"""
         import logging
-        _logger = logging.getLogger(__name__)
-        _logger.info("DEBUG RENTAL PAYMENT: REACHED")
         import json
+        import time as time_mod
         from werkzeug.wrappers import Response
-        return Response(json.dumps({"status": "ok", "message": "Rental payment endpoint"}), mimetype='application/json')
+        
+        _logger = logging.getLogger(__name__)
+        
+        try:
+            # Extraer parámetros
+            category_id = int(kw.get('category_id', 0))
+            selected_price = float(kw.get('selected_price', 0))
+            customer_name = kw.get('customer_name', '')
+            customer_email = kw.get('customer_email', '')
+            customer_phone = kw.get('customer_phone', '')
+            start_date = kw.get('start_date', '')
+            end_date = kw.get('end_date', '')
+            start_time = kw.get('start_time', '00:00')
+            end_time = kw.get('end_time', '00:00')
+            order_number = kw.get('order_number', f'RENT-{int(time_mod.time())}')
+            
+            _logger.info(f"RENTAL PAYMENT: order={order_number}, amount={selected_price}, customer={customer_email}")
+            
+            # Validar datos requeridos
+            if not category_id or not selected_price or not customer_email:
+                return Response(
+                    json.dumps({"error": "Missing required fields"}),
+                    status=400,
+                    mimetype='application/json'
+                )
+            
+            # Guardar datos en sesión
+            request.session['booking_data'] = {
+                'category_id': category_id,
+                'customer_name': customer_name,
+                'customer_email': customer_email,
+                'customer_phone': customer_phone,
+                'start_date': start_date,
+                'end_date': end_date,
+                'start_time': start_time,
+                'end_time': end_time,
+                'amount': selected_price,
+            }
+            
+            # Obtener o crear partner
+            partner = request.env.user.partner_id
+            if not partner.email:
+                partner.write({'email': customer_email, 'phone': customer_phone})
+            
+            # Obtener provider Redsys
+            provider = request.env['payment.provider'].sudo().search([('code', '=', 'redsys')], limit=1)
+            if not provider:
+                provider = request.env['payment.provider'].sudo().search([], limit=1)
+            
+            if not provider:
+                raise Exception("No payment provider configured")
+            
+            _logger.info(f"Using provider: {provider.name}")
+            
+            # Obtener payment_method
+            payment_method = request.env['payment.method'].sudo().search([
+                ('provider_ids', 'in', provider.id)
+            ], limit=1)
+            
+            if not payment_method:
+                # Crear payment_method si no existe
+                minimal_image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
+                payment_method = request.env['payment.method'].sudo().create({
+                    'name': 'Credit Card',
+                    'code': 'card',
+                    'image': minimal_image,
+                    'provider_ids': [(4, provider.id)],
+                })
+                _logger.info(f"Created payment.method: {payment_method.id}")
+            
+            # Crear payment.transaction
+            tx = request.env['payment.transaction'].sudo().create({
+                'provider_id': provider.id,
+                'payment_method_id': payment_method.id,
+                'amount': selected_price,
+                'currency_id': request.env.company.currency_id.id,
+                'partner_id': partner.id,
+                'reference': order_number,
+            })
+            
+            _logger.info(f"Created payment.transaction: {tx.id}")
+            
+            # Redirigir a formulario de pago
+            return request.redirect(f'/payment/process/{tx.id}')
+            
+        except Exception as e:
+            _logger.error(f"RENTAL PAYMENT ERROR: {str(e)}", exc_info=True)
+            return Response(
+                json.dumps({"error": str(e)}),
+                status=500,
+                mimetype='application/json'
+            )
 
     @http.route('/rental/payment-test', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def rental_payment_test(self, **kw):
