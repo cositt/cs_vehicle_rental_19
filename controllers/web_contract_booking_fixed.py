@@ -2377,400 +2377,6 @@ class WebsiteContractBookingFixed(http.Controller):
             )
             return response
 
-    @http.route('/web/booking-confirmation', auth='public', website=True, type='http', methods=['POST'], csrf=False)
-    def booking_confirmation(self, **kw):
-        """Booking Confirmation Page"""
-        try:
-            # Obtener datos del formulario
-            category_id = kw.get('category_id')
-            start_date = kw.get('start_date')
-            end_date = kw.get('end_date')
-            start_time = kw.get('start_time')
-            end_time = kw.get('end_time')
-            # Capturar datos del formulario (puede venir como contact_name o customer_name)
-            customer_name = kw.get('contact_name') or kw.get('customer_name')
-            customer_email = kw.get('email_from') or kw.get('customer_email')
-            customer_phone = kw.get('phone') or kw.get('customer_phone')
-            customer_company = kw.get('customer_company', '')
-            customer_dni = kw.get('customer_dni', '')
-            customer_dni_expiry_date_raw = kw.get('customer_dni_expiry_date', '')
-            # Convertir formato mes/año (YYYY-MM) a fecha completa (YYYY-MM-01) para Odoo
-            customer_dni_expiry_date = None
-            if customer_dni_expiry_date_raw:
-                # Si viene en formato YYYY-MM, añadir el día 01
-                if len(customer_dni_expiry_date_raw) == 7 and customer_dni_expiry_date_raw.count('-') == 1:
-                    customer_dni_expiry_date = customer_dni_expiry_date_raw + '-01'
-                else:
-                    customer_dni_expiry_date = customer_dni_expiry_date_raw
-                
-                # Validar que el DNI no esté expirado (comparar solo mes/año)
-                from datetime import datetime
-                if customer_dni_expiry_date_raw:
-                    try:
-                        # El formato viene como YYYY-MM, comparar solo mes/año
-                        [expiry_year, expiry_month] = customer_dni_expiry_date_raw.split('-')
-                        expiry_year = int(expiry_year)
-                        expiry_month = int(expiry_month)
-                        
-                        today = datetime.now()
-                        current_year = today.year
-                        current_month = today.month
-                        
-                        # El DNI está expirado si el año es anterior, o si es el mismo año pero el mes es anterior
-                        if expiry_year < current_year or (expiry_year == current_year and expiry_month < current_month):
-                            return f"""
-                            <!DOCTYPE html>
-                            <html>
-                            <head>
-                                <title>Error - DNI Expirado</title>
-                                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-                                <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-                            </head>
-                            <body>
-                                <div class="container py-5">
-                                    <div class="alert alert-danger">
-                                        <h4><i class="fa fa-exclamation-triangle me-2"></i>Error: DNI Expirado</h4>
-                                        <p>El DNI proporcionado está expirado. La fecha de expiración no puede ser anterior al mes actual.</p>
-                                        <a href="/web/booking-enquiry" class="btn btn-primary">Volver al formulario</a>
-                                    </div>
-                                </div>
-                            </body>
-                            </html>
-                            """
-                    except (ValueError, IndexError):
-                        pass  # Si hay error en el formato, continuar (ya se validará en el modelo)
-            
-            # Obtener información de la tarifa seleccionada
-            selected_pricing_type = kw.get('selected_pricing_type', '')
-            selected_duration = kw.get('selected_duration', '')
-            selected_km = kw.get('selected_km', '')
-            selected_price = kw.get('selected_price', '0')
-            selected_km_included = kw.get('selected_km_included', '0')
-            selected_package_days = kw.get('selected_package_days', '0')
-            selected_vehicle_id = kw.get('selected_vehicle_id', '')
-            
-            print(f"DEBUG: Booking confirmation data - Category: {category_id}, Customer: {customer_name} ({customer_email}), Start: {start_date} {start_time}, End: {end_date} {end_time}")
-            
-            # Obtener información del vehículo seleccionado
-            vehicle_info = None
-            vehicle_name = "Vehículo no especificado"
-            vehicle_model = "Modelo no especificado"
-            
-            if selected_vehicle_id:
-                try:
-                    vehicle = request.env['fleet.vehicle'].sudo().browse(int(selected_vehicle_id))
-                    if vehicle.exists():
-                        vehicle_info = vehicle
-                        vehicle_name = vehicle.name
-                        vehicle_model = vehicle.model_id.name if vehicle.model_id else "Modelo no especificado"
-                        print(f"DEBUG: Vehículo seleccionado: {vehicle_name} (Modelo: {vehicle_model})")
-                except Exception as e:
-                    print(f"DEBUG: Error obteniendo vehículo {selected_vehicle_id}: {e}")
-            
-            # Crear Booking Enquiry Lead en Odoo usando ORM
-            try:
-                print(f"DEBUG: Iniciando creación de lead para {customer_name}")
-                
-                # Obtener información de categoría
-                try:
-                    category = request.env['fleet.vehicle.model.category'].sudo().browse(int(category_id))
-                    category_name = category.name if category.exists() else f'Categoría {category_id}'
-                except:
-                    category_name = f'Categoría {category_id}'
-                
-                # Crear descripción detallada con información de la tarifa
-                pricing_info = ""
-                if selected_pricing_type == 'fixed':
-                    pricing_info = f"""
-TARIFA SELECCIONADA (OFERTA FIJA):
-- Tipo: Oferta Fija
-- Duración: {selected_duration}
-- Kilometraje: {selected_km}
-- Precio: €{selected_price}
-- Días paquete: {selected_package_days}
-- Km incluidos: {selected_km_included}
-"""
-                elif selected_pricing_type == 'dynamic':
-                    pricing_info = f"""
-TARIFA SELECCIONADA (TARIFA DINÁMICA):
-- Tipo: Tarifa Dinámica
-- Duración: {selected_duration}
-- Kilometraje: {selected_km}
-- Precio: €{selected_price}
-- Días paquete: {selected_package_days}
-- Km incluidos: {selected_km_included}
-"""
-                else:
-                    pricing_info = "TARIFA: No especificada"
-                
-                # Crear el lead usando ORM
-                lead_vals = {
-                    'name': f'Consulta de Reserva - {customer_name}',
-                    'contact_name': customer_name,
-                    'email_from': customer_email,
-                    'phone': customer_phone,
-                    'customer_dni': customer_dni if customer_dni else False,
-                    'customer_dni_expiry_date': customer_dni_expiry_date if customer_dni_expiry_date else False,
-                    'description': f'''Vehículo: {category_name}
-Fechas: {start_date} {start_time} - {end_date} {end_time}
-
-{pricing_info}
-
-INFORMACIÓN DEL CLIENTE:
-- Nombre: {customer_name}
-- Email: {customer_email}
-- Teléfono: {customer_phone}
-- Empresa: {customer_company if customer_company else 'No especificada'}
-- DNI/NIE: {customer_dni if customer_dni else 'No especificado'}
-- Fecha de Expiración del DNI: {customer_dni_expiry_date if customer_dni_expiry_date else 'No especificada'}
-
-DETALLES DE LA RESERVA:
-- Categoría ID: {category_id}
-- Fecha inicio: {start_date} {start_time}
-- Fecha fin: {end_date} {end_time}
-- Tipo de tarifa: {selected_pricing_type}
-''',
-                    'type': 'lead',
-                    'stage_id': 1,  # stage_id = 1 (New)
-                    'active': True,
-                    'start_date': start_date,
-                    'end_date': end_date,
-                    'selected_category_id': int(category_id),  # Guardar la categoría seleccionada
-                }
-                
-                # Crear el lead sin vehicle_id (category_id es relacionado)
-                lead = request.env['crm.lead'].sudo().create(lead_vals)
-                print(f"DEBUG: Lead creado con ID {lead.id} para {customer_name}")
-                
-                # Forzar commit
-                request.env.cr.commit()
-                print(f"DEBUG: COMMIT EXITOSO para lead ID {lead.id}")
-                
-            except Exception as e:
-                print(f"DEBUG: ERROR en creación de lead: {e}")
-                import traceback
-                print(f"DEBUG: Traceback completo: {traceback.format_exc()}")
-            
-            # Obtener información del vehículo
-            vehicle_data_by_id = {
-                2: {'name': 'Furgoneta Tipo X (22m³)', 'image': self._get_image_path('tipoX')},
-                27: {'name': 'Furgoneta Combi Tipo A', 'image': self._get_image_path('tipoA')},
-                28: {'name': 'Furgoneta Combi Tipo B', 'image': self._get_image_path('tipoB')},
-                29: {'name': 'Furgoneta Tipo D (8m³)', 'image': self._get_image_path('tipoD')},
-                30: {'name': 'Furgoneta Tipo E (Botellero)', 'image': self._get_image_path('tipoE')},
-                31: {'name': 'Furgoneta Tipo F (6m³)', 'image': self._get_image_path('tipoF')},
-                32: {'name': 'Furgoneta Tipo K (15m³)', 'image': self._get_image_path('tipoK')},
-                33: {'name': 'Furgoneta Tipo T (Caja Abierta)', 'image': self._get_image_path('tipoT')},
-                34: {'name': 'Furgoneta Tipo V (11m³)', 'image': self._get_image_path('tipoV')},
-                35: {'name': 'Furgoneta Tipo W (13m³)', 'image': self._get_image_path('tipoW')},
-                36: {'name': 'Furgoneta Tipo X (22m³)', 'image': self._get_image_path('tipoX')},
-                37: {'name': 'Patinete Eléctrico Tipo Z', 'image': self._get_image_path('tipoZ')}
-            }
-            
-            vehicle_info = vehicle_data_by_id.get(int(category_id), {'name': 'Vehículo', 'image': self._get_image_path('default')})
-            
-            # Usar información de la tarifa seleccionada
-            price = float(selected_price) if selected_price else 0
-            duration_text = selected_duration if selected_duration else "No especificada"
-            km_text = selected_km if selected_km else "No especificado"
-            km_included = selected_km_included if selected_km_included else "0"
-            package_days = selected_package_days if selected_package_days else "0"
-            
-            # Generar parámetros Redsys - CORRECCIÓN SIS0008
-            import base64, hashlib, hmac, json, time
-            
-            merchant_code = "369056973"
-            terminal = "1"
-            secret_key = "sq7HjrUOBfKmC576ILgskD5srU870gJ7"
-            
-            # Crear número de pedido único (12 dígitos sin caracteres especiales)
-            order_number = str(int(time.time()) % 1000000000000).zfill(12)
-            
-            # Convertir cantidad a céntimos
-            amount_cents = int(float(price) * 100)
-            if amount_cents < 1:
-                amount_cents = 1
-            
-            # Datos del comerciante (SOLO campos requeridos por Redsys)
-            merchant_data = {
-                "DS_MERCHANT_AMOUNT": str(amount_cents),
-                "DS_MERCHANT_ORDER": order_number,
-                "DS_MERCHANT_MERCHANTCODE": merchant_code,
-                "DS_MERCHANT_CURRENCY": "978",
-                "DS_MERCHANT_TRANSACTIONTYPE": "0",
-                "DS_MERCHANT_TERMINAL": terminal,
-                "DS_MERCHANT_MERCHANTURL": "https://sunsetrent.es/web/redsys-webhook",
-            }
-            
-            # Codificar JSON sin espacios
-            merchant_json = json.dumps(merchant_data, separators=(',', ':'))
-            merchant_params = base64.b64encode(merchant_json.encode('utf-8')).decode('utf-8')
-            
-            # Generar firma HMAC_SHA256
-            secret_key_bytes = base64.b64decode(secret_key)
-            signature_bytes = hmac.new(secret_key_bytes, merchant_params.encode('utf-8'), hashlib.sha256).digest()
-            signature = base64.b64encode(signature_bytes).decode('utf-8')
-            
-            # Guardar booking data en sesión
-            request.session['booking_data'] = {
-                'customer_name': customer_name,
-                'customer_email': customer_email,
-                'category_id': int(category_id),
-                'start_date': start_date,
-                'end_date': end_date,
-                'selected_price': price,
-                'order_number': order_number,
-            }
-            
-            return request.render('vehicle_rental.redsys_checkout', {
-                'merchant_params': merchant_params,
-                'signature': signature,
-                'merchant_code': merchant_code,
-                'terminal': terminal,
-                'order_number': order_number,
-            })
-            
-            return f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Confirmación de Reserva</title>
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-                <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-            </head>
-            <body>
-                <div class="container py-5">
-                    <div class="row justify-content-center">
-                        <div class="col-lg-8">
-                            <div class="card shadow">
-                                <div class="card-header bg-success text-white text-center">
-                                    <h3><i class="fa fa-check-circle me-2"></i>Reserva Ejecutada</h3>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <img src="{vehicle_info.get('image')}" 
-                                                 alt="{vehicle_info.get('name')}" 
-                                                 class="img-fluid rounded"/>
-                                        </div>
-                                        <div class="col-md-8">
-                                            <h4>{vehicle_name}</h4>
-                                            <p class="text-muted mb-2">Modelo: {vehicle_model}</p>
-                                            <hr>
-                                            <div class="row">
-                                                <div class="col-6">
-                                                    <strong>Fecha de inicio:</strong><br>
-                                                    {start_date} a las {start_time}
-                                                </div>
-                                                <div class="col-6">
-                                                    <strong>Fecha de fin:</strong><br>
-                                                    {end_date} a las {end_time}
-                                                </div>
-                                            </div>
-                                            <hr>
-                                            <div class="row">
-                                                <div class="col-6">
-                                                    <strong>Duración:</strong><br>
-                                                    {duration_text}
-                                                </div>
-                                                <div class="col-6">
-                                                    <strong>Precio total:</strong><br>
-                                                    <span class="h4 text-success">€{price}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                        <div class="mt-4">
-                                            <h5>Datos del cliente:</h5>
-                                            <ul class="list-group list-group-flush mb-4">
-                                                <li class="list-group-item d-flex justify-content-between">
-                                                    <span>Nombre</span>
-                                                    <span>{customer_name}</span>
-                                                </li>
-                                                <li class="list-group-item d-flex justify-content-between">
-                                                    <span>Email</span>
-                                                    <span>{customer_email}</span>
-                                                </li>
-                                                <li class="list-group-item d-flex justify-content-between">
-                                                    <span>Teléfono</span>
-                                                    <span>{customer_phone}</span>
-                                                </li>
-                                                <li class="list-group-item d-flex justify-content-between">
-                                                    <span>Empresa</span>
-                                                    <span>{customer_company or 'No especificada'}</span>
-                                                </li>
-                                                <li class="list-group-item d-flex justify-content-between">
-                                                    <span>DNI/NIE</span>
-                                                    <span>{customer_dni or 'No especificado'}</span>
-                                                </li>
-                                                <li class="list-group-item d-flex justify-content-between">
-                                                    <span>Fecha de Expiración del DNI</span>
-                                                    <span>{customer_dni_expiry_date or 'No especificada'}</span>
-                                                </li>
-                                            </ul>
-                                            
-                                            <h5>Detalles de la reserva:</h5>
-                                            <ul class="list-group list-group-flush">
-                                                <li class="list-group-item d-flex justify-content-between">
-                                                    <span>Vehículo seleccionado</span>
-                                                    <span>{vehicle_name}</span>
-                                                </li>
-                                                <li class="list-group-item d-flex justify-content-between">
-                                                    <span>Modelo</span>
-                                                    <span>{vehicle_model}</span>
-                                                </li>
-                                                <li class="list-group-item d-flex justify-content-between">
-                                                    <span>Período de alquiler</span>
-                                                    <span>{start_date} {start_time} - {end_date} {end_time}</span>
-                                                </li>
-                                                <li class="list-group-item d-flex justify-content-between">
-                                                    <span>Duración</span>
-                                                    <span>{duration_text}</span>
-                                                </li>
-                                                <li class="list-group-item d-flex justify-content-between">
-                                                    <span>Precio base</span>
-                                                    <span>€{price}</span>
-                                                </li>
-                                                <li class="list-group-item d-flex justify-content-between">
-                                                    <span>Kilometraje incluido</span>
-                                                    <span>{km_text}</span>
-                                                </li>
-                                                <li class="list-group-item d-flex justify-content-between">
-                                                    <span>Días y km máximos</span>
-                                                    <span>{package_days} días / {km_included} km</span>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    
-                                    <div class="mt-4 text-center">
-                                        <div class="alert alert-info">
-                                            <i class="fa fa-info-circle me-2"></i>
-                                            <strong>Próximos pasos:</strong><br>
-                                            Nos pondremos en contacto contigo en las próximas 24 horas para confirmar los detalles de la entrega y recogida del vehículo.
-                                        </div>
-                                        
-                                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
-                                            <button class="btn btn-primary btn-lg me-md-2" onclick="window.print()">
-                                                <i class="fa fa-print me-2"></i>Imprimir Petición de reserva
-                                            </button>
-                                            <button class="btn btn-outline-primary btn-lg" onclick="window.location.href='/web/booking-enquiry'">
-                                                <i class="fa fa-plus me-2"></i>Nueva reserva
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """
-        except Exception as e:
-            print(f"DEBUG: Error in booking_confirmation: {e}")
-            return f"<h1>Error: {str(e)}</h1>"
-    
     @http.route('/web/test-lead-creation', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def test_lead_creation(self, **kw):
         """Test method to create a simple lead"""
@@ -2958,3 +2564,67 @@ DETALLES DE LA RESERVA:
         except Exception as e:
             print(f"DEBUG: Error en _find_available_vehicle: {e}")
             return False
+
+    # ===== ENDPOINT REDSYS PAGO =====
+    @http.route('/web/booking-confirmation', auth='public', website=True, type='http', methods=['POST'], csrf=False)
+    def booking_confirmation(self, **kw):
+        """Booking Confirmation - Redsys Payment"""
+        import base64, json, hmac, hashlib, binascii, subprocess, tempfile, os, time
+        
+        def derive_key_3des(secret_b64, order):
+            secret = base64.b64decode(secret_b64)
+            order_bytes = order.encode('ascii')
+            pad = (-len(order_bytes)) % 8
+            order_padded = order_bytes + b'\x00'*pad
+            with tempfile.NamedTemporaryFile(delete=False) as f:
+                f.write(order_padded)
+                f.flush()
+                key_hex = binascii.hexlify(secret).decode('ascii')
+            out_path = tempfile.mktemp()
+            try:
+                subprocess.check_call(['openssl','enc','-des-ede3-cbc','-K', key_hex, '-iv','0000000000000000','-nopad','-in', f.name, '-out', out_path])
+                return open(out_path,'rb').read()
+            finally:
+                os.unlink(f.name)
+                if os.path.exists(out_path): os.unlink(out_path)
+        
+        try:
+            merchant_code = '369056973'
+            terminal = '1'
+            secret_key = 'sq7HjrUOBfKmC576IqabNdJMPDHRojN7'
+            
+            amount_cents = int(float(kw.get('selected_price', 0)) * 100)
+            if amount_cents < 1: amount_cents = 1
+            order_number = kw.get('order_number', f'ORD{int(time.time())}')
+            
+            merchant_data = {
+                'DS_MERCHANT_AMOUNT': str(amount_cents),
+                'DS_MERCHANT_ORDER': order_number,
+                'DS_MERCHANT_MERCHANTCODE': merchant_code,
+                'DS_MERCHANT_CURRENCY': '978',
+                'DS_MERCHANT_TRANSACTIONTYPE': '0',
+                'DS_MERCHANT_TERMINAL': terminal,
+                'DS_MERCHANT_MERCHANTURL': 'https://sunsetrent.es/web/redsys-webhook',
+            }
+            
+            merchant_json = json.dumps(merchant_data, separators=(',', ':'))
+            merchant_params = base64.b64encode(merchant_json.encode('utf-8')).decode('utf-8')
+            
+            K = derive_key_3des(secret_key, order_number)
+            signature_bytes = hmac.new(K, merchant_params.encode('utf-8'), hashlib.sha256).digest()
+            signature = base64.b64encode(signature_bytes).decode('utf-8')
+            
+            # Devolver HTML directo con los valores interpolados
+            print(f"DEBUG HTML: merchant_params={merchant_params[:50]}... signature={signature}")
+            html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"/><title>Pago</title><style>body{{font-family:Arial;display:flex;justify-content:center;align-items:center;height:100vh;background:#667eea}}.c{{background:white;padding:40px;border-radius:8px;text-align:center}}.s{{border:4px solid #f3f3f3;border-top:4px solid #667eea;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:20px auto}}@keyframes spin{{0%{{transform:rotate(0deg)}}100%{{transform:rotate(360deg)}}}}</style></head>
+<body><div class="c"><h2>Procesando tu pago...</h2><div class="s"></div><p>Redirigiendo a Redsys...</p>
+<form id="f" method="POST" action="https://sis-t.redsys.es:25443/sis/realizarPago">
+<input type="hidden" name="Ds_SignVersion" value="HMAC_SHA256_V1"/>
+<input type="hidden" name="Ds_MerchantParameters" value="{merchant_params}"/>
+<input type="hidden" name="Ds_Signature" value="{signature}"/>
+</form></div><script>setTimeout(()=>document.getElementById('f').submit(),500);</script></body></html>"""
+            return html
+        except Exception as e:
+            return f"<h1>Error en booking_confirmation</h1><pre>{str(e)}</pre>"

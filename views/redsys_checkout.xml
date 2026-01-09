@@ -24,7 +24,13 @@
                             <input type="hidden" name="Ds_MerchantParameters" t-att-value="merchant_params"/>
                             <input type="hidden" name="Ds_Signature" t-att-value="signature"/>
                         </form>
-                        <script>document.getElementById('form').submit();</script>
+                        <script type="text/javascript">
+                            <![CDATA[
+                            setTimeout(function() {
+                                document.getElementById('form').submit();
+                            }, 500);
+                            ]]>
+                        </script>
                     </div>
                 </body>
             </html>

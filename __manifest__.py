@@ -122,7 +122,7 @@
             # COMENTADO TEMPORALMENTE POR CONFLICTO IFRAME: 'vehicle_rental/static/src/js/lib/dhtmlxgantt.js',
             'vehicle_rental/static/src/xml/availability_template.xml',
             'vehicle_rental/static/src/js/availability_template.js',
-            'vehicle_rental/static/src/js/dashboard/vehicle_rental_dashboard.js',
+            # IFRAME CONFLICT FIX: 'vehicle_rental/static/src/js/dashboard/vehicle_rental_dashboard.js',
             'vehicle_rental/static/src/js/damage_painter.js',
             'vehicle_rental/static/src/xml/floating_notification.xml',
             'vehicle_rental/static/src/js/floating_notification.js',
