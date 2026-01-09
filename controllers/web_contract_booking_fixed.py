@@ -2566,65 +2566,58 @@ class WebsiteContractBookingFixed(http.Controller):
             return False
 
     # ===== ENDPOINT REDSYS PAGO =====
-    @http.route('/web/booking-confirmation', auth='public', website=True, type='http', methods=['POST'], csrf=False)
-    def booking_confirmation(self, **kw):
-        """Booking Confirmation - Redsys Payment"""
-        import base64, json, hmac, hashlib, binascii, subprocess, tempfile, os, time
-        
-        def derive_key_3des(secret_b64, order):
-            secret = base64.b64decode(secret_b64)
-            order_bytes = order.encode('ascii')
-            pad = (-len(order_bytes)) % 8
-            order_padded = order_bytes + b'\x00'*pad
-            with tempfile.NamedTemporaryFile(delete=False) as f:
-                f.write(order_padded)
-                f.flush()
-                key_hex = binascii.hexlify(secret).decode('ascii')
-            out_path = tempfile.mktemp()
-            try:
-                subprocess.check_call(['openssl','enc','-des-ede3-cbc','-K', key_hex, '-iv','0000000000000000','-nopad','-in', f.name, '-out', out_path])
-                return open(out_path,'rb').read()
-            finally:
-                os.unlink(f.name)
-                if os.path.exists(out_path): os.unlink(out_path)
-        
-        try:
-            merchant_code = '369056973'
-            terminal = '1'
-            secret_key = 'sq7HjrUOBfKmC576IqabNdJMPDHRojN7'
-            
-            amount_cents = int(float(kw.get('selected_price', 0)) * 100)
-            if amount_cents < 1: amount_cents = 1
-            order_number = kw.get('order_number', f'ORD{int(time.time())}')
-            
-            merchant_data = {
-                'DS_MERCHANT_AMOUNT': str(amount_cents),
-                'DS_MERCHANT_ORDER': order_number,
-                'DS_MERCHANT_MERCHANTCODE': merchant_code,
-                'DS_MERCHANT_CURRENCY': '978',
-                'DS_MERCHANT_TRANSACTIONTYPE': '0',
-                'DS_MERCHANT_TERMINAL': terminal,
-                'DS_MERCHANT_MERCHANTURL': 'https://sunsetrent.es/web/redsys-webhook',
-            }
-            
-            merchant_json = json.dumps(merchant_data, separators=(',', ':'))
-            merchant_params = base64.b64encode(merchant_json.encode('utf-8')).decode('utf-8')
-            
-            K = derive_key_3des(secret_key, order_number)
-            signature_bytes = hmac.new(K, merchant_params.encode('utf-8'), hashlib.sha256).digest()
-            signature = base64.b64encode(signature_bytes).decode('utf-8')
-            
-            # Devolver HTML directo con los valores interpolados
-            print(f"DEBUG HTML: merchant_params={merchant_params[:50]}... signature={signature}")
-            html = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"/><title>Pago</title><style>body{{font-family:Arial;display:flex;justify-content:center;align-items:center;height:100vh;background:#667eea}}.c{{background:white;padding:40px;border-radius:8px;text-align:center}}.s{{border:4px solid #f3f3f3;border-top:4px solid #667eea;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:20px auto}}@keyframes spin{{0%{{transform:rotate(0deg)}}100%{{transform:rotate(360deg)}}}}</style></head>
-<body><div class="c"><h2>Procesando tu pago...</h2><div class="s"></div><p>Redirigiendo a Redsys...</p>
-<form id="f" method="POST" action="https://sis-t.redsys.es:25443/sis/realizarPago">
-<input type="hidden" name="Ds_SignVersion" value="HMAC_SHA256_V1"/>
-<input type="hidden" name="Ds_MerchantParameters" value="{merchant_params}"/>
-<input type="hidden" name="Ds_Signature" value="{signature}"/>
-</form></div><script>setTimeout(()=>document.getElementById('f').submit(),500);</script></body></html>"""
-            return html
-        except Exception as e:
-            return f"<h1>Error en booking_confirmation</h1><pre>{str(e)}</pre>"
+#     @http.route('/web/booking-confirmation', auth='public', website=True, type='http', methods=['POST'], csrf=False)
+#     def booking_confirmation(self, **kw):
+#         """Booking Confirmation - Redsys Payment"""
+#         import base64, json, hmac, hashlib, binascii, subprocess, tempfile, os, time
+#         
+#         def derive_key_3des(secret_b64, order):
+#             secret = base64.b64decode(secret_b64)
+#             order_bytes = order.encode('ascii')
+#             pad = (-len(order_bytes)) % 8
+#             order_padded = order_bytes + b'\x00'*pad
+#             with tempfile.NamedTemporaryFile(delete=False) as f:
+#                 f.write(order_padded)
+#                 f.flush()
+#                 key_hex = binascii.hexlify(secret).decode('ascii')
+#             out_path = tempfile.mktemp()
+#             try:
+#                 subprocess.check_call(['openssl','enc','-des-ede3-cbc','-K', key_hex, '-iv','0000000000000000','-nopad','-in', f.name, '-out', out_path])
+#                 return open(out_path,'rb').read()
+#             finally:
+#                 os.unlink(f.name)
+#                 if os.path.exists(out_path): os.unlink(out_path)
+#         
+#         try:
+#             merchant_code = '369056973'
+#             terminal = '1'
+#             secret_key = 'sq7HjrUOBfKmC576IqabNdJMPDHRojN7'
+#             
+#             amount_cents = int(float(kw.get('selected_price', 0)) * 100)
+#             if amount_cents < 1: amount_cents = 1
+#             order_number = kw.get('order_number', f'ORD{int(time.time())}')
+#             
+#             merchant_data = {
+#                 'DS_MERCHANT_AMOUNT': str(amount_cents),
+#                 'DS_MERCHANT_ORDER': order_number,
+#                 'DS_MERCHANT_MERCHANTCODE': merchant_code,
+#                 'DS_MERCHANT_CURRENCY': '978',
+#                 'DS_MERCHANT_TRANSACTIONTYPE': '0',
+#                 'DS_MERCHANT_TERMINAL': terminal,
+#                 'DS_MERCHANT_MERCHANTURL': 'https://sunsetrent.es/web/redsys-webhook',
+#             }
+#             
+#             merchant_json = json.dumps(merchant_data, separators=(',', ':'))
+#             merchant_params = base64.b64encode(merchant_json.encode('utf-8')).decode('utf-8')
+#             
+#             K = derive_key_3des(secret_key, order_number)
+#             signature_bytes = hmac.new(K, merchant_params.encode('utf-8'), hashlib.sha256).digest()
+#             signature = base64.b64encode(signature_bytes).decode('utf-8')
+#             
+#             # Devolver HTML directo con los valores interpolados
+#             print(f"DEBUG HTML: merchant_params={merchant_params[:50]}... signature={signature}")
+#             html = '<html><body onload="document.forms[0].submit()"><h2>Procesando pago...</h2><form id="f" method="POST" action="https://sis-t.redsys.es:25443/sis/realizarPago"><input type="hidden" name="Ds_SignVersion" value="HMAC_SHA256_V1"/><input type="hidden" name="Ds_MerchantParameters" value="' + merchant_params + '"/><input type="hidden" name="Ds_Signature" value="' + signature + '"/></form></body></html>'
+#             return html
+# 
+#         except Exception as e:
+#             return f"<h1>Error en booking_confirmation</h1><pre>{str(e)}</pre>"
