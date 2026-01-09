@@ -2716,12 +2716,16 @@ class WebsiteContractBookingFixed(http.Controller):
         return "TEST RENTAL PAYMENT OK"
 
     @http.route('/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
+    @http.route('/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def rental_payment(self, **kw):
         """Create payment transaction for vehicle rental"""
         import logging
         import json
-        import time as time_mod
+        import base64
+        import hmac
+        import hashlib
         from werkzeug.wrappers import Response
+        import time as time_mod
         
         _logger = logging.getLogger(__name__)
         
@@ -2729,19 +2733,17 @@ class WebsiteContractBookingFixed(http.Controller):
             # Extraer parámetros
             category_id = int(kw.get('category_id', 0))
             selected_price = float(kw.get('selected_price', 0))
-            customer_name = kw.get('customer_name', '')
-            customer_email = kw.get('customer_email', '')
-            customer_phone = kw.get('customer_phone', '')
+            customer_email = kw.get('customer_email', '').strip()
+            customer_name = kw.get('customer_name', 'Guest').strip()
+            customer_phone = kw.get('customer_phone', '').strip()
+            
             start_date = kw.get('start_date', '')
             end_date = kw.get('end_date', '')
-            start_time = kw.get('start_time', '00:00')
-            end_time = kw.get('end_time', '00:00')
-            order_number = kw.get('order_number', f'RENT-{int(time_mod.time())}')
+            start_time = kw.get('start_time', '')
+            end_time = kw.get('end_time', '')
             
-            _logger.info(f"RENTAL PAYMENT: order={order_number}, amount={selected_price}, customer={customer_email}")
-            
-            # Validar datos requeridos
-            if not category_id or not selected_price or not customer_email:
+            # Validar campos requeridos
+            if not category_id or selected_price <= 0 or not customer_email:
                 return Response(
                     json.dumps({"error": "Missing required fields"}),
                     status=400,
@@ -2751,46 +2753,57 @@ class WebsiteContractBookingFixed(http.Controller):
             # Guardar datos en sesión
             request.session['booking_data'] = {
                 'category_id': category_id,
-                'customer_name': customer_name,
+                'selected_price': selected_price,
                 'customer_email': customer_email,
+                'customer_name': customer_name,
                 'customer_phone': customer_phone,
                 'start_date': start_date,
                 'end_date': end_date,
                 'start_time': start_time,
                 'end_time': end_time,
-                'amount': selected_price,
             }
             
-            # Obtener o crear partner
-            partner = request.env.user.partner_id
-            if not partner.email:
-                partner.write({'email': customer_email, 'phone': customer_phone})
+            # Obtener/crear partner
+            partner = request.env['res.partner'].sudo().search([('email', '=', customer_email)], limit=1)
+            if not partner:
+                partner = request.env['res.partner'].sudo().create({
+                    'name': customer_name,
+                    'email': customer_email,
+                    'phone': customer_phone,
+                    'customer_rank': 1,
+                })
+            else:
+                partner.sudo().write({
+                    'phone': customer_phone or partner.phone,
+                    'name': customer_name or partner.name,
+                })
             
-            # Obtener provider Redsys
+            order_number = f'ORD{int(time_mod.time())}'
+            
+            # Buscar provider Redsys
             provider = request.env['payment.provider'].sudo().search([('code', '=', 'redsys')], limit=1)
             if not provider:
                 provider = request.env['payment.provider'].sudo().search([], limit=1)
             
             if not provider:
-                raise Exception("No payment provider configured")
+                return Response(
+                    json.dumps({"error": "No payment provider found"}),
+                    status=500,
+                    mimetype='application/json'
+                )
             
-            _logger.info(f"Using provider: {provider.name}")
-            
-            # Obtener payment_method
+            # Buscar o crear payment.method
             payment_method = request.env['payment.method'].sudo().search([
-                ('provider_ids', 'in', provider.id)
+                ('provider_id', '=', provider.id),
+                ('name', '=', 'Credit Card')
             ], limit=1)
             
             if not payment_method:
-                # Crear payment_method si no existe
-                minimal_image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
                 payment_method = request.env['payment.method'].sudo().create({
                     'name': 'Credit Card',
                     'code': 'card',
-                    'image': minimal_image,
                     'provider_ids': [(4, provider.id)],
                 })
-                _logger.info(f"Created payment.method: {payment_method.id}")
             
             # Crear payment.transaction
             tx = request.env['payment.transaction'].sudo().create({
@@ -2804,25 +2817,17 @@ class WebsiteContractBookingFixed(http.Controller):
             
             _logger.info(f"Created payment.transaction: {tx.id}")
             
-            # Generar formulario Redsys directamente
-            import base64
-            import hmac
-            import hashlib
-            import subprocess
-            import tempfile
-            import os
-            import binascii
-            
+            # Generar formulario Redsys usando HMAC-SHA256_V1
             merchant_code = '369056973'
             terminal = '978'
-            secret_key_b64 = 'sq7HjrUOBfKmC576IqabNdJMPDHRojN7'
+            secret_key = 'sq7HjrUOBfKmC576IqabNdJMPDHRojN7'
             
             amount_cents = int(selected_price * 100)
             currency = '978'  # EUR
             
             merchant_data = {
                 'Ds_Merchant_Amount': str(amount_cents),
-                'Ds_Merchant_Currency': currency,
+                'Ds_Merchant_Currency': str(currency),
                 'Ds_Merchant_Order': order_number.zfill(12),
                 'Ds_Merchant_MerchantCode': merchant_code,
                 'Ds_Merchant_Terminal': terminal,
@@ -2832,44 +2837,23 @@ class WebsiteContractBookingFixed(http.Controller):
                 'Ds_Merchant_UrlKO': f'https://sunsetrent.es/rental/error',
             }
             
+            # Codificar merchant_data en base64
             merchant_json = json.dumps(merchant_data)
             merchant_params = base64.b64encode(merchant_json.encode()).decode()
             
+            # Generar firma HMAC-SHA256
             try:
-                secret_bytes = base64.b64decode(secret_key_b64)
-                order_bytes = order_number.zfill(12).encode()
-                
-                with tempfile.NamedTemporaryFile(delete=False) as f:
-                    f.write(order_bytes)
-                    f.flush()
-                    key_hex = binascii.hexlify(secret_bytes).decode()
-                
-                out_path = tempfile.mktemp()
-                try:
-                    subprocess.check_call([
-                        'openssl', 'enc', '-des-ede3-cbc',
-                        '-K', key_hex,
-                        '-iv', '0000000000000000',
-                        '-nopad',
-                        '-in', f.name,
-                        '-out', out_path
-                    ])
-                    with open(out_path, 'rb') as out:
-                        key_3des = base64.b64encode(out.read()).decode()
-                finally:
-                    os.unlink(f.name)
-                    if os.path.exists(out_path):
-                        os.unlink(out_path)
-                
-                signature = hmac.new(key_3des.encode(), merchant_params.encode(), hashlib.sha256).digest()
+                signature = hmac.new(secret_key.encode(), merchant_params.encode(), hashlib.sha256).digest()
                 signature_b64 = base64.b64encode(signature).decode()
+                _logger.info(f"Signature generated: {signature_b64[:20]}...")
             except Exception as e:
-                _logger.error(f"Error generating signature: {e}")
+                _logger.error(f"Error generating signature: {e}", exc_info=True)
                 signature_b64 = ''
             
+            # Generar formulario HTML para Redsys
             redsys_url = 'https://sis-t.redsys.es:25443/sis/realizarPago'
             
-            html = f'''<!DOCTYPE html>
+            html_form = f'''<!DOCTYPE html>
 <html>
 <head>
     <title>Procesando pago...</title>
@@ -2887,8 +2871,8 @@ class WebsiteContractBookingFixed(http.Controller):
 </body>
 </html>'''
             
-            return Response(html, mimetype='text/html')
-
+            return Response(html_form, mimetype='text/html')
+            
         except Exception as e:
             _logger.error(f"RENTAL PAYMENT ERROR: {str(e)}", exc_info=True)
             return Response(
@@ -2896,6 +2880,7 @@ class WebsiteContractBookingFixed(http.Controller):
                 status=500,
                 mimetype='application/json'
             )
+
 
     @http.route('/rental/payment-test', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def rental_payment_test(self, **kw):
