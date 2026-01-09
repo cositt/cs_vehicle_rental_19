@@ -12,4 +12,5 @@ from . import sunset_services_controller
 from . import pinveco_home_controller
 from . import domain_debug_controller
 from . import test_endpoint
+from . import payment_controller
 from . import payment_gateway
