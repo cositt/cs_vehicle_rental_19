@@ -79,7 +79,7 @@
                                 <h4>Reservar este vehículo</h4>
                             </div>
                             <div class="card-body">
-                                <form method="post" action="/web/rental/payment">
+                                <form method="post" action="/rental/payment">
                                     <input type="hidden" name="category_id" t-att-value="category_id"/>
                                     
                                     <h5 class="mb-3">Datos de contacto</h5>

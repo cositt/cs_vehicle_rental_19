@@ -2623,20 +2623,16 @@ class WebsiteContractBookingFixed(http.Controller):
 #             return f"<h1>Error en booking_confirmation</h1><pre>{str(e)}</pre>"
 
     # ===== NUEVO FLUJO: Usar payment_redsys nativo =====
-    @http.route('/api/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
+    @http.route('/rental/payment', auth='public', website=False, type='http', methods=['POST'], csrf=False)
     def rental_payment_gateway(self, **kw):
-        """
-        Create payment.transaction for vehicle rental booking.
-        This endpoint creates a payment.transaction with Redsys provider.
-        The payment_redsys module will handle the form generation and submission.
-        """
+        """Create payment transaction for vehicle rental"""
         try:
             import logging
             import json
             import time
             _logger = logging.getLogger(__name__)
             
-            # Obtener datos de la reserva desde el formulario
+            # Obtener datos de la reserva
             category_id = int(kw.get('category_id', 0))
             selected_price = float(kw.get('selected_price', 0))
             customer_name = kw.get('customer_name', '')
@@ -2658,32 +2654,43 @@ class WebsiteContractBookingFixed(http.Controller):
                 'end_date': end_date,
             }
             
-            # Guardar en sesión para que el webhook pueda acceder
+            # Guardar en sesión
             request.session['booking_data'] = booking_data
             
-            # Crear payment.transaction
-            payment_tx = request.env['payment.transaction'].sudo().create({
-                'provider_id': request.env.ref('payment_redsys.payment_provider_redsys').id,
+            # Buscar provider Redsys dinámicamente
+            providers = request.env['payment.provider'].search([('code', '=', 'redsys')], limit=1)
+            
+            payment_data = {
                 'amount': selected_price,
                 'currency_id': request.env.company.currency_id.id,
                 'partner_id': request.env.user.partner_id.id,
                 'reference': order_number,
-                'state': 'draft',
                 'booking_data_json': json.dumps(booking_data),
-            })
+            }
+            
+            if providers:
+                payment_data['provider_id'] = providers.id
+                _logger.info(f"DEBUG: Found Redsys provider ID={providers.id}")
+            else:
+                _logger.warning("DEBUG: No Redsys provider found")
+            
+            # Crear transacción
+            payment_tx = request.env['payment.transaction'].sudo().create(payment_data)
             
             _logger.info(f"DEBUG RENTAL PAYMENT: payment.transaction created with ID {payment_tx.id}")
             
-            # Redirigir al formulario de pago
+            # Redirigir
             return request.redirect(f'/payment/process/{payment_tx.id}')
             
         except Exception as e:
             import logging
             _logger = logging.getLogger(__name__)
             _logger.error(f"ERROR en rental_payment_gateway: {str(e)}", exc_info=True)
-            return request.render('website.error', {
-                'error': f'Error creating payment: {str(e)}'
-            })
+            return f"<h1>Error</h1><p>{str(e)}</p>", 500
     @http.route('/test/rental-endpoint', auth='public', website=True, type='http')
     def test_rental_endpoint(self):
         return "TEST RENTAL ENDPOINT WORKS"
+
+    @http.route('/rental/payment/test', auth='public', website=False, type='http', methods=['POST'], csrf=False)
+    def test_rental_payment(self):
+        return "TEST RENTAL PAYMENT OK"
