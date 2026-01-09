@@ -2898,3 +2898,96 @@ class WebsiteContractBookingFixed(http.Controller):
         except Exception as e:
             _logger.error(f"DEBUG ERROR: {e}")
             return (str(e), 500)
+
+    @http.route('/rental/payment-form-debug', auth='public', website=True, type='http', methods=['GET'], csrf=False)
+    def rental_payment_form_debug(self, **kw):
+        """Debug endpoint to show the form that will be sent to Redsys"""
+        import logging
+        import json
+        import base64
+        import hmac
+        import hashlib
+        from werkzeug.wrappers import Response
+        
+        _logger = logging.getLogger(__name__)
+        
+        # Test data
+        merchant_code = '369056973'
+        terminal = '978'
+        order_number = 'TESTORD123456'
+        selected_price = 150.00
+        tx_id = 999
+        secret_key = 'sq7HjrUOBfKmC576IqabNdJMPDHRojN7'
+        
+        amount_cents = int(selected_price * 100)
+        currency = '978'
+        
+        merchant_data = {
+            'Ds_Merchant_Amount': str(amount_cents),
+            'Ds_Merchant_Currency': str(currency),
+            'Ds_Merchant_Order': order_number.zfill(12),
+            'Ds_Merchant_MerchantCode': merchant_code,
+            'Ds_Merchant_Terminal': terminal,
+            'Ds_Merchant_TransactionType': '0',
+            'Ds_Merchant_MerchantURL': f'https://sunsetrent.es/payment/webhook/{tx_id}',
+            'Ds_Merchant_UrlOK': f'https://sunsetrent.es/rental/success',
+            'Ds_Merchant_UrlKO': f'https://sunsetrent.es/rental/error',
+        }
+        
+        merchant_json = json.dumps(merchant_data)
+        merchant_params = base64.b64encode(merchant_json.encode()).decode()
+        
+        signature = hmac.new(secret_key.encode(), merchant_params.encode(), hashlib.sha256).digest()
+        signature_b64 = base64.b64encode(signature).decode()
+        
+        _logger.warning(f"=== REDSYS DEBUG ===")
+        _logger.warning(f"Merchant Data: {merchant_data}")
+        _logger.warning(f"Merchant Params: {merchant_params}")
+        _logger.warning(f"Signature: {signature_b64}")
+        
+        redsys_url = 'https://sis-t.redsys.es:25443/sis/realizarPago'
+        
+        html_debug = f'''<!DOCTYPE html>
+<html>
+<head>
+    <title>DEBUG Redsys Form</title>
+    <style>
+        body {{ font-family: monospace; padding: 20px; }}
+        .field {{ margin: 10px 0; padding: 10px; background: #f0f0f0; }}
+        .label {{ font-weight: bold; }}
+    </style>
+</head>
+<body>
+    <h1>Redsys Form Debug</h1>
+    <div class="field">
+        <div class="label">Ds_SignatureVersion:</div>
+        <div>HMAC_SHA256_V1</div>
+    </div>
+    <div class="field">
+        <div class="label">Ds_MerchantParameters:</div>
+        <div style="word-break: break-all;">{merchant_params}</div>
+    </div>
+    <div class="field">
+        <div class="label">Ds_Signature:</div>
+        <div>{signature_b64}</div>
+    </div>
+    
+    <h2>Decoded Merchant Data:</h2>
+    <pre>{json.dumps(merchant_data, indent=2)}</pre>
+    
+    <hr>
+    <p>
+        <a href="#" onclick="document.redsysForm.submit(); return false;">Click here to submit to Redsys</a>
+        or
+        <button onclick="document.redsysForm.submit();">Submit Form</button>
+    </p>
+    
+    <form name="redsysForm" action="{redsys_url}" method="POST" style="display:none;">
+        <input type="hidden" name="Ds_SignatureVersion" value="HMAC_SHA256_V1"/>
+        <input type="hidden" name="Ds_MerchantParameters" value="{merchant_params}"/>
+        <input type="hidden" name="Ds_Signature" value="{signature_b64}"/>
+    </form>
+</body>
+</html>'''
+        
+        return Response(html_debug, mimetype='text/html')
