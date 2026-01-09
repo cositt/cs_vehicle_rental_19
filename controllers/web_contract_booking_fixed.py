@@ -1119,7 +1119,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                     <label for="km_select" class="form-label">
                                                         <i class="fa fa-road me-2"></i>Kilometraje incluido
                                                     </label>
-                                                    <select class="form-select" id="km_select" onchange="updateDynamicPricing()" disabled>
+                                                    <select class="form-select" id="km_select" onchange="updateDynamicPricing()" >
                                                         <option value="">Primero selecciona la duración</option>
                                                     </select>
                                                 </div>
@@ -1296,7 +1296,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                     </div>
 
                                                     <div class="text-center">
-                                                        <button type="submit" id="submit_btn" class="btn btn-lg" style="background-color: {primary_color}; border-color: {primary_color}; color: white;" disabled>
+                                                        <button type="submit" id="submit_btn" class="btn btn-lg" style="background-color: {primary_color}; border-color: {primary_color}; color: white;" >
                                                             <i class="fa fa-calendar-check-o me-2"></i>Continuar con la reserva
                                                         </button>
                                                         <div id="submit_requirements" class="mt-2">
