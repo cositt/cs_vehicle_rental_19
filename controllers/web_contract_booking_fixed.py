@@ -5,16 +5,16 @@ import re
 
 
 class WebsiteContractBookingFixed(http.Controller):
-    
+
     def _get_image_path(self, tipo):
         """Retorna la ruta correcta de imagen según la compañía (Sunset vs Pinveco)"""
         current_domain = request.httprequest.headers.get('X-Forwarded-Host', request.httprequest.host)
         is_pinveco = 'pinveco' in current_domain.lower()
-        
+
         # Determinar carpeta según compañía
         img_folder = 'tipos_pinveco' if is_pinveco else 'tipos'
         return f'/vehicle_rental/static/description/img/{img_folder}/{tipo}.png'
-    
+
     def _get_initial_values(self):
         """Get initial values for the booking enquiry"""
         # Obtener categorías de vehículos disponibles (excluyendo las eliminadas desde UI)
@@ -25,13 +25,13 @@ class WebsiteContractBookingFixed(http.Controller):
             'Tipo E',
             'Bici Eléctrica'
         ]
-        
+
         categories = request.env['fleet.vehicle.model.category'].sudo().search([
             ('name', 'not in', excluded_categories)
         ], order='name')
-        
+
         print(f"DEBUG: Booking enquiry categories: {[(c.id, c.name) for c in categories]}")
-        
+
         return {
             'vehicle_categories': categories,
         }
@@ -119,7 +119,7 @@ class WebsiteContractBookingFixed(http.Controller):
                 ]
             }
         }
-        
+
         # Mapeo de categorías a información de Pinveco (por nombre como fallback)
         vehicle_data = {
             'Tipo A - Combi 5 plazas': {
@@ -300,7 +300,7 @@ class WebsiteContractBookingFixed(http.Controller):
                     {'duration': '24h', 'km': '350km', 'price': 80, 'features': ['350km autonomía', 'Recogida y entrega en horario laboral', 'Seguro obligatorio'], 'popular': True}
                 ]
             })
-        
+
         print(f"DEBUG: Returning result: {result.get('name', 'N/A')}")
         return result
 
@@ -316,14 +316,14 @@ class WebsiteContractBookingFixed(http.Controller):
                 ('valid_from', '<=', fields.Date.today()),
                 '|', ('valid_until', '=', False), ('valid_until', '>=', fields.Date.today())
             ], order='km_range, duration_range')
-            
+
             if pricing_rules:
                 # Buscar directamente las 3 tarifas prioritarias en este orden:
                 # 1. 4h/100km
                 # 2. 1-2d/350km (mostrar como 24h/350km)
                 # 3. 1-2d/500km (mostrar como 24h/500km)
                 priority_offers = []
-                
+
                 # Buscar 4h/100km
                 rule_4h_100 = pricing_rules.filtered(
                     lambda r: r.duration_range == '4h' and r.km_range == '100'
@@ -341,7 +341,7 @@ class WebsiteContractBookingFixed(http.Controller):
                         ],
                         'popular': False
                     })
-                
+
                 # Buscar 1-2d/350km
                 rule_1_2d_350 = pricing_rules.filtered(
                     lambda r: r.duration_range == '1-2d' and r.km_range == '350'
@@ -359,7 +359,7 @@ class WebsiteContractBookingFixed(http.Controller):
                         ],
                         'popular': True
                     })
-                
+
                 # Buscar 1-2d/500km
                 rule_1_2d_500 = pricing_rules.filtered(
                     lambda r: r.duration_range == '1-2d' and r.km_range == '500'
@@ -377,7 +377,7 @@ class WebsiteContractBookingFixed(http.Controller):
                         ],
                         'popular': False
                     })
-                
+
                 # Si encontramos las 3 prioritarias, devolverlas
                 if len(priority_offers) >= 3:
                     print(f"DEBUG: Found {len(priority_offers)} priority offers from database")
@@ -385,17 +385,17 @@ class WebsiteContractBookingFixed(http.Controller):
                 elif priority_offers:
                     print(f"DEBUG: Found {len(priority_offers)} priority offers (less than 3)")
                     return priority_offers
-            
+
             # Si no hay tarifas en BD, usar las hardcodeadas
             return default_pricing if default_pricing else []
-            
+
         except Exception as e:
             print(f"DEBUG: Error getting fixed pricing offers: {e}")
             import traceback
             traceback.print_exc()
             # En caso de error, usar las hardcodeadas
             return default_pricing if default_pricing else []
-    
+
     def _get_dynamic_pricing_rules(self, category_id):
         """Obtiene las tarifas dinámicas del módulo para una categoría"""
         try:
@@ -407,7 +407,7 @@ class WebsiteContractBookingFixed(http.Controller):
                 ('valid_from', '<=', fields.Date.today()),
                 '|', ('valid_until', '=', False), ('valid_until', '>=', fields.Date.today())
             ], order='pricing_type, price_per_unit')
-            
+
             # Convertir a formato compatible con la vista
             dynamic_pricing = []
             for rule in pricing_rules:
@@ -415,7 +415,7 @@ class WebsiteContractBookingFixed(http.Controller):
                     # Tarifa estándar - usar los valores directos de la base de datos
                     km_label = rule.km_range if rule.km_range != 'unlimited' else 'Sin límite'
                     duration_label = rule.duration_range
-                    
+
                     dynamic_pricing.append({
                         'type': 'standard',
                         'duration': duration_label,
@@ -444,7 +444,7 @@ class WebsiteContractBookingFixed(http.Controller):
                         'rule_id': rule.id,
                         'popular': True  # FLEXIRENT siempre es popular
                     })
-            
+
             # Si no hay tarifas en la base de datos, usar datos de prueba
             if not dynamic_pricing:
                 test_pricing_data = {
@@ -490,9 +490,9 @@ class WebsiteContractBookingFixed(http.Controller):
                     ]
                 }
                 dynamic_pricing = test_pricing_data.get(category_id, [])
-            
+
             return dynamic_pricing
-            
+
         except Exception as e:
             print(f"DEBUG: Error getting dynamic pricing rules: {e}")
             return []
@@ -501,15 +501,15 @@ class WebsiteContractBookingFixed(http.Controller):
         """Renderiza las tarjetas de tarifas dinámicas"""
         if not pricing_rules:
             return '<div class="col-12"><div class="alert alert-info text-center"><i class="fa fa-info-circle me-2"></i>No hay tarifas dinámicas configuradas para esta categoría de vehículo.</div></div>'
-        
+
         cards_html = []
         for rule in pricing_rules:
             popular_badge = '<div class="badge mb-2" style="background-color: {primary_color}; color: white;">Más Popular</div>' if rule.get('popular') else ''
             border_style = 'border-color: {primary_color} !important; border-width: 2px !important;' if rule.get('popular') else ''
             border_class = 'border-warning' if rule.get('popular') else ''
-            
+
             features_html = ''.join([f'<li class="mb-1"><i class="fa fa-check text-success me-2"></i>{feature}</li>' for feature in rule.get('features', [])])
-            
+
             card_html = f'''
             <div class="col-lg-4 col-md-6 mb-4">
                 <div class="card h-100 {border_class}" style="{border_style}">
@@ -534,7 +534,7 @@ class WebsiteContractBookingFixed(http.Controller):
             </div>
             '''
             cards_html.append(card_html)
-        
+
         return ''.join(cards_html)
 
     @http.route('/web/vehicle-detail/<int:category_id>', auth='public', website=True, type='http')
@@ -552,7 +552,7 @@ class WebsiteContractBookingFixed(http.Controller):
                 primary_color = '#FF8C00'
                 secondary_color = '#FFA500'
                 company_id = 1  # Sunset
-            
+
             # Obtener ubicaciones disponibles según la compañía
             available_locations = []
             if company_id:
@@ -565,19 +565,19 @@ class WebsiteContractBookingFixed(http.Controller):
                         if loc:
                             locations_set.add(loc)
                 available_locations = sorted(list(locations_set))
-            
+
             # Si no hay ubicaciones específicas, usar "Todas" como opción por defecto
             if not available_locations:
                 available_locations = ['Todas las ubicaciones']
-            
+
             # Primero intentar obtener la categoría de la BD
             category = request.env['fleet.vehicle.model.category'].sudo().browse(category_id)
             if not category.exists():
                 return f"<h1>Error: No category found with ID {category_id}</h1>"
-            
+
             print(f"DEBUG: Category found - ID: {category_id}, Name: {category.name}")
             print(f"DEBUG: Available locations for company {company_id}: {available_locations}")
-            
+
             # Mapeo por nombre de categoría para independencia de IDs entre desarrollo y producción
             vehicle_data_by_name = {
                 'Tipo A': {
@@ -724,16 +724,16 @@ class WebsiteContractBookingFixed(http.Controller):
                     ]
                 },
             }
-            
+
             # Extraer el "tipo" del nombre de la categoría (e.g., "Tipo B - Furgoneta 22m³ plataforma" -> "Tipo B")
             tipo_match = re.match(r'^(Tipo [A-Z])', category.name, re.IGNORECASE)
             vehicle_info = None
-            
+
             if tipo_match:
                 tipo = tipo_match.group(1)
                 vehicle_info = vehicle_data_by_name.get(tipo)
                 print(f"DEBUG: Mapped {category.name} to {tipo}, found: {vehicle_info is not None}")
-            
+
             # Fallback: usar mapeo directo por ID para compatibilidad con otros IDs
             if not vehicle_info:
                 # Mantener el diccionario antiguo como fallback
@@ -973,14 +973,14 @@ class WebsiteContractBookingFixed(http.Controller):
                     ]
                 }
             }
-            
+
             # Si no se encontró en el mapeo por nombre, intentar por ID (fallback)
             if not vehicle_info and category_id in vehicle_data_by_id:
                 vehicle_info = vehicle_data_by_id[category_id]
                 print(f"DEBUG: Using fallback ID mapping for ID {category_id}: {vehicle_info.get('name', 'N/A')}")
             elif vehicle_info:
                 print(f"DEBUG: Using name mapping for ID {category_id}: {vehicle_info.get('name', 'N/A')}")
-            
+
             if vehicle_info:
                 # Obtener ofertas fijas desde BD o usar hardcodeadas como fallback
                 default_pricing = vehicle_info.get('pricing', [])
@@ -991,10 +991,10 @@ class WebsiteContractBookingFixed(http.Controller):
                     print(f"DEBUG: Using {len(fixed_offers)} fixed offers from database for category {category_id}")
                 else:
                     print(f"DEBUG: Using {len(default_pricing)} hardcoded offers for category {category_id}")
-                
+
                 # Obtener tarifas dinámicas del módulo
                 pricing_rules = self._get_dynamic_pricing_rules(category_id)
-                
+
                 # Construir el contenido HTML (sin navbar, sin DOCTYPE/html/head/body)
                 # Solo el contenido que va dentro del layout de Odoo
                 content_html = f"""
@@ -1004,7 +1004,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                         <i class="fa fa-arrow-left me-2"></i>Volver a categorías
                                     </button>
                                 </div>
-                                
+
                                 <div class="row">
                                     <div class="col-lg-6">
                                         <img src="{vehicle_info.get('image', self._get_image_path('default'))}" 
@@ -1035,11 +1035,11 @@ class WebsiteContractBookingFixed(http.Controller):
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="row mt-5">
                                     <div class="col-12">
                                         <h3>Ofertas de Alquiler</h3>
-                                        
+
                                         <!-- Selector de tipo de alquiler -->
                                         <div class="row mb-4">
                                             <div class="col-12">
@@ -1051,7 +1051,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                             <label class="btn btn-outline-warning" for="fixed_offers" style="border-color: {primary_color}; color: {primary_color};">
                                                                 <i class="fa fa-tags me-2"></i>Ofertas Fijas
                                                             </label>
-                                                            
+
                                                             <input type="radio" class="btn-check" name="pricing_type" id="dynamic_pricing" value="dynamic">
                                                             <label class="btn btn-outline-warning" for="dynamic_pricing" style="border-color: {primary_color}; color: {primary_color};">
                                                                 <i class="fa fa-calculator me-2"></i>Tarifas Dinámicas
@@ -1065,7 +1065,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         <!-- Ofertas Fijas -->
                                         <div id="fixed_offers_section">
                                             <h4 class="mb-3">Ofertas Predefinidas</h4>
@@ -1094,11 +1094,11 @@ class WebsiteContractBookingFixed(http.Controller):
                                             ''' for offer in vehicle_info.get('pricing', [])])}
                                             </div>
                                         </div>
-                                        
+
                                         <!-- Tarifas Dinámicas -->
                                         <div id="dynamic_pricing_section" style="display: none;">
                                             <h4 class="mb-3">Tarifas Calculadas</h4>
-                                            
+
                                             <!-- Selectores de Duración y Kilometraje -->
                                             <div class="row mb-4">
                                                 <div class="col-md-6">
@@ -1124,7 +1124,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                     </select>
                                                 </div>
                                             </div>
-                                            
+
                                             <!-- Resultado de la tarifa -->
                                             <div id="dynamic_pricing_result" class="text-center" style="display: none;">
                                                 <div class="card border-warning">
@@ -1148,7 +1148,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                     </div>
                                                 </div>
                                             </div>
-                                            
+
                                             <!-- Mensaje cuando no hay selección -->
                                             <div id="dynamic_pricing_placeholder" class="text-center text-muted">
                                                 <i class="fa fa-info-circle fa-3x mb-3"></i>
@@ -1157,7 +1157,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Selector de Ubicación -->
                                 <div class="row mt-5">
                                     <div class="col-12">
@@ -1180,7 +1180,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                         Selecciona la ubicación donde deseas recoger el vehículo
                                                     </small>
                                                 </div>
-                                                
+
                                                 <!-- Mensaje cuando no hay vehículos disponibles en la ubicación -->
                                                 <div id="no_vehicles_location_message" class="alert alert-warning text-center" style="display: none;">
                                                     <i class="fa fa-exclamation-triangle fa-2x mb-3"></i>
@@ -1194,7 +1194,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Formulario de Reserva (oculto hasta que se seleccione ubicación y haya vehículos) -->
                                 <div class="row mt-4" id="booking_form_section" style="display: none;">
                                     <div class="col-12">
@@ -1215,7 +1215,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                     <input type="hidden" name="selected_vehicle_id" id="selected_vehicle_id" value=""/>
                                                     <input type="hidden" name="min_duration_days" id="min_duration_days" value=""/>
                                                     <input type="hidden" name="max_duration_days" id="max_duration_days" value=""/>
-                                                    
+
                                                     <h5 class="mb-3">Datos de contacto</h5>
                                                     <div class="row">
                                                         <div class="col-md-6 mb-3">
@@ -1247,7 +1247,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                             <input type="month" class="form-control" id="customer_dni_expiry_date" name="customer_dni_expiry_date" required/>
                                                         </div>
                                                     </div>
-                                                    
+
                                                     <hr class="my-4">
                                                     <h5 class="mb-3">Fechas de alquiler</h5>
                                                     <div id="duration_info" class="alert alert-info" style="display: none;">
@@ -1274,7 +1274,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                             <input type="time" class="form-control" id="end_time" name="end_time" required/>
                                                         </div>
                                                     </div>
-                                                    
+
                                                     <!-- Sección de Vehículos Disponibles -->
                                                     <div id="available_vehicles_section" style="display: none;">
                                                         <hr class="my-4"/>
@@ -1294,7 +1294,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                             <p>No se encontraron vehículos disponibles para las fechas seleccionadas.</p>
                                                         </div>
                                                     </div>
-                                                    
+
                                                     <div class="text-center">
                                                         <button type="submit" id="submit_btn" class="btn btn-lg" style="background-color: {primary_color}; border-color: {primary_color}; color: white;" disabled>
                                                             <i class="fa fa-calendar-check-o me-2"></i>Continuar con la reserva
@@ -1312,14 +1312,14 @@ class WebsiteContractBookingFixed(http.Controller):
                                     </div>
                                 </div>
                             </div>
-                
+
                 <script>
                         document.addEventListener('DOMContentLoaded', function() {{
                             const fixedOffersRadio = document.getElementById('fixed_offers');
                             const dynamicPricingRadio = document.getElementById('dynamic_pricing');
                             const fixedOffersSection = document.getElementById('fixed_offers_section');
                             const dynamicPricingSection = document.getElementById('dynamic_pricing_section');
-                            
+
                             function togglePricingSections() {{
                                 if (fixedOffersRadio.checked) {{
                                     fixedOffersSection.style.display = 'block';
@@ -1329,33 +1329,33 @@ class WebsiteContractBookingFixed(http.Controller):
                                     dynamicPricingSection.style.display = 'block';
                                 }}
                             }}
-                            
+
                             fixedOffersRadio.addEventListener('change', togglePricingSections);
                             dynamicPricingRadio.addEventListener('change', togglePricingSections);
-                            
+
                             togglePricingSections();
                         }});
-                        
+
                         // Función para actualizar las opciones de kilometraje según la duración
                         function updateKmOptions() {{
                             const duration = document.getElementById('duration_select').value;
                             const kmSelect = document.getElementById('km_select');
-                            
+
                             if (!duration) {{
                                 kmSelect.disabled = true;
                                 kmSelect.innerHTML = '<option value="">Primero selecciona la duración</option>';
                                 return;
                             }}
-                            
+
                             // Mostrar loading
                             kmSelect.disabled = true;
                             kmSelect.innerHTML = '<option value="">Cargando opciones...</option>';
-                            
+
                             // Obtener opciones válidas de kilometraje
                             const formData = new FormData();
                             formData.append('category_id', {category_id});
                             formData.append('duration', duration);
-                            
+
                             fetch('/web/get-valid-km-options', {{
                                 method: 'POST',
                                 body: formData
@@ -1375,7 +1375,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                     kmSelect.innerHTML = '<option value="">No hay opciones disponibles</option>';
                                     kmSelect.disabled = true;
                                 }}
-                                
+
                                 // Resetear resultado de tarifa
                                 document.getElementById('dynamic_pricing_result').style.display = 'none';
                                 document.getElementById('dynamic_pricing_placeholder').style.display = 'block';
@@ -1386,7 +1386,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                 kmSelect.disabled = true;
                             }});
                         }}
-                        
+
                         // Función para seleccionar ofertas fijas
                         function selectFixedOffer(duration, km, price) {{
                             // Desmarcar todos los radio buttons
@@ -1394,32 +1394,32 @@ class WebsiteContractBookingFixed(http.Controller):
                             radioButtons.forEach(radio => {{
                                 radio.checked = false;
                             }});
-                            
+
                             // Marcar el seleccionado
                             const selectedRadio = document.getElementById(`offer_${{duration.replace('h', '').replace('d', '')}}_${{km.replace('km', '')}}`);
                             if (selectedRadio) {{
                                 selectedRadio.checked = true;
                             }}
-                            
+
                             // Actualizar visualmente la tarjeta seleccionada
                             const cards = document.querySelectorAll('.offer-card');
                             cards.forEach(card => {{
                                 card.style.borderColor = '';
                                 card.style.borderWidth = '';
                             }});
-                            
+
                             // Resaltar la tarjeta seleccionada
                             const selectedCard = event.currentTarget;
                             selectedCard.style.borderColor = '{primary_color}';
                             selectedCard.style.borderWidth = '3px';
-                            
+
                             console.log(`Oferta fija seleccionada: ${{duration}} - ${{km}} - €${{price}}`);
-                            
+
                             // Calcular duración mínima y máxima en días
                             const durationRange = calculateMinMaxDays(duration);
                             const minDays = durationRange.min;
                             const maxDays = durationRange.max;
-                            
+
                             // Actualizar campos ocultos del formulario
                             document.getElementById('selected_pricing_type').value = 'fixed';
                             document.getElementById('selected_duration').value = duration;
@@ -1427,41 +1427,41 @@ class WebsiteContractBookingFixed(http.Controller):
                             document.getElementById('selected_price').value = price;
                             document.getElementById('min_duration_days').value = minDays;
                             document.getElementById('max_duration_days').value = maxDays || '';
-                            
+
                             // Mostrar información de duración
                             showDurationInfo(minDays, maxDays);
-                            
+
                             // Actualizar fecha de fin si ya hay fecha de inicio
                             updateEndDate();
-                            
+
                             // Validar formulario
                             validateForm();
                         }}
-                        
+
                         // Función para actualizar campos ocultos cuando se selecciona tarifa dinámica
                         function updateDynamicPricing() {{
                             const duration = document.getElementById('duration_select').value;
                             const kmRange = document.getElementById('km_select').value;
                             const resultDiv = document.getElementById('dynamic_pricing_result');
                             const placeholderDiv = document.getElementById('dynamic_pricing_placeholder');
-                            
+
                             if (!duration || !kmRange) {{
                                 resultDiv.style.display = 'none';
                                 placeholderDiv.style.display = 'block';
                                 return;
                             }}
-                            
+
                             // Mostrar loading
                             resultDiv.style.display = 'block';
                             placeholderDiv.style.display = 'none';
                             document.getElementById('calculated_price').textContent = 'Calculando...';
-                            
+
                             // Llamar al endpoint para obtener la tarifa
                             const formData = new FormData();
                             formData.append('category_id', {category_id});
                             formData.append('duration', duration);
                             formData.append('km_range', kmRange);
-                            
+
                             fetch('/web/get-dynamic-pricing', {{
                                 method: 'POST',
                                 body: formData
@@ -1474,12 +1474,12 @@ class WebsiteContractBookingFixed(http.Controller):
                                         `Duración: ${{duration}} | Kilometraje: ${{kmRange}}`;
                                     document.getElementById('pricing_features').textContent = 
                                         data.features.join(' • ');
-                                    
+
                                     // Calcular duración mínima y máxima en días
                                     const durationRange = calculateMinMaxDays(duration);
                                     const minDays = durationRange.min;
                                     const maxDays = durationRange.max;
-                                    
+
                                     // Actualizar campos ocultos del formulario
                                     document.getElementById('selected_pricing_type').value = 'dynamic';
                                     document.getElementById('selected_duration').value = duration;
@@ -1489,13 +1489,13 @@ class WebsiteContractBookingFixed(http.Controller):
                                     document.getElementById('selected_package_days').value = data.package_days;
                                     document.getElementById('min_duration_days').value = minDays;
                                     document.getElementById('max_duration_days').value = maxDays || '';
-                                    
+
                                     // Mostrar información de duración
                                     showDurationInfo(minDays, maxDays);
-                                    
+
                                     // Actualizar fecha de fin si ya hay fecha de inicio
                                     updateEndDate();
-                                    
+
                                     // Validar formulario
                                     validateForm();
                                 }} else {{
@@ -1511,7 +1511,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                 document.getElementById('pricing_features').textContent = '';
                             }});
                         }}
-                        
+
                         // Interceptar envío del formulario para validar selección de tarifa y vehículo
                         document.addEventListener('DOMContentLoaded', function() {{
                             const form = document.getElementById('booking_form');
@@ -1519,13 +1519,13 @@ class WebsiteContractBookingFixed(http.Controller):
                                 form.addEventListener('submit', function(e) {{
                                     const pricingType = document.getElementById('selected_pricing_type').value;
                                     const vehicleId = document.getElementById('selected_vehicle_id').value;
-                                    
+
                                     if (!pricingType) {{
                                         e.preventDefault();
                                         alert('Por favor, selecciona una tarifa (Ofertas Fijas o Tarifas Dinámicas)');
                                         return false;
                                     }}
-                                    
+
                                     if (!vehicleId) {{
                                         e.preventDefault();
                                         alert('Por favor, selecciona un vehículo disponible');
@@ -1533,10 +1533,10 @@ class WebsiteContractBookingFixed(http.Controller):
                                     }}
                                 }});
                             }}
-                            
+
                             // Validar formulario cuando cambien los campos
                             validateForm();
-                            
+
                             // Añadir listeners para validación en tiempo real
                             const inputs = ['customer_name', 'customer_email', 'customer_phone', 'customer_dni', 'customer_dni_expiry_date', 'start_date', 'end_date', 'start_time', 'end_time'];
                             inputs.forEach(inputId => {{
@@ -1547,7 +1547,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                 }}
                             }});
                         }});
-                        
+
                         // Función para validar el formulario completo
                         function validateForm() {{
                             const pricingType = document.getElementById('selected_pricing_type').value;
@@ -1561,10 +1561,10 @@ class WebsiteContractBookingFixed(http.Controller):
                             const endDate = document.getElementById('end_date').value;
                             const startTime = document.getElementById('start_time').value;
                             const endTime = document.getElementById('end_time').value;
-                            
+
                             const submitBtn = document.getElementById('submit_btn');
                             const requirements = document.getElementById('submit_requirements');
-                            
+
                             // Validar que el DNI no esté expirado
                             let dniValid = true;
                             if (customerDniExpiry) {{
@@ -1573,7 +1573,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                 const today = new Date();
                                 const currentYear = today.getFullYear();
                                 const currentMonth = today.getMonth() + 1; // getMonth() devuelve 0-11
-                                
+
                                 // El DNI está expirado si el año es anterior, o si es el mismo año pero el mes es anterior
                                 if (expiryYear < currentYear || (expiryYear === currentYear && expiryMonth < currentMonth)) {{
                                     dniValid = false;
@@ -1590,21 +1590,21 @@ class WebsiteContractBookingFixed(http.Controller):
                                     }}
                                 }}
                             }}
-                            
+
                             // Verificar si todos los campos están completos
                             const allFieldsComplete = customerName && customerEmail && customerPhone && customerDni && customerDniExpiry && startDate && endDate && startTime && endTime && dniValid;
-                            
+
                             if (allFieldsComplete && pricingType && !vehicleId) {{
                                 // Cargar vehículos disponibles
                                 loadAvailableVehicles();
                             }}
-                            
+
                             // Validar duración de fechas
                             let durationValid = true;
                             if (startDate && endDate && pricingType) {{
                                 durationValid = validateDateRange();
                             }}
-                            
+
                             // Habilitar botón solo si todo está completo y la duración es válida
                             if (allFieldsComplete && pricingType && vehicleId && durationValid && dniValid) {{
                                 submitBtn.disabled = false;
@@ -1621,22 +1621,22 @@ class WebsiteContractBookingFixed(http.Controller):
                                 requirements.innerHTML = `<small class="text-muted"><i class="fa fa-info-circle me-1"></i>${{message}}</small>`;
                             }}
                         }}
-                        
+
                         // Función para cargar vehículos disponibles (actualizada para incluir ubicación)
                         function loadAvailableVehicles() {{
                             const startDate = document.getElementById('start_date').value;
                             const location = document.getElementById('location_select') ? document.getElementById('location_select').value : '';
                             const endDate = document.getElementById('end_date').value;
                             const categoryId = {category_id};
-                            
+
                             if (!startDate || !endDate) return;
-                            
+
                             // Mostrar sección de vehículos
                             document.getElementById('available_vehicles_section').style.display = 'block';
                             document.getElementById('vehicles_loading').style.display = 'block';
                             document.getElementById('vehicles_container').innerHTML = '';
                             document.getElementById('no_vehicles_message').style.display = 'none';
-                            
+
                             // Llamar al endpoint
                             const formData = new FormData();
                             formData.append('category_id', categoryId);
@@ -1645,7 +1645,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             if (location) {{
                                 formData.append('location', location);
                             }}
-                            
+
                             fetch('/web/get-available-vehicles', {{
                                 method: 'POST',
                                 body: formData
@@ -1653,7 +1653,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             .then(response => response.json())
                             .then(data => {{
                                 document.getElementById('vehicles_loading').style.display = 'none';
-                                
+
                                 if (data.success && data.vehicles.length > 0) {{
                                     displayVehicles(data.vehicles);
                                 }} else {{
@@ -1666,33 +1666,33 @@ class WebsiteContractBookingFixed(http.Controller):
                                 document.getElementById('no_vehicles_message').style.display = 'block';
                             }});
                         }}
-                        
+
                         // Función para mostrar vehículos
                         function displayVehicles(vehicles) {{
                             const container = document.getElementById('vehicles_container');
                             container.innerHTML = '';
-                            
+
                             vehicles.forEach(vehicle => {{
                                 // Usar categoría para determinar imagen
                                 const categoryName = vehicle.category_name || vehicle.name;
                                 // Extraer nombre sin matrícula (quitar la última parte)
                                 const nameParts = vehicle.name.split('/');
                                 const vehicleName = nameParts.length > 1 ? nameParts.slice(0, -1).join('/') : vehicle.name;
-                                
+
                                 // Detectar si es Pinveco o Sunset
                                 const currentDomain = window.location.hostname;
                                 const isPinveco = currentDomain.includes('pinveco');
                                 const imgDir = isPinveco ? '/vehicle_rental/static/description/img/tipos_pinveco' : '/vehicle_rental/static/description/img/tipos';
-                                
+
                                 // Extraer tipo de la categoría (Tipo B -> B)
                                 const typeMatch = categoryName.match(/Tipo\s+([A-Z])/);
                                 let brandImage = '/vehicle_rental/static/description/img/marcas/ford.svg'; // fallback
-                                
+
                                 if (typeMatch && typeMatch[1]) {{
                                     const typeId = typeMatch[1]; // B, A, D, etc.
                                     brandImage = `${{imgDir}}/tipo${{typeId}}.png`;
                                 }}
-                                
+
                                 const vehicleCard = document.createElement('div');
                                 vehicleCard.className = 'col-md-6 col-lg-4 mb-3';
                                 vehicleCard.innerHTML = `
@@ -1706,7 +1706,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                 container.appendChild(vehicleCard);
                             }});
                         }}
-                        
+
                         // Función para seleccionar vehículo
                         function selectVehicle(vehicleId, vehicleName, licensePlate) {{
                             // Desmarcar todos los vehículos
@@ -1714,25 +1714,25 @@ class WebsiteContractBookingFixed(http.Controller):
                                 card.style.borderColor = '';
                                 card.style.borderWidth = '';
                             }});
-                            
+
                             // Marcar el seleccionado
                             event.currentTarget.style.borderColor = '{primary_color}';
                             event.currentTarget.style.borderWidth = '3px';
-                            
+
                             // Guardar selección
                             document.getElementById('selected_vehicle_id').value = vehicleId;
-                            
+
                             console.log(`Vehículo seleccionado: ${{vehicleName}} (${{licensePlate}}) - ID: ${{vehicleId}}`);
-                            
+
                             // Validar formulario
                             validateForm();
                         }}
-                        
+
                         // Función para calcular días mínimos basado en la duración de la tarifa
                         function calculateMinMaxDays(duration) {{
                             let minDays = 1;
                             let maxDays = null; // null significa sin límite máximo
-                            
+
                             if (duration.includes('h')) {{
                                 // Para horas, mínimo 1 día, máximo 1 día
                                 minDays = 1;
@@ -1753,21 +1753,21 @@ class WebsiteContractBookingFixed(http.Controller):
                                     }}
                                 }}
                             }}
-                            
+
                             return {{ min: minDays, max: maxDays }};
                         }}
-                        
+
                         // Función legacy para compatibilidad
                         function calculateMinDays(duration) {{
                             const range = calculateMinMaxDays(duration);
                             return range.min;
                         }}
-                        
+
                         // Función para mostrar información de duración
                         function showDurationInfo(minDays, maxDays) {{
                             const durationInfo = document.getElementById('duration_info');
                             const durationMessage = document.getElementById('duration_message');
-                            
+
                             if (minDays && minDays > 0) {{
                                 durationInfo.style.display = 'block';
                                 if (maxDays && maxDays === minDays) {{
@@ -1784,28 +1784,28 @@ class WebsiteContractBookingFixed(http.Controller):
                                 durationInfo.style.display = 'none';
                             }}
                         }}
-                        
+
                         // Función para actualizar la fecha de fin basada en la fecha de inicio y duración mínima
                         function updateEndDate() {{
                             const startDate = document.getElementById('start_date').value;
                             const minDays = parseInt(document.getElementById('min_duration_days').value);
-                            
+
                             if (startDate && minDays) {{
                                 const start = new Date(startDate);
                                 const end = new Date(start);
                                 end.setDate(start.getDate() + minDays);
-                                
+
                                 // Formatear fecha para input date (YYYY-MM-DD)
                                 const endDateStr = end.toISOString().split('T')[0];
                                 document.getElementById('end_date').value = endDateStr;
-                                
+
                                 // Validar que no exceda el máximo si existe (sin mostrar alertas)
                                 validateDateRange(false);
-                                
+
                                 console.log(`Fecha de fin actualizada: ${{startDate}} + ${{minDays}} días = ${{endDateStr}}`);
                             }}
                         }}
-                        
+
                         // Función para validar el rango de fechas
                         function validateDateRange(showAlerts = true) {{
                             const startDate = document.getElementById('start_date').value;
@@ -1813,13 +1813,13 @@ class WebsiteContractBookingFixed(http.Controller):
                             const minDays = parseInt(document.getElementById('min_duration_days').value);
                             const maxDaysStr = document.getElementById('max_duration_days').value;
                             const maxDays = maxDaysStr ? parseInt(maxDaysStr) : null;
-                            
+
                             if (startDate && endDate && minDays) {{
                                 const start = new Date(startDate);
                                 const end = new Date(endDate);
                                 const diffTime = end - start;
                                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                
+
                                 // Validar mínimo
                                 if (diffDays < minDays) {{
                                     if (showAlerts) {{
@@ -1831,7 +1831,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                     document.getElementById('end_date').value = newEnd.toISOString().split('T')[0];
                                     return false;
                                 }}
-                                
+
                                 // Validar máximo si existe
                                 if (maxDays && diffDays > maxDays) {{
                                     if (showAlerts) {{
@@ -1843,7 +1843,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                     document.getElementById('end_date').value = newEnd.toISOString().split('T')[0];
                                     return false;
                                 }}
-                                
+
                                 // Si min y max son iguales, forzar la duración exacta
                                 if (maxDays && maxDays === minDays && diffDays !== minDays) {{
                                     if (showAlerts) {{
@@ -1858,7 +1858,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             }}
                             return true;
                         }}
-                        
+
                         // Función para verificar disponibilidad de vehículos en la ubicación seleccionada
                         function checkLocationAvailability() {{
                             const locationSelect = document.getElementById('location_select');
@@ -1866,20 +1866,20 @@ class WebsiteContractBookingFixed(http.Controller):
                             const bookingFormSection = document.getElementById('booking_form_section');
                             const noVehiclesMessage = document.getElementById('no_vehicles_location_message');
                             const bookingLocationInput = document.getElementById('booking_location');
-                            
+
                             // Ocultar formulario y mensaje inicialmente
                             bookingFormSection.style.display = 'none';
                             noVehiclesMessage.style.display = 'none';
-                            
+
                             if (!location) {{
                                 return;
                             }}
-                            
+
                             // Actualizar campo oculto de ubicación
                             if (bookingLocationInput) {{
                                 bookingLocationInput.value = location;
                             }}
-                            
+
                             // Verificar disponibilidad llamando al endpoint
                             const formData = new FormData();
                             formData.append('category_id', {category_id});
@@ -1887,7 +1887,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             // No necesitamos fechas para verificar disponibilidad inicial
                             formData.append('start_date', '');
                             formData.append('end_date', '');
-                            
+
                             // Mostrar indicador de carga
                             noVehiclesMessage.innerHTML = `
                                 <div class="text-center">
@@ -1898,7 +1898,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                 </div>
                             `;
                             noVehiclesMessage.style.display = 'block';
-                            
+
                             fetch('/web/get-available-vehicles', {{
                                 method: 'POST',
                                 body: formData
@@ -1906,12 +1906,12 @@ class WebsiteContractBookingFixed(http.Controller):
                             .then(response => response.json())
                             .then(data => {{
                                 console.log('Location availability check:', data);
-                                
+
                                 if (data.success && data.count > 0) {{
                                     // Hay vehículos disponibles - mostrar formulario
                                     bookingFormSection.style.display = 'block';
                                     noVehiclesMessage.style.display = 'none';
-                                    
+
                                     // Scroll suave al formulario
                                     bookingFormSection.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
                                 }} else {{
@@ -1941,7 +1941,7 @@ class WebsiteContractBookingFixed(http.Controller):
                         }}
                     </script>
                 """
-                
+
                 # Usar la plantilla de Odoo para que navbar y footer se rendericen correctamente
                 # La plantilla vehicle_detail_template usa website.layout que incluye navbar y footer
                 try:
@@ -1957,7 +1957,7 @@ class WebsiteContractBookingFixed(http.Controller):
                     # Fallback: usar el HTML hardcodeado pero con los estilos CSS de Odoo
                     assets_url = '/web/assets/1/c1278a6/web.assets_frontend.min.css'
                     css_links = f'<link type="text/css" rel="stylesheet" href="{assets_url}"/>'
-                    
+
                     # Devolver HTML completo pero SIN footer hardcodeado
                     # El footer se renderizará automáticamente por Odoo si está configurado
                     return f"""
@@ -2047,7 +2047,7 @@ class WebsiteContractBookingFixed(http.Controller):
                         css_links = f'<link type="text/css" rel="stylesheet" href="{assets_url}"/>'
                     except:
                         css_links = ''
-                    
+
                     return f"""
                     <!DOCTYPE html>
                     <html lang="en-US">
@@ -2138,10 +2138,10 @@ class WebsiteContractBookingFixed(http.Controller):
         """Contract Booking Enquiry - Detecta dominio para usar template correcto"""
         try:
             values = self._get_initial_values()
-            
+
             # Detectar el dominio actual
             current_domain = request.httprequest.headers.get('X-Forwarded-Host', request.httprequest.host)
-            
+
             # Si es Pinveco, añadir una variable para que la plantilla use colores azules
             if 'pinveco' in current_domain.lower():
                 values['is_pinveco'] = True
@@ -2153,7 +2153,7 @@ class WebsiteContractBookingFixed(http.Controller):
                 values['primary_color'] = '#FFD700'
                 values['secondary_color'] = '#FFA500'
                 print(f"DEBUG: Detected Sunset domain: {current_domain}, colors: {values['primary_color']}")
-            
+
             print(f"DEBUG: Final values being passed to template: {values.keys()}")
             return request.render('vehicle_rental.booking_enquiry_simple', values)
         except Exception as e:
@@ -2165,36 +2165,36 @@ class WebsiteContractBookingFixed(http.Controller):
         """Get valid km options for a specific duration and category"""
         try:
             import json
-            
+
             category_id = kw.get('category_id')
             duration = kw.get('duration')
-            
+
             print(f"DEBUG: Getting valid km options for category {category_id}, duration {duration}")
-            
+
             # Buscar todas las tarifas disponibles para esta duración
             pricing_rules = request.env['vehicle.pricing.rule'].sudo().search([
                 ('vehicle_category_id', '=', int(category_id)),
                 ('active', '=', True),
                 ('duration_range', '=', duration)
             ])
-            
+
             # Extraer opciones de kilometraje únicas
             km_options = []
             for rule in pricing_rules:
                 if rule.km_range not in km_options:
                     km_options.append(rule.km_range)
-            
+
             result = {
                 'success': True,
                 'km_options': km_options
             }
-            
+
             response = request.make_response(
                 json.dumps(result),
                 headers=[('Content-Type', 'application/json')]
             )
             return response
-                
+
         except Exception as e:
             print(f"DEBUG: Error getting valid km options: {e}")
             result = {
@@ -2212,22 +2212,22 @@ class WebsiteContractBookingFixed(http.Controller):
         """Get available vehicles for a category and date range"""
         try:
             import json
-            
+
             category_id = kw.get('category_id')
             start_date = kw.get('start_date')
             end_date = kw.get('end_date')
             location = kw.get('location', '').strip()
-            
+
             # Detectar la compañía según el dominio
             current_domain = request.httprequest.headers.get('X-Forwarded-Host', request.httprequest.host)
             is_pinveco = 'pinveco' in current_domain.lower()
             company_id = 2 if is_pinveco else 1  # Pinveco=2, Sunset=1
-            
+
             print(f"DEBUG: Getting available vehicles for category {category_id}, dates {start_date} - {end_date}, location: {location}, company: {company_id}")
-            
+
             # Buscar vehículos disponibles de la categoría
             print(f"DEBUG: Searching vehicles with category_id={category_id}, company_id={company_id}")
-            
+
             # Construir dominio de búsqueda
             # Buscar por category_id directamente en el vehículo O por model_id.category_id
             # Y filtrar por compañía y estado
@@ -2238,10 +2238,10 @@ class WebsiteContractBookingFixed(http.Controller):
                 ('company_id', '=', company_id),
                 ('status', '=', 'available')
             ]
-            
+
             # Nota: En Odoo, el dominio se interpreta como:
             # (category_id = X OR model_id.category_id = X) AND company_id = Y AND status = 'available'
-            
+
             # Filtrar por ubicación si se proporciona y no es "Todas las ubicaciones"
             if location and location != 'Todas las ubicaciones':
                 # Buscar vehículos con la ubicación exacta o variaciones (Málaga/Malaga, Córdoba/Cordoba)
@@ -2254,10 +2254,10 @@ class WebsiteContractBookingFixed(http.Controller):
                     location_variations.append('Cordoba')
                 elif location == 'Cordoba':
                     location_variations.append('Córdoba')
-                
+
                 domain.append(('location', 'in', location_variations))
                 print(f"DEBUG: Filtering by location: {location_variations}")
-            
+
             # Primero buscar TODOS los vehículos de la categoría (sin filtro de status) para debug
             all_vehicles = request.env['fleet.vehicle'].sudo().search([
                 '|',
@@ -2269,17 +2269,17 @@ class WebsiteContractBookingFixed(http.Controller):
             for v in all_vehicles:
                 v_location = getattr(v, 'location', 'N/A')
                 print(f"DEBUG:   - Vehicle ID={v.id}, Name={v.name}, Plate={v.license_plate}, Status={v.status if hasattr(v, 'status') else 'N/A'}, Location={v_location}")
-            
+
             # Ahora buscar solo los disponibles con el filtro de ubicación
             vehicles = request.env['fleet.vehicle'].sudo().search(domain)
             print(f"DEBUG: Found {len(vehicles)} available vehicles matching criteria")
-            
+
             vehicles_data = []
             for vehicle in vehicles:
                 # Obtener categoría
                 category_id = vehicle.category_id.id if vehicle.category_id else (vehicle.model_id.category_id.id if vehicle.model_id and vehicle.model_id.category_id else None)
                 category_name = vehicle.category_id.name if vehicle.category_id else (vehicle.model_id.category_id.name if vehicle.model_id and vehicle.model_id.category_id else 'Sin categoría')
-                
+
                 vehicles_data.append({
                     'id': vehicle.id,
                     'name': vehicle.name,
@@ -2292,19 +2292,19 @@ class WebsiteContractBookingFixed(http.Controller):
                     'category_name': category_name,
                     'image': f'/web/image/fleet.vehicle/{vehicle.id}/image_128' if hasattr(vehicle, 'image_128') else self._get_image_path('default')
                 })
-            
+
             result = {
                 'success': True,
                 'vehicles': vehicles_data,
                 'count': len(vehicles_data)
             }
-            
+
             response = request.make_response(
                 json.dumps(result),
                 headers=[('Content-Type', 'application/json')]
             )
             return response
-                
+
         except Exception as e:
             print(f"DEBUG: Error getting available vehicles: {e}")
             result = {
@@ -2322,14 +2322,14 @@ class WebsiteContractBookingFixed(http.Controller):
         """Get dynamic pricing for a vehicle category"""
         try:
             import json
-            
+
             # Obtener datos del POST
             category_id = kw.get('category_id')
             duration = kw.get('duration')
             km_range = kw.get('km_range')
-            
+
             print(f"DEBUG: Getting dynamic pricing for category {category_id}, duration {duration}, km {km_range}")
-            
+
             # Buscar tarifas en la base de datos
             pricing_rules = request.env['vehicle.pricing.rule'].sudo().search([
                 ('vehicle_category_id', '=', int(category_id)),
@@ -2337,7 +2337,7 @@ class WebsiteContractBookingFixed(http.Controller):
                 ('duration_range', '=', duration),
                 ('km_range', '=', km_range)
             ])
-            
+
             if pricing_rules:
                 rule = pricing_rules[0]
                 result = {
@@ -2357,14 +2357,14 @@ class WebsiteContractBookingFixed(http.Controller):
                     'success': False,
                     'message': 'No se encontró tarifa para esta combinación'
                 }
-            
+
             # Devolver como JSON
             response = request.make_response(
                 json.dumps(result),
                 headers=[('Content-Type', 'application/json')]
             )
             return response
-                
+
         except Exception as e:
             print(f"DEBUG: Error getting dynamic pricing: {e}")
             result = {
@@ -2383,9 +2383,9 @@ class WebsiteContractBookingFixed(http.Controller):
         try:
             customer_name = kw.get('customer_name', 'Test Customer')
             customer_email = kw.get('customer_email', 'test@test.com')
-            
+
             print(f"DEBUG: Test lead creation for {customer_name}")
-            
+
             # Crear lead básico
             lead_vals = {
                 'name': f'Test Lead - {customer_name}',
@@ -2393,35 +2393,35 @@ class WebsiteContractBookingFixed(http.Controller):
                 'email_from': customer_email,
                 'type': 'lead',
             }
-            
+
             lead = request.env['crm.lead'].sudo().create(lead_vals)
             print(f"DEBUG: Test lead creado con ID {lead.id}")
-            
+
             # Forzar commit
             request.env.cr.commit()
             print(f"DEBUG: Test lead commit exitoso")
-            
+
             # Verificar inmediatamente si se guardó
             lead_check = request.env['crm.lead'].sudo().browse(lead.id)
             print(f"DEBUG: Verificación inmediata - Lead ID {lead_check.id} existe: {lead_check.exists()}")
-            
+
             return f"<h1>Test Lead creado con ID: {lead.id}</h1>"
-            
+
         except Exception as e:
             print(f"DEBUG: Error en test lead: {e}")
             import traceback
             print(f"DEBUG: Traceback completo: {traceback.format_exc()}")
             return f"<h1>Error: {str(e)}</h1>"
-    
+
     @http.route('/web/test-lead-no-html', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def test_lead_no_html(self, **kw):
         """Test method to create lead without HTML generation"""
         try:
             customer_name = kw.get('customer_name', 'Test Customer')
             customer_email = kw.get('customer_email', 'test@test.com')
-            
+
             print(f"DEBUG: Test lead NO HTML for {customer_name}")
-            
+
             # Crear lead básico
             lead_vals = {
                 'name': f'Test Lead NO HTML - {customer_name}',
@@ -2429,40 +2429,40 @@ class WebsiteContractBookingFixed(http.Controller):
                 'email_from': customer_email,
                 'type': 'lead',
             }
-            
+
             lead = request.env['crm.lead'].sudo().create(lead_vals)
             print(f"DEBUG: Test lead NO HTML creado con ID {lead.id}")
-            
+
             # Forzar commit
             request.env.cr.commit()
             print(f"DEBUG: Test lead NO HTML commit exitoso")
-            
+
             # Verificar inmediatamente si se guardó
             lead_check = request.env['crm.lead'].sudo().browse(lead.id)
             print(f"DEBUG: Verificación NO HTML - Lead ID {lead_check.id} existe: {lead_check.exists()}")
-            
+
             # Devolver solo texto plano
             return f"Test Lead NO HTML creado con ID: {lead.id}"
-            
+
         except Exception as e:
             print(f"DEBUG: Error en test lead NO HTML: {e}")
             import traceback
             print(f"DEBUG: Traceback NO HTML: {traceback.format_exc()}")
             return f"Error: {str(e)}"
-    
+
     @http.route('/web/test-direct-sql', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def test_direct_sql(self, **kw):
         """Test method using direct SQL to create lead"""
         try:
             customer_name = kw.get('customer_name', 'Test Customer')
             customer_email = kw.get('customer_email', 'test@test.com')
-            
+
             print(f"DEBUG: Test DIRECT SQL for {customer_name}")
-            
+
             # Usar SQL directo para insertar
             import psycopg2
             from odoo import sql_db
-            
+
             # Obtener conexión directa
             db = sql_db.db_connect('odoo-dev')
             with db.cursor() as cr:
@@ -2471,26 +2471,26 @@ class WebsiteContractBookingFixed(http.Controller):
                     VALUES (%s, %s, %s, %s, NOW(), NOW(), 1, 1)
                     RETURNING id
                 """, (f'Test DIRECT SQL - {customer_name}', customer_name, customer_email, 'lead'))
-                
+
                 lead_id = cr.fetchone()[0]
                 print(f"DEBUG: Test DIRECT SQL creado con ID {lead_id}")
-                
+
                 # Commit directo
                 cr.commit()
                 print(f"DEBUG: Test DIRECT SQL commit exitoso")
-                
+
                 return f"Test DIRECT SQL creado con ID: {lead_id}"
-            
+
         except Exception as e:
             print(f"DEBUG: Error en test DIRECT SQL: {e}")
             import traceback
             print(f"DEBUG: Traceback DIRECT SQL: {traceback.format_exc()}")
             return f"Error: {str(e)}"
-    
+
     def _find_or_create_partner(self, name, email, phone, company):
         """Find existing partner or create new one from customer data"""
         Partner = request.env['res.partner']
-        
+
         # 1. Buscar por email si existe
         if email:
             partner = Partner.sudo().search([
@@ -2499,7 +2499,7 @@ class WebsiteContractBookingFixed(http.Controller):
             if partner:
                 print(f"DEBUG: Contacto encontrado por email: {partner.name}")
                 return partner
-        
+
         # 2. Buscar por teléfono si existe
         if phone:
             # Limpiar el teléfono de espacios y caracteres especiales
@@ -2512,7 +2512,7 @@ class WebsiteContractBookingFixed(http.Controller):
                 if partner_phone and partner_phone == clean_phone:
                     print(f"DEBUG: Contacto encontrado por teléfono: {partner.name}")
                     return partner
-        
+
         # 3. Si no existe, crear nuevo contacto
         if name or email or phone:
             partner_vals = {
@@ -2522,45 +2522,45 @@ class WebsiteContractBookingFixed(http.Controller):
                 'customer_rank': 1,  # Marcar como cliente
                 'comment': f'Contacto creado automáticamente desde reserva web: {name}',
             }
-            
+
             if company:
                 partner_vals['is_company'] = True
                 partner_vals['name'] = company
                 partner_vals['comment'] += f' (Empresa: {company})'
-            
+
             partner = Partner.sudo().create(partner_vals)
             print(f"DEBUG: Nuevo contacto creado: {partner.name}")
             return partner
-        
+
         return False
-    
+
     def _find_available_vehicle(self, category_id, start_date, end_date):
         """Find an available vehicle for the given category and dates"""
         try:
             print(f"DEBUG: Buscando vehículo para categoría {category_id} en fechas {start_date} - {end_date}")
-            
+
             # Convertir fechas a formato datetime
             from datetime import datetime
             start_dt = datetime.strptime(start_date, "%Y-%m-%d")
             end_dt = datetime.strptime(end_date, "%Y-%m-%d")
-            
+
             # Buscar vehículos de la categoría que estén disponibles
             vehicles = request.env['fleet.vehicle'].sudo().search([
                 ('category_id', '=', category_id),
                 ('status', '=', 'available')
             ])
-            
+
             print(f"DEBUG: Vehículos encontrados en categoría {category_id}: {len(vehicles)}")
-            
+
             # Por ahora, devolver el primer vehículo disponible (sin verificación de contratos)
             if vehicles:
                 vehicle = vehicles[0]
                 print(f"DEBUG: Vehículo seleccionado: {vehicle.name} (ID: {vehicle.id}) - DISPONIBLE para las fechas {start_date} - {end_date}")
                 return vehicle
-            
+
             print(f"DEBUG: No se encontraron vehículos disponibles para categoría {category_id} en fechas {start_date} - {end_date}")
             return False
-            
+
         except Exception as e:
             print(f"DEBUG: Error en _find_available_vehicle: {e}")
             return False
@@ -2630,7 +2630,7 @@ class WebsiteContractBookingFixed(http.Controller):
     #     import json
     #     import time
     #     _logger = logging.getLogger(__name__)
-        
+
     #     try:
     #         # Obtener datos de la reserva
     #         category_id = int(kw.get('category_id', 0))
@@ -2641,9 +2641,9 @@ class WebsiteContractBookingFixed(http.Controller):
     #         start_date = kw.get('start_date', '')
     #         end_date = kw.get('end_date', '')
     #         order_number = kw.get('order_number', f'RENT-{int(time.time())}')
-            
+
     #         _logger.info(f"DEBUG RENTAL PAYMENT: Creating payment.transaction for order {order_number}")
-            
+
     #         # Preparar datos de booking
     #         booking_data = {
     #             'category_id': category_id,
@@ -2653,28 +2653,28 @@ class WebsiteContractBookingFixed(http.Controller):
     #             'start_date': start_date,
     #             'end_date': end_date,
     #         }
-            
+
     #         # Guardar en sesión
     #         request.session['booking_data'] = booking_data
-            
+
     #         # Obtener provider Redsys
     #         providers = request.env['payment.provider'].search([('code', '=', 'redsys')], limit=1)
     #         if not providers:
     #             providers = request.env['payment.provider'].search([], limit=1)
-            
+
     #         if not providers:
     #             raise Exception("No payment provider available")
-            
+
     #         # Obtener payment_method para el provider
     #         payment_methods = request.env['payment.method'].search([
     #             ('provider_ids', 'in', providers.id)
     #         ], limit=1)
-            
+
     #         if not payment_methods:
     #             # Si no existe, crear uno genérico
     #             # Imagen base64 mínima (1x1 PNG blanco)
     #             minimal_image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
-                
+
     #             payment_methods = request.env['payment.method'].sudo().create({
     #                 'name': 'Credit/Debit Card',
     #                 'code': 'card',
@@ -2682,7 +2682,7 @@ class WebsiteContractBookingFixed(http.Controller):
     #                 'provider_ids': [(4, providers.id)],  # Agregar provider al Many2many
     #             })
     #             _logger.info(f"DEBUG: Created payment.method {payment_methods.id} with provider {providers.id}")
-            
+
     #         # Crear payment.transaction
     #         payment_tx = request.env['payment.transaction'].sudo().create({
     #             'provider_id': providers.id,
@@ -2693,12 +2693,12 @@ class WebsiteContractBookingFixed(http.Controller):
     #             'reference': order_number,
     #             'booking_data_json': json.dumps(booking_data),
     #         })
-            
+
     #         _logger.info(f"DEBUG RENTAL PAYMENT: payment.transaction created with ID {payment_tx.id}")
-            
+
     #         # Redirigir al formulario de pago
     #         return request.redirect(f'/payment/process/{payment_tx.id}')
-            
+
     #     except Exception as e:
     #         import logging
     #         import traceback
@@ -2717,75 +2717,26 @@ class WebsiteContractBookingFixed(http.Controller):
 
     @http.route('/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def rental_payment(self, **kw):
-        """Create payment transaction for vehicle rental"""
         import logging
-        import traceback
-        import time as time_mod
+        _logger = logging.getLogger(__name__)
+        _logger.info("DEBUG RENTAL PAYMENT: REACHED")
+        import json
+        from werkzeug.wrappers import Response
+        return Response(json.dumps({"status": "ok", "message": "Rental payment endpoint"}), mimetype='application/json')
+
+    @http.route('/rental/payment-test', auth='public', website=True, type='http', methods=['POST'], csrf=False)
+    def rental_payment_test(self, **kw):
+        return "RENTAL PAYMENT TEST OK"
+
+    @http.route('/rental/debug', auth='public', website=True, type='http', methods=['POST'], csrf=False)
+    def rental_debug(self, **kw):
+        import logging
         _logger = logging.getLogger(__name__)
         try:
-            category_id = int(kw.get('category_id', 0))
-            selected_price = float(kw.get('selected_price', 0))
-            customer_name = kw.get('customer_name', '')
-            customer_email = kw.get('customer_email', '')
-            customer_phone = kw.get('customer_phone', '')
-            start_date = kw.get('start_date', '')
-            end_date = kw.get('end_date', '')
-            order_number = kw.get('order_number', f'RENT-{int(time_mod.time())}')
-            
-            _logger.info(f"DEBUG RENTAL PAYMENT: order {order_number}")
-            
-            request.session['booking_data'] = {
-                'category_id': category_id,
-                'customer_name': customer_name,
-                'customer_email': customer_email,
-                'customer_phone': customer_phone,
-                'start_date': start_date,
-                'end_date': end_date,
-            }
-            
-            providers = request.env['payment.provider'].search([('code', '=', 'redsys')], limit=1)
-            if not providers:
-                providers = request.env['payment.provider'].search([], limit=1)
-            if not providers:
-                raise Exception("No provider")
-            
-            _logger.info(f"DEBUG: Provider {providers.name}")
-            
-            payment_methods = request.env['payment.method'].search([('provider_ids', 'in', providers.id)], limit=1)
-            
-            if not payment_methods:
-                _logger.info(f"DEBUG: Creating payment method")
-                minimal_image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
-                payment_methods = request.env['payment.method'].sudo().create({
-                    'name': 'Card',
-                    'code': 'card',
-                    'image': minimal_image,
-                    'provider_ids': [(4, providers.id)],
-                })
-            
-            _logger.info(f"DEBUG: Using method {payment_methods.id}")
-            
-            # Usar partner_id del usuario actual o el website user
-            partner = request.env.user.partner_id if request.env.user.partner_id else request.env['res.partner'].create({
-                'name': customer_name or 'Guest',
-                'email': customer_email,
-                'phone': customer_phone,
-            })
-            
-            payment_tx = request.env['payment.transaction'].sudo().create({
-                'provider_id': providers.id,
-                'payment_method_id': payment_methods.id,
-                'amount': selected_price,
-                'currency_id': request.env.company.currency_id.id,
-                'partner_id': partner.id,
-                'reference': order_number,
-            })
-            
-            _logger.info(f"DEBUG: TX {payment_tx.id} created")
-            return request.redirect(f'/payment/process/{payment_tx.id}')
-            
+            _logger.info("DEBUG: rental_debug START")
+            _logger.info(f"DEBUG: kw={kw}")
+            _logger.info("DEBUG: Creating response")
+            return ("OK", 200)
         except Exception as e:
-            error_detail = traceback.format_exc()
-            _logger.error(f"ERROR: {error_detail}")
-            return error_detail, 500, [('Content-Type', 'text/plain')]
-
+            _logger.error(f"DEBUG ERROR: {e}")
+            return (str(e), 500)
