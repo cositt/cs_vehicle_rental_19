@@ -3102,3 +3102,49 @@ class WebsiteContractBookingFixed(http.Controller):
 </html>'''
         
         return Response(html_debug, mimetype='text/html')
+
+    @http.route('/rental/success', auth='public', website=True, type='http', methods=['GET', 'POST'], csrf=False)
+    def rental_payment_success(self, **kw):
+        """Payment success page after Redsys redirect"""
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Pago Exitoso</title>
+            <meta charset="utf-8">
+            <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                .success { color: green; font-size: 24px; margin-bottom: 20px; }
+                .message { color: #333; font-size: 16px; }
+            </style>
+        </head>
+        <body>
+            <div class="success">✓ ¡Pago realizado exitosamente!</div>
+            <div class="message">Tu reserva ha sido confirmada. Serás redirigido en breve...</div>
+            <script>setTimeout(function() { window.location.href = '/'; }, 3000);</script>
+        </body>
+        </html>
+        """
+    
+    @http.route('/rental/error', auth='public', website=True, type='http', methods=['GET', 'POST'], csrf=False)
+    def rental_payment_error(self, **kw):
+        """Payment error page after Redsys redirect"""
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Error de Pago</title>
+            <meta charset="utf-8">
+            <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                .error { color: red; font-size: 24px; margin-bottom: 20px; }
+                .message { color: #333; font-size: 16px; }
+            </style>
+        </head>
+        <body>
+            <div class="error">✗ El pago no pudo ser procesado</div>
+            <div class="message">Por favor, intenta nuevamente o contacta a soporte.</div>
+            <script>setTimeout(function() { window.location.href = '/'; }, 5000);</script>
+        </body>
+        </html>
+        """
