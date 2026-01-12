@@ -2,6 +2,13 @@
 from odoo import http, fields
 from odoo.http import request
 import re
+import base64
+import json
+import hmac
+import hashlib
+import subprocess
+import tempfile
+import os
 
 
 class WebsiteContractBookingFixed(http.Controller):
@@ -35,6 +42,68 @@ class WebsiteContractBookingFixed(http.Controller):
         return {
             'vehicle_categories': categories,
         }
+
+    def _derive_key_3des_cbc(self, secret_key_b64, order_number):
+        """
+        Deriva la clave HMAC usando 3DES-CBC según especificación Redsys v3.0.1
+        
+        Args:
+            secret_key_b64: Clave secreta codificada en base64
+            order_number: Número de orden (se usa para derivación)
+        
+        Returns:
+            bytes: Clave derivada lista para HMAC-SHA256
+        """
+        try:
+            # Decodificar la clave secreta
+            secret_decoded = base64.b64decode(secret_key_b64)
+            
+            # Codificar el número de orden como bytes
+            order_bytes = order_number.encode('utf-8')
+            
+            # Aplicar padding PKCS#7 a 8 bytes (requerido para 3DES-CBC)
+            pad = (-len(order_bytes)) % 8
+            order_padded = order_bytes + b'\x00' * pad
+            
+            # Crear archivo temporal para la orden
+            with tempfile.NamedTemporaryFile(delete=False, mode='wb') as f_order:
+                f_order.write(order_padded)
+                order_path = f_order.name
+            
+            try:
+                # Crear archivo temporal para la salida derivada
+                derived_path = tempfile.mktemp()
+                
+                # Convertir clave a hexadecimal para OpenSSL
+                key_hex = secret_decoded.hex()
+                
+                # Ejecutar openssl enc -des-ede3-cbc para derivar la clave
+                subprocess.check_call([
+                    'openssl', 'enc', '-des-ede3-cbc',
+                    '-K', key_hex,
+                    '-iv', '0000000000000000',
+                    '-nopad',
+                    '-in', order_path,
+                    '-out', derived_path
+                ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+                # Leer la clave derivada
+                with open(derived_path, 'rb') as f:
+                    derived_key = f.read()
+                
+                # Limpiar archivo temporal de salida
+                os.unlink(derived_path)
+                
+                return derived_key
+            finally:
+                # Limpiar archivo temporal de entrada
+                os.unlink(order_path)
+        
+        except Exception as e:
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.error(f"Error deriving key with 3DES-CBC: {e}", exc_info=True)
+            raise
 
     def _get_vehicle_detail_info(self, category):
         """Get detailed vehicle information based on category"""
@@ -2829,19 +2898,25 @@ class WebsiteContractBookingFixed(http.Controller):
             })
             
             _logger.info(f"Created payment.transaction: {tx.id}")
+
+            # ⭐ CORRECCIÓN OPCIÓN 3: Limpiar referencia de transacción
+            # Odoo calcula tx.reference con prefijo ORD, pero Redsys requiere solo 12 dígitos numéricos
+            clean_reference = order_number.zfill(12)  # "001767976393"
+            tx.sudo().write({'reference': clean_reference})
+            _logger.info(f"Fixed payment.transaction reference to: {clean_reference}")
             
             # Generar formulario Redsys usando HMAC-SHA256_V1
             merchant_code = '369056973'
             terminal = '1'
             secret_key = 'sq7HjrUOBfKmC576ILgskD5srU870gJ7'
             
-            amount_cents = int(selected_price * 100)
+            amount_cents = int(tx.amount * 100)  # Usar importe de la transacción
             currency = '978'  # EUR
             
             merchant_data = {
                 'Ds_Merchant_Amount': str(amount_cents),
                 'Ds_Merchant_Currency': str(currency),
-                'Ds_Merchant_Order': order_number.zfill(12),
+                'Ds_Merchant_Order': clean_reference,
                 'Ds_Merchant_MerchantCode': merchant_code,
                 'Ds_Merchant_Terminal': terminal,
                 'Ds_Merchant_TransactionType': '0',
@@ -2860,22 +2935,21 @@ class WebsiteContractBookingFixed(http.Controller):
             # La clave secreta se decodifica desde base64
             # Firma = Base64(HMAC-SHA256(merchant_params_b64, base64_decode(secret_key)))
             try:
-                secret_key_bytes = base64.b64decode(secret_key)
+                # Derivar clave usando 3DES-CBC según especificación Redsys
+                derived_key = self._derive_key_3des_cbc(secret_key, clean_reference)
+                
+                # Calcular HMAC-SHA256 con la clave derivada
                 signature = hmac.new(
-                    secret_key_bytes,
+                    derived_key,
                     merchant_params.encode(),
                     hashlib.sha256
                 ).digest()
                 signature_b64 = base64.b64encode(signature).decode()
-                _logger.info(f"Signature generated: {signature_b64[:20]}...")
+                _logger.info(f"Signature generated (3DES-CBC): {signature_b64[:20]}...")
             except Exception as e:
                 _logger.error(f"Error generating signature: {e}", exc_info=True)
                 signature_b64 = ''
 
-
-
-
-                signature_b64 = ''
             
             # Generar formulario HTML para Redsys
             redsys_url = 'https://sis-t.redsys.es:25443/sis/realizarPago'
@@ -2883,6 +2957,11 @@ class WebsiteContractBookingFixed(http.Controller):
             from html import escape
             html_form = f'''<!DOCTYPE html>
 <html>
+            # DEBUG: Loguear los parámetros exactos que se envían
+            _logger.warning(f"DEBUG_REDSYS_PARAMS: MerchantCode={merchant_code}, Terminal={terminal}, Order={clean_reference}, Amount={amount_cents}")
+            _logger.warning(f"DEBUG_MERCHANT_JSON: {merchant_json}")
+            _logger.warning(f"DEBUG_MERCHANT_PARAMS_B64: {merchant_params[:100]}...")
+            _logger.warning(f"DEBUG_SIGNATURE: {signature_b64[:50]}...")
 <head>
     <title>Procesando pago...</title>
 </head>

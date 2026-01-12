@@ -26,3 +26,4 @@ from . import vehicle_substitution
 from . import vehicle_pricing_rule
 from . import vehicle_insurance_pricing
 from . import vehicle_contract_pricing
+
