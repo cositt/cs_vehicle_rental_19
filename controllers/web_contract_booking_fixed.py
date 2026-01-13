@@ -2764,7 +2764,7 @@ class WebsiteContractBookingFixed(http.Controller):
     #         payment_tx = request.env['payment.transaction'].sudo().create({
     #             'provider_id': providers.id,
     #             'payment_method_id': payment_methods.id,
-    #             'amount': selected_price,
+    #             'amount': total_price,
     #             'currency_id': request.env.company.currency_id.id,
     #             'partner_id': request.env.user.partner_id.id,
     #             'reference': order_number,
@@ -2823,6 +2823,23 @@ class WebsiteContractBookingFixed(http.Controller):
             end_date = kw.get('end_date', '')
             start_time = kw.get('start_time', '')
             end_time = kw.get('end_time', '')
+            
+            # Calcular rental_days desde start_date y end_date
+            rental_days = 1
+            if start_date and end_date:
+                try:
+                    from datetime import datetime
+                    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+                    days = (end_dt - start_dt).days
+                    if days > 0:
+                        rental_days = days
+                except:
+                    rental_days = 1
+            
+            # Calcular precio total
+            total_price = selected_price * rental_days
+
             
             # Validar campos requeridos
             if not category_id or not customer_email:
@@ -2891,7 +2908,7 @@ class WebsiteContractBookingFixed(http.Controller):
             tx = request.env['payment.transaction'].sudo().create({
                 'provider_id': provider.id,
                 'payment_method_id': payment_method.id,
-                'amount': selected_price,
+                'amount': total_price,
                 'currency_id': request.env.company.currency_id.id,
                 'partner_id': partner.id,
                 'reference': order_number,
