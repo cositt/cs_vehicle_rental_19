@@ -2955,13 +2955,15 @@ class WebsiteContractBookingFixed(http.Controller):
             redsys_url = 'https://sis-t.redsys.es:25443/sis/realizarPago'
             
             from html import escape
-            html_form = f'''<!DOCTYPE html>
-<html>
+            
             # DEBUG: Loguear los parámetros exactos que se envían
             _logger.warning(f"DEBUG_REDSYS_PARAMS: MerchantCode={merchant_code}, Terminal={terminal}, Order={clean_reference}, Amount={amount_cents}")
             _logger.warning(f"DEBUG_MERCHANT_JSON: {merchant_json}")
             _logger.warning(f"DEBUG_MERCHANT_PARAMS_B64: {merchant_params[:100]}...")
             _logger.warning(f"DEBUG_SIGNATURE: {signature_b64[:50]}...")
+            
+            html_form = f'''<!DOCTYPE html>
+<html>
 <head>
     <title>Procesando pago...</title>
 </head>
