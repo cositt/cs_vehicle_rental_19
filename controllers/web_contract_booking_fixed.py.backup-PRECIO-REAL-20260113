@@ -2528,14 +2528,27 @@ class WebsiteContractBookingFixed(http.Controller):
 
             print(f"DEBUG: Test DIRECT SQL for {customer_name}")
 
-            # [DISABLED] Usar SQL directo para insertar - CAUSABA MEMORY LEAK
-            # Código comentado para evitar conexiones no cerradas a PostgreSQL
-            # import psycopg2
-            # from odoo import sql_db
-            # db = sql_db.db_connect('odoo-dev')
-            # with db.cursor() as cr: ...
-            # [END DISABLED BLOCK]
-            return "Test DIRECT SQL DISABLED - Memory leak fix"
+            # Usar SQL directo para insertar
+            import psycopg2
+            from odoo import sql_db
+
+            # Obtener conexión directa
+            db = sql_db.db_connect('odoo-dev')
+            with db.cursor() as cr:
+                cr.execute("""
+                    INSERT INTO crm_lead (name, contact_name, email_from, type, create_date, write_date, create_uid, write_uid)
+                    VALUES (%s, %s, %s, %s, NOW(), NOW(), 1, 1)
+                    RETURNING id
+                """, (f'Test DIRECT SQL - {customer_name}', customer_name, customer_email, 'lead'))
+
+                lead_id = cr.fetchone()[0]
+                print(f"DEBUG: Test DIRECT SQL creado con ID {lead_id}")
+
+                # Commit directo
+                cr.commit()
+                print(f"DEBUG: Test DIRECT SQL commit exitoso")
+
+                return f"Test DIRECT SQL creado con ID: {lead_id}"
 
         except Exception as e:
             print(f"DEBUG: Error en test DIRECT SQL: {e}")
@@ -2751,7 +2764,7 @@ class WebsiteContractBookingFixed(http.Controller):
     #         payment_tx = request.env['payment.transaction'].sudo().create({
     #             'provider_id': providers.id,
     #             'payment_method_id': payment_methods.id,
-    #             'amount': total_price,
+    #             'amount': selected_price,
     #             'currency_id': request.env.company.currency_id.id,
     #             'partner_id': request.env.user.partner_id.id,
     #             'reference': order_number,
@@ -2810,23 +2823,6 @@ class WebsiteContractBookingFixed(http.Controller):
             end_date = kw.get('end_date', '')
             start_time = kw.get('start_time', '')
             end_time = kw.get('end_time', '')
-            
-            # Calcular rental_days desde start_date y end_date
-            rental_days = 1
-            if start_date and end_date:
-                try:
-                    from datetime import datetime
-                    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-                    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-                    days = (end_dt - start_dt).days
-                    if days > 0:
-                        rental_days = days
-                except:
-                    rental_days = 1
-            
-            # Calcular precio total
-            total_price = selected_price * rental_days
-
             
             # Validar campos requeridos
             if not category_id or not customer_email:
@@ -2895,7 +2891,7 @@ class WebsiteContractBookingFixed(http.Controller):
             tx = request.env['payment.transaction'].sudo().create({
                 'provider_id': provider.id,
                 'payment_method_id': payment_method.id,
-                'amount': total_price,
+                'amount': selected_price,
                 'currency_id': request.env.company.currency_id.id,
                 'partner_id': partner.id,
                 'reference': order_number,
