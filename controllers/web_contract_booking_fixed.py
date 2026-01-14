@@ -2910,12 +2910,12 @@ class WebsiteContractBookingFixed(http.Controller):
             request.session['booking_data'] = booking_data
             
             # Obtener provider Redsys
-            providers = request.env['payment.provider'].search([('code', '=', 'redsys')], limit=1)
+            providers = request.env['payment.provider'].sudo().search([('code', '=', 'redsys')], limit=1)
             if not providers:
                 return "Error: No payment provider found"
             
             # Obtener o crear payment_method
-            payment_methods = request.env['payment.method'].search([
+            payment_methods = request.env['payment.method'].sudo().search([
                 ('provider_ids', 'in', providers.id)
             ], limit=1)
             
