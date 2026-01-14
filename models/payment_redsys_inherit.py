@@ -141,15 +141,33 @@ class PaymentTransaction(models.Model):
                     )
 
                 # 3. Crear CRM Lead
-                lead = self.env['crm.lead'].sudo().create({
+                # Buscar stage sin depender de un nombre específico
+                lead_stage_id = False
+                try:
+                    # Intentar encontrar stage "Ganado" primero
+                    lead_stage = self.env['crm.stage'].search([('name', 'ilike', '%Ganado%')], limit=1)
+                    if lead_stage:
+                        lead_stage_id = lead_stage.id
+                    else:
+                        # Si no, usar el primer stage disponible
+                        lead_stage = self.env['crm.stage'].search([], limit=1)
+                        if lead_stage:
+                            lead_stage_id = lead_stage.id
+                except:
+                    pass
+                
+                lead_vals = {
                     'name': f"Reserva Confirmada - {booking_data.get('customer_name')}",
                     'partner_id': partner.id,
                     'type': 'opportunity',
-                    'stage_id': self.env['crm.stage'].search([('name', '=', 'Ganado')], limit=1).id or self.env['crm.stage'].search([], limit=1).id,
                     'email_from': booking_data.get('customer_email'),
                     'phone': booking_data.get('customer_phone'),
                     'description': f"Reserva procesada vía web | TX:{self.id}",
-                })
+                }
+                if lead_stage_id:
+                    lead_vals['stage_id'] = lead_stage_id
+                
+                lead = self.env['crm.lead'].sudo().create(lead_vals)
 
                 # 4. Crear Vehicle Contract
                 contract = self.env['vehicle.contract'].sudo().create({
