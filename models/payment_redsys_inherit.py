@@ -174,6 +174,7 @@ class PaymentTransaction(models.Model):
                 'location': booking_data.get('location'),
                 'start_time': booking_data.get('start_time'),
                 'end_time': booking_data.get('end_time'),
+                'selected_price': booking_data.get('selected_price'),
             }
             
             with open('/tmp/lead_creation.log', 'a') as lf:
