@@ -2984,15 +2984,28 @@ class WebsiteContractBookingFixed(http.Controller):
                     'provider_ids': [(4, provider.id)],
                 })
             
-            # Crear payment.transaction
+            # Detectar la compañía según el dominio (Sunset o Pinveco)
+            current_domain = request.httprequest.headers.get('Host', '').lower()
+            is_pinveco = 'pinveco' in current_domain
+            correct_company_id = 2 if is_pinveco else 1  # Pinveco=2, Sunset=1
+            
+            # Obtener la compañía correcta
+            correct_company = request.env['res.company'].sudo().search([('id', '=', correct_company_id)], limit=1)
+            if not correct_company:
+                correct_company = request.env.company
+            
+            _logger.info(f"RENTAL_PAYMENT: Creando transacción en compañía {correct_company.name}")
+            
+            # Crear payment.transaction EN LA COMPAÑÍA CORRECTA
             tx = request.env['payment.transaction'].sudo().create({
                 'provider_id': provider.id,
                 'payment_method_id': payment_method.id,
                 'amount': total_price,
-                'currency_id': request.env.company.currency_id.id,
+                'currency_id': correct_company.currency_id.id,
                 'partner_id': partner.id,
                 'reference': order_number,
                 'booking_data_json': json.dumps(booking_data),
+                'company_id': correct_company.id,
             })
             
             _logger.info(f"Created payment.transaction: {tx.id}")
