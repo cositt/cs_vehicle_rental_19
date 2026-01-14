@@ -271,18 +271,23 @@ class PaymentTransaction(models.Model):
     def _find_available_vehicle(self, category_id, start_date, end_date):
         """Encontrar vehículo disponible para la categoría y fechas"""
         try:
-            # Buscar la compañía Sunset (donde está el vehículo)
+            # IMPORTANTE: Siempre buscar en compañía Sunset
+            # (los vehículos de alquiler están allá, no importa quién pague)
             sunset_company = self.env['res.company'].sudo().search([('name', 'ilike', 'sunset')], limit=1)
             if not sunset_company:
-                # Fallback a compañía actual
-                sunset_company = self.env.company
+                sunset_company = self.env['res.company'].sudo().search([('id', '=', 1)])
             
-            # Buscar vehículos de la categoría en Sunset
+            if not sunset_company:
+                _logger.error("REDSYS: No se encontró compañía Sunset")
+                return None
+            
+            # Buscar vehículos de la categoría en Sunset (donde están los vehículos de rental)
             vehicles = self.env['fleet.vehicle'].sudo().search([
                 ('category_id', '=', int(category_id)),
                 ('status', '=', 'available'),
                 ('company_id', '=', sunset_company.id),
             ])
+            _logger.info(f"REDSYS: Buscando vehículos en compañía Sunset (ID:{sunset_company.id}) para categoría {category_id}")
 
             # Verificar disponibilidad (sin solapamientos)
             for vehicle in vehicles:
