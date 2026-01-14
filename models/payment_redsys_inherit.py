@@ -163,7 +163,14 @@ class PaymentTransaction(models.Model):
                 'type': 'opportunity',
                 'email_from': booking_data.get('customer_email'),
                 'phone': booking_data.get('customer_phone'),
-                'description': f"Reserva procesada vía web | TX:{self.id}",
+                'description': (
+                    f"Reserva procesada vía web | TX:{self.id}\n\n",
+                    f"--- RESUMEN DEL ALQUILER ---\n",
+                    f"- Tarifa: {float(booking_data.get('selected_price', 0.0)):.2f} €/día\n",
+                    f"- Fechas: {booking_data.get('start_date')} {booking_data.get('start_time')} → {booking_data.get('end_date')} {booking_data.get('end_time')}\n",
+                    f"- Ubicación: {booking_data.get('location')}\n",
+                    f"- Transacción Redsys: {self.reference}"
+                ),
                 'stage_id': lead_stage_id,
                 'vehicle_id': vehicle.id,
                 'start_date': booking_data.get('start_date'),
@@ -174,7 +181,6 @@ class PaymentTransaction(models.Model):
                 'location': booking_data.get('location'),
                 'start_time': booking_data.get('start_time'),
                 'end_time': booking_data.get('end_time'),
-                'selected_price': booking_data.get('selected_price'),
             }
             
             with open('/tmp/lead_creation.log', 'a') as lf:
