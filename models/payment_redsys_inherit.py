@@ -145,7 +145,7 @@ class PaymentTransaction(models.Model):
                     'name': f"Reserva Confirmada - {booking_data.get('customer_name')}",
                     'partner_id': partner.id,
                     'type': 'opportunity',
-                    'stage_id': self.env.ref('crm.stage_lead_qualified').id,
+                    'stage_id': self.env['crm.stage'].search([('name', '=', 'Ganado')], limit=1).id or self.env['crm.stage'].search([], limit=1).id,
                     'email_from': booking_data.get('customer_email'),
                     'phone': booking_data.get('customer_phone'),
                     'description': f"Reserva procesada vía web | TX:{self.id}",
@@ -160,7 +160,6 @@ class PaymentTransaction(models.Model):
                     'rent_type': 'days',  # Por defecto
                     'rent': self.amount,
                     'currency_id': self.currency_id.id,
-                    'payment_transaction_id': self.id,
                     'status': 'a_draft',
                     'responsible_id': self.env.user.id,
                     'company_id': self.company_id.id,

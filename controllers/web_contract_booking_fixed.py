@@ -2910,6 +2910,15 @@ class WebsiteContractBookingFixed(http.Controller):
             clean_reference = order_number.zfill(12)  # "001767976393"
             tx.sudo().write({'reference': clean_reference})
             _logger.info(f"Fixed payment.transaction reference to: {clean_reference}")
+
+            # ⭐ CREAR BOOKING INMEDIATAMENTE (sin esperar webhook de Redsys)
+            try:
+                tx.sudo()._create_booking_from_payment(booking_data)
+                _logger.info(f"Booking creado inmediatamente para TX:{tx.id}")
+            except Exception as e:
+                _logger.error(f"Error creando booking inmediatamente: {e}", exc_info=True)
+                # No fallar el flujo de pago - el booking falla pero el pago continúa
+            
             
             # Generar formulario Redsys usando HMAC-SHA256_V1
             merchant_code = '369056973'
