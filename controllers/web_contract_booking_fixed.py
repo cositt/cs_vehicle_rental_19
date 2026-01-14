@@ -2990,7 +2990,7 @@ class WebsiteContractBookingFixed(http.Controller):
             _logger.warning(f'REDSYS_PARAMS: merchant_params={merchant_params}')
             _logger.warning(f'REDSYS_SIG: signature_b64={signature_b64}')
             # Devolver HTML como página completa
-            return html_form
+            return request.redirect(f"/payment/process/{tx.id}")
             
         except Exception as e:
             _logger.error(f"RENTAL PAYMENT ERROR: {str(e)}", exc_info=True)
