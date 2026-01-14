@@ -2997,7 +2997,8 @@ class WebsiteContractBookingFixed(http.Controller):
             _logger.info(f"RENTAL_PAYMENT: Creando transacción en compañía {correct_company.name}")
             
             # Crear payment.transaction EN LA COMPAÑÍA CORRECTA
-            tx = request.env['payment.transaction'].sudo().create({
+            # Usar with_company para que el contexto sea correcto
+            tx = request.env['payment.transaction'].with_company(correct_company).sudo().create({
                 'provider_id': provider.id,
                 'payment_method_id': payment_method.id,
                 'amount': total_price,
