@@ -88,7 +88,9 @@ class RentalPaymentController(http.Controller):
             
             amount_cents = int(selected_price * 100)
             currency = '978'  # EUR
-            order_number = str(payment_tx.reference).zfill(12)
+            # Extraer solo dígitos del reference y rellenar a 12 cifras
+            ref_digits = ''.join(filter(str.isdigit, str(payment_tx.reference)))
+            order_number = ref_digits[-12:].zfill(12) if ref_digits else str(int(__import__('time').time()))[-12:].zfill(12)
             
             # Preparar datos del merchant
             merchant_data = {
