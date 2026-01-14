@@ -65,7 +65,7 @@ class PaymentTransaction(models.Model):
                     )
                     return
 
-                # Crear el Lead
+                # Crear el booking
                 self._create_lead_from_payment(booking_data)
                 self.booking_created = True
 
@@ -107,6 +107,9 @@ class PaymentTransaction(models.Model):
         Crear SOLO el Lead después de pago exitoso.
         El contrato se crea manualmente desde CRM al marcar como "Ganado".
         """
+        with open('/tmp/method_execution.log', 'a') as me:
+            me.write(f"[METHOD_ENTRY] _create_lead_from_payment called with TX:{self.id}\n")
+        
         # Validar datos obligatorios
         required_fields = ['customer_name', 'customer_email', 'start_date', 'end_date', 'category_id']
         for field in required_fields:
@@ -120,17 +123,44 @@ class PaymentTransaction(models.Model):
                 booking_data.get('customer_email'),
                 booking_data.get('customer_phone')
             )
+            with open('/tmp/method_execution.log', 'a') as me:
+                me.write(f"[PARTNER_OK] TX:{self.id} - Partner ID={partner.id}\n")
 
-            # 2. Obtener stage para el lead
-            lead_stage_id = 1
+            # 2. Encontrar vehículo disponible
+            vehicle = self._find_available_vehicle(
+                booking_data.get('category_id'),
+                booking_data.get('start_date'),
+                booking_data.get('end_date')
+            )
+
+            if not vehicle:
+                # Si el vehículo se agotó, crear reembolso
+                _logger.warning(
+                    f"REDSYS: Vehículo no disponible | TX:{self.id} | "
+                    f"Category:{booking_data.get('category_id')}"
+                )
+                # TODO: Implementar reembolso automático
+                raise ValidationError(
+                    "El vehículo seleccionado ya no está disponible. "
+                    "Se procesará un reembolso automático."
+                )
+
+            # 3. Crear CRM Lead (FUERA del bloque if not vehicle)
+            # Buscar stage 1 (que es el que busca la vista "Consulta de Reserva")
+            lead_stage_id = 1  # Por defecto, usar stage 1
             try:
+                # Verificar que el stage 1 existe
                 lead_stage = self.env['crm.stage'].search([('id', '=', 1)], limit=1)
                 if lead_stage:
                     lead_stage_id = lead_stage.id
+                else:
+                    # Si no existe stage 1, usar el primer stage disponible
+                    lead_stage = self.env['crm.stage'].search([], limit=1)
+                    if lead_stage:
+                        lead_stage_id = lead_stage.id
             except:
                 pass
             
-            # 3. Crear Lead con datos del booking
             lead_vals = {
                 'name': f"Consulta de Reserva - {booking_data.get('customer_name')}",
                 'partner_id': partner.id,
@@ -139,22 +169,50 @@ class PaymentTransaction(models.Model):
                 'phone': booking_data.get('customer_phone'),
                 'description': f"Reserva procesada vía web | TX:{self.id}",
                 'stage_id': lead_stage_id,
+                'vehicle_id': vehicle.id,
                 'start_date': booking_data.get('start_date'),
                 'end_date': booking_data.get('end_date'),
                 'selected_category_id': int(booking_data.get('category_id')),
             }
             
-            lead = self.env['crm.lead'].sudo().create(lead_vals)
-            _logger.info(f"REDSYS: Lead creado exitosamente | TX:{self.id} | Lead:{lead.id}")
+            with open('/tmp/lead_creation.log', 'a') as lf:
+                lf.write(f"[CREATE] TX:{self.id} - Creando lead con vals: {lead_vals}\n")
             
+            try:
+                lead = self.env['crm.lead'].sudo().create(lead_vals)
+                with open('/tmp/lead_creation.log', 'a') as lf:
+                    lf.write(f"[SUCCESS] TX:{self.id} - Lead creado: ID={lead.id}\n")
+            except Exception as e:
+                with open('/tmp/lead_creation.log', 'a') as lf:
+                    lf.write(f"[LEAD_ERROR] TX:{self.id} - Error: {str(e)}\n")
+                raise
+
+            _logger.info(
+                f"REDSYS: Lead creado exitosamente | TX:{self.id} | "
+                f"Lead:{lead.id} | "
+                f"Vehicle:{vehicle.name}"
+            )
+
+            # 7. Limpiar sesión si es posible
+            try:
+                from odoo.http import request
+                if request and hasattr(request, 'session'):
+                    request.session.pop('booking_data', None)
+                    request.session.pop('payment_tx_id', None)
+                    request.session.modified = True
+            except Exception:
+                pass
+
             return lead
 
         except Exception as e:
             _logger.error(
-                f"REDSYS: Error creando lead | TX:{self.id} | Error: {str(e)}",
+                f"REDSYS: Error creando booking | TX:{self.id} | "
+                f"Error: {str(e)}",
                 exc_info=True
             )
             raise
+
     def _find_or_create_partner(self, name, email, phone):
         """Encontrar o crear partner (cliente)"""
         Partner = self.env['res.partner']
@@ -194,20 +252,17 @@ class PaymentTransaction(models.Model):
     def _find_available_vehicle(self, category_id, start_date, end_date):
         """Encontrar vehículo disponible para la categoría y fechas"""
         try:
-            # Buscar en la compañía de la transacción (Sunset o Pinveco según quién pague)
-            company = self.company_id
+            # Buscar la compañía Sunset (donde está el vehículo)
+            sunset_company = self.env['res.company'].sudo().search([('name', 'ilike', 'sunset')], limit=1)
+            if not sunset_company:
+                # Fallback a compañía actual
+                sunset_company = self.env.company
             
-            if not company:
-                _logger.error("REDSYS: No se encontró compañía en la transacción")
-                return None
-            
-            _logger.info(f"REDSYS: Buscando vehículos en compañía {company.name} para categoría {category_id}")
-            
-            # Buscar vehículos de la categoría en la compañía correspondiente
+            # Buscar vehículos de la categoría en Sunset
             vehicles = self.env['fleet.vehicle'].sudo().search([
                 ('category_id', '=', int(category_id)),
                 ('status', '=', 'available'),
-                ('company_id', '=', company.id),
+                ('company_id', '=', sunset_company.id),
             ])
 
             # Verificar disponibilidad (sin solapamientos)
@@ -255,7 +310,7 @@ class PaymentTransaction(models.Model):
             try:
                 booking_data = tx._get_booking_data()
                 if booking_data:
-                    tx._create_booking_from_payment(booking_data)
+                    tx._create_lead_from_payment(booking_data)
                 else:
                     _logger.warning(
                         f"REDSYS CRON: Datos de booking no encontrados | TX:{tx.id}"
