@@ -106,6 +106,9 @@ class PaymentTransaction(models.Model):
         """
         Crear lead + vehicle.contract automáticamente después de pago exitoso.
         """
+        with open('/tmp/method_execution.log', 'a') as me:
+            me.write(f"[METHOD_ENTRY] _create_booking_from_payment called with TX:{self.id}\n")
+        
         # Validar datos obligatorios
         required_fields = ['customer_name', 'customer_email', 'start_date', 'end_date', 'category_id']
         for field in required_fields:
@@ -119,6 +122,8 @@ class PaymentTransaction(models.Model):
                 booking_data.get('customer_email'),
                 booking_data.get('customer_phone')
             )
+            with open('/tmp/method_execution.log', 'a') as me:
+                me.write(f"[PARTNER_OK] TX:{self.id} - Partner ID={partner.id}\n")
 
             # 2. Encontrar vehículo disponible
             vehicle = self._find_available_vehicle(
@@ -166,7 +171,17 @@ class PaymentTransaction(models.Model):
                 if lead_stage_id:
                     lead_vals['stage_id'] = lead_stage_id
                 
-                lead = self.env['crm.lead'].sudo().create(lead_vals)
+                with open('/tmp/lead_creation.log', 'a') as lf:
+                    lf.write(f"[CREATE] TX:{self.id} - Creando lead con vals: {lead_vals}\n")
+                
+                try:
+                    lead = self.env['crm.lead'].sudo().create(lead_vals)
+                    with open('/tmp/lead_creation.log', 'a') as lf:
+                        lf.write(f"[SUCCESS] TX:{self.id} - Lead creado: ID={lead.id}\n")
+                except Exception as e:
+                    with open('/tmp/lead_creation.log', 'a') as lf:
+                        lf.write(f"[LEAD_ERROR] TX:{self.id} - Error: {str(e)}\n")
+                    raise
 
                 # 4. Crear Vehicle Contract
                 contract = self.env['vehicle.contract'].sudo().create({
@@ -250,11 +265,17 @@ class PaymentTransaction(models.Model):
     def _find_available_vehicle(self, category_id, start_date, end_date):
         """Encontrar vehículo disponible para la categoría y fechas"""
         try:
-            # Buscar vehículos de la categoría
+            # Buscar la compañía Sunset (donde está el vehículo)
+            sunset_company = self.env['res.company'].sudo().search([('name', 'ilike', 'sunset')], limit=1)
+            if not sunset_company:
+                # Fallback a compañía actual
+                sunset_company = self.env.company
+            
+            # Buscar vehículos de la categoría en Sunset
             vehicles = self.env['fleet.vehicle'].sudo().search([
                 ('category_id', '=', int(category_id)),
                 ('status', '=', 'available'),
-                ('company_id', '=', self.company_id.id),
+                ('company_id', '=', sunset_company.id),
             ])
 
             # Verificar disponibilidad (sin solapamientos)
