@@ -28,6 +28,7 @@ class BookingEnquiryLead(models.Model):
     location = fields.Char(string="Ubicación de Recogida", help="Ubicación donde el cliente recogerá el vehículo")
     start_time = fields.Char(string="Hora de Inicio", help="Hora de recogida del vehículo")
     end_time = fields.Char(string="Hora de Fin", help="Hora de devolución del vehículo")
+    selected_price = fields.Float(string="Precio de Reserva", help="Precio pagado en la web por la reserva")
 
     @api.model_create_multi
     def create(self, vals_list):

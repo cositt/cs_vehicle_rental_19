@@ -165,6 +165,7 @@ class LeadRentalContract(models.TransientModel):
             'pick_up_country_id': spain.id if spain else False,
             'drop_off_state_id': state_id,
             'drop_off_country_id': spain.id if spain else False,
+            'rent': booking_data.get('selected_price', 0),
         }
         
         contract = self.env['vehicle.contract'].create(contract_vals)

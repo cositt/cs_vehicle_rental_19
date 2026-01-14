@@ -49,6 +49,7 @@ class RentalPaymentController(http.Controller):
                 'customer_dni': customer_dni,
                 'customer_dni_expiry_date': customer_dni_expiry_date,
                 'location': location,
+                'selected_price': selected_price,
             }
             
             # Guardar en sesión
