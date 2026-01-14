@@ -68,6 +68,12 @@ class RentalPaymentController(http.Controller):
             
             # Crear transacción de pago
             import time
+            
+            # Generar order_number PRIMERO (Redsys requiere 12 dígitos numéricos)
+            timestamp_str = str(int(time.time()))
+            order_number = timestamp_str[-12:].zfill(12)  # Últimos 12 dígitos rellenados a 12
+            
+            # Ahora crear la transacción con la referencia correcta
             tx_vals = {
                 'booking_data_json': json.dumps(booking_data),
                 'provider_id': provider.id,
@@ -75,11 +81,11 @@ class RentalPaymentController(http.Controller):
                 'amount': selected_price,
                 'currency_id': request.env.company.currency_id.id,
                 'partner_id': request.env.user.partner_id.id if request.env.user.partner_id else request.env.ref('base.public_partner').id,
-                'reference': f'RENTAL-{int(time.time())}',
+                'reference': order_number,  # Usar directamente el order_number
             }
             
             payment_tx = request.env['payment.transaction'].sudo().create(tx_vals)
-            _logger.info(f"RENTAL_PAYMENT: Created transaction ID {payment_tx.id}")
+            _logger.info(f"RENTAL_PAYMENT: Created transaction ID {payment_tx.id} with reference {order_number}")
             
             # Ahora generar el formulario de Redsys
             merchant_code = '369056973'
@@ -88,9 +94,6 @@ class RentalPaymentController(http.Controller):
             
             amount_cents = int(selected_price * 100)
             currency = '978'  # EUR
-            # Extraer solo dígitos del reference y rellenar a 12 cifras
-            ref_digits = ''.join(filter(str.isdigit, str(payment_tx.reference)))
-            order_number = ref_digits[-12:].zfill(12) if ref_digits else str(int(__import__('time').time()))[-12:].zfill(12)
             
             # Preparar datos del merchant
             merchant_data = {
