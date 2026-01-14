@@ -2,6 +2,7 @@
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 from odoo import fields, api, models
+from dateutil.relativedelta import relativedelta
 from datetime import datetime, time
 
 
@@ -132,8 +133,31 @@ class LeadRentalContract(models.TransientModel):
 
     def action_create_rental_contract(self):
         """Create rental contract from lead"""
+        # Leer booking_data desde la última transacción Redsys del partner (24h)
+        tx = self.env['payment.transaction'].sudo().search([
+            ('partner_id', '=', self.partner_id.id),
+            ('state', 'in', ['done', 'authorized']),
+            ('provider_code', '=', 'redsys'),
+            ('create_date', '>=', fields.Datetime.now() - relativedelta(hours=24)),
+        ], order='id desc', limit=1)
+        import json
+        booking_data = {}
+        if tx and tx.booking_data_json:
+            try:
+                booking_data = json.loads(tx.booking_data_json) or {}
+            except Exception:
+                booking_data = {}
+        # Calcular precio por día
+        daily_rate = 0.0
+        try:
+            daily_rate = float(booking_data.get('selected_price', 0.0))
+        except (ValueError, TypeError):
+            daily_rate = 0.0
+        if not daily_rate and tx and self.start_date and self.end_date:
+            days = (self.end_date.date() - self.start_date.date()).days or 1
+            daily_rate = (tx.amount or 0.0) / max(1, days)
         # Obtener ubicación del lead
-        location = getattr(self.crm_lead_id, 'location', '') or ''
+        location = (booking_data.get('location') or getattr(self.crm_lead_id, 'location', '') or '')
         
         # Buscar provincia/estado por nombre de ubicación
         state_id = False
@@ -165,11 +189,21 @@ class LeadRentalContract(models.TransientModel):
             'pick_up_country_id': spain.id if spain else False,
             'drop_off_state_id': state_id,
             'drop_off_country_id': spain.id if spain else False,
-            'rent': booking_data.get('selected_price', 0),
+            'rent': daily_rate,
         }
         
         contract = self.env['vehicle.contract'].create(contract_vals)
         self.crm_lead_id.contract_id = contract.id
+        # Crear línea en Detalles de pago del vehículo con el cobro Redsys
+        if hasattr(contract, 'vehicle_payment_option_ids') and tx:
+            self.env['vehicle.payment.option'].sudo().create({
+                'name': f'Pago online Redsys ({tx.reference})',
+                'payment_date': fields.Date.context_today(self),
+                'payment_amount': tx.amount,
+                'vehicle_contract_id': contract.id,
+                'company_id': contract.company_id.id,
+                'currency_id': contract.currency_id.id,
+            })
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'vehicle.contract',
