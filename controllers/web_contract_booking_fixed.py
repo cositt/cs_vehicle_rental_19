@@ -2960,7 +2960,7 @@ class WebsiteContractBookingFixed(http.Controller):
             order_number = str(int(time_mod.time()))
             
             # Buscar provider Redsys
-            provider = request.env['payment.provider'].sudo().search([('code', '=', 'redsys')], limit=1)
+            provider = request.env['payment.provider'].sudo().search([('code', '=', 'redsys'), ('state', '=', 'enabled')], limit=1)
             if not provider:
                 provider = request.env['payment.provider'].sudo().search([], limit=1)
             
