@@ -144,77 +144,83 @@ class PaymentTransaction(models.Model):
                     "Se procesará un reembolso automático."
                 )
 
-                # 3. Crear CRM Lead
-                # Buscar stage sin depender de un nombre específico
-                lead_stage_id = False
-                try:
-                    # Intentar encontrar stage "Ganado" primero
-                    lead_stage = self.env['crm.stage'].search([('name', 'ilike', '%Ganado%')], limit=1)
+            # 3. Crear CRM Lead (FUERA del bloque if not vehicle)
+            # Buscar stage 1 (que es el que busca la vista "Consulta de Reserva")
+            lead_stage_id = 1  # Por defecto, usar stage 1
+            try:
+                # Verificar que el stage 1 existe
+                lead_stage = self.env['crm.stage'].search([('id', '=', 1)], limit=1)
+                if lead_stage:
+                    lead_stage_id = lead_stage.id
+                else:
+                    # Si no existe stage 1, usar el primer stage disponible
+                    lead_stage = self.env['crm.stage'].search([], limit=1)
                     if lead_stage:
                         lead_stage_id = lead_stage.id
-                    else:
-                        # Si no, usar el primer stage disponible
-                        lead_stage = self.env['crm.stage'].search([], limit=1)
-                        if lead_stage:
-                            lead_stage_id = lead_stage.id
-                except:
-                    pass
-                
-                lead_vals = {
-                    'name': f"Reserva Confirmada - {booking_data.get('customer_name')}",
-                    'partner_id': partner.id,
-                    'type': 'opportunity',
-                    'email_from': booking_data.get('customer_email'),
-                    'phone': booking_data.get('customer_phone'),
-                    'description': f"Reserva procesada vía web | TX:{self.id}",
-                }
-                if lead_stage_id:
-                    lead_vals['stage_id'] = lead_stage_id
-                
+            except:
+                pass
+            
+            lead_vals = {
+                'name': f"Consulta de Reserva - {booking_data.get('customer_name')}",
+                'partner_id': partner.id,
+                'type': 'opportunity',
+                'email_from': booking_data.get('customer_email'),
+                'phone': booking_data.get('customer_phone'),
+                'description': f"Reserva procesada vía web | TX:{self.id}",
+                'stage_id': lead_stage_id,
+                'vehicle_id': vehicle.id,
+                'start_date': booking_data.get('start_date'),
+                'end_date': booking_data.get('end_date'),
+                'selected_category_id': int(booking_data.get('category_id')),
+            }
+            
+            with open('/tmp/lead_creation.log', 'a') as lf:
+                lf.write(f"[CREATE] TX:{self.id} - Creando lead con vals: {lead_vals}\n")
+            
+            try:
+                lead = self.env['crm.lead'].sudo().create(lead_vals)
                 with open('/tmp/lead_creation.log', 'a') as lf:
-                    lf.write(f"[CREATE] TX:{self.id} - Creando lead con vals: {lead_vals}\n")
-                
-                try:
-                    lead = self.env['crm.lead'].sudo().create(lead_vals)
-                    with open('/tmp/lead_creation.log', 'a') as lf:
-                        lf.write(f"[SUCCESS] TX:{self.id} - Lead creado: ID={lead.id}\n")
-                except Exception as e:
-                    with open('/tmp/lead_creation.log', 'a') as lf:
-                        lf.write(f"[LEAD_ERROR] TX:{self.id} - Error: {str(e)}\n")
-                    raise
+                    lf.write(f"[SUCCESS] TX:{self.id} - Lead creado: ID={lead.id}\n")
+            except Exception as e:
+                with open('/tmp/lead_creation.log', 'a') as lf:
+                    lf.write(f"[LEAD_ERROR] TX:{self.id} - Error: {str(e)}\n")
+                raise
 
-                # 4. Crear Vehicle Contract
-                contract = self.env['vehicle.contract'].sudo().create({
-                    'customer_id': partner.id,
-                    'vehicle_id': vehicle.id,
-                    'start_date': booking_data.get('start_date'),
-                    'end_date': booking_data.get('end_date'),
-                    'rent_type': 'days',  # Por defecto
-                    'rent': self.amount,
-                    'currency_id': self.currency_id.id,
-                    'status': 'a_draft',
-                    'responsible_id': self.env.user.id,
-                    'company_id': self.company_id.id,
-                })
+            # 4. Crear Vehicle Contract
+            contract = self.env['vehicle.contract'].sudo().create({
+                'customer_id': partner.id,
+                'vehicle_id': vehicle.id,
+                'start_date': booking_data.get('start_date'),
+                'end_date': booking_data.get('end_date'),
+                'rent_type': 'days',  # Por defecto
+                'rent': self.amount,
+                'currency_id': self.currency_id.id,
+                'status': 'a_draft',
+                'responsible_id': self.env.user.id,
+                'company_id': self.company_id.id,
+            })
 
-                # 5. Transicionar automáticamente a in_progress
-                contract.a_draft_to_b_in_progress()
+            # 5. Vincular contract al lead
+            lead.contract_id = contract.id
 
-                _logger.info(
-                    f"REDSYS: Booking creado exitosamente | TX:{self.id} | "
-                    f"Lead:{lead.id} | Contract:{contract.id} | "
-                    f"Vehicle:{vehicle.name}"
-                )
+            # 6. Transicionar automáticamente a in_progress
+            contract.a_draft_to_b_in_progress()
 
-                # 6. Limpiar sesión si es posible
-                try:
-                    from odoo.http import request
-                    if request and hasattr(request, 'session'):
-                        request.session.pop('booking_data', None)
-                        request.session.pop('payment_tx_id', None)
-                        request.session.modified = True
-                except Exception:
-                    pass
+            _logger.info(
+                f"REDSYS: Booking creado exitosamente | TX:{self.id} | "
+                f"Lead:{lead.id} | Contract:{contract.id} | "
+                f"Vehicle:{vehicle.name}"
+            )
+
+            # 7. Limpiar sesión si es posible
+            try:
+                from odoo.http import request
+                if request and hasattr(request, 'session'):
+                    request.session.pop('booking_data', None)
+                    request.session.pop('payment_tx_id', None)
+                    request.session.modified = True
+            except Exception:
+                pass
 
             return contract
 
