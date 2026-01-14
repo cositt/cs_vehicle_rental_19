@@ -65,8 +65,8 @@ class PaymentTransaction(models.Model):
                     )
                     return
 
-                # Crear el booking
-                self._create_booking_from_payment(booking_data)
+                # Crear el Lead
+                self._create_lead_from_payment(booking_data)
                 self.booking_created = True
 
             except Exception as e:
@@ -102,12 +102,13 @@ class PaymentTransaction(models.Model):
 
         return None
 
-    def _create_booking_from_payment(self, booking_data):
+    def _create_lead_from_payment(self, booking_data):
         """
-        Crear lead + vehicle.contract automáticamente después de pago exitoso.
+        Crear SOLO el Lead después de pago exitoso.
+        El contrato se crea manualmente desde CRM al marcar como "Ganado".
         """
         with open('/tmp/method_execution.log', 'a') as me:
-            me.write(f"[METHOD_ENTRY] _create_booking_from_payment called with TX:{self.id}\n")
+            me.write(f"[METHOD_ENTRY] _create_lead_from_payment called with TX:{self.id}\n")
         
         # Validar datos obligatorios
         required_fields = ['customer_name', 'customer_email', 'start_date', 'end_date', 'category_id']
@@ -186,43 +187,8 @@ class PaymentTransaction(models.Model):
                     lf.write(f"[LEAD_ERROR] TX:{self.id} - Error: {str(e)}\n")
                 raise
 
-            # 4. Crear Vehicle Contract
-            contract = self.env['vehicle.contract'].sudo().create({
-                'customer_id': partner.id,
-                'vehicle_id': vehicle.id,
-                'start_date': booking_data.get('start_date'),
-                'end_date': booking_data.get('end_date'),
-                'rent_type': 'days',  # Por defecto
-                'rent': self.amount,
-                'currency_id': self.currency_id.id,
-                'status': 'a_draft',
-                'responsible_id': self.env.user.id,
-                'company_id': vehicle.company_id.id,
-            })
 
-            # 5. Vincular contract al lead
-            lead.contract_id = contract.id
-
-            # 6. Transicionar automáticamente a in_progress
-            contract.a_draft_to_b_in_progress()
-
-            _logger.info(
-                f"REDSYS: Booking creado exitosamente | TX:{self.id} | "
-                f"Lead:{lead.id} | Contract:{contract.id} | "
-                f"Vehicle:{vehicle.name}"
-            )
-
-            # 7. Limpiar sesión si es posible
-            try:
-                from odoo.http import request
-                if request and hasattr(request, 'session'):
-                    request.session.pop('booking_data', None)
-                    request.session.pop('payment_tx_id', None)
-                    request.session.modified = True
-            except Exception:
-                pass
-
-            return contract
+            return lead
 
         except Exception as e:
             _logger.error(
