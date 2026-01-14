@@ -113,32 +113,31 @@ class PaymentTransaction(models.Model):
                 raise ValidationError(f"Falta datos obligatorio: {field}")
 
         try:
-            with self.env.cr.savepoint():
-                # 1. Encontrar o crear partner (cliente)
-                partner = self._find_or_create_partner(
-                    booking_data.get('customer_name'),
-                    booking_data.get('customer_email'),
-                    booking_data.get('customer_phone')
-                )
+            # 1. Encontrar o crear partner (cliente)
+            partner = self._find_or_create_partner(
+                booking_data.get('customer_name'),
+                booking_data.get('customer_email'),
+                booking_data.get('customer_phone')
+            )
 
-                # 2. Encontrar vehículo disponible
-                vehicle = self._find_available_vehicle(
-                    booking_data.get('category_id'),
-                    booking_data.get('start_date'),
-                    booking_data.get('end_date')
-                )
+            # 2. Encontrar vehículo disponible
+            vehicle = self._find_available_vehicle(
+                booking_data.get('category_id'),
+                booking_data.get('start_date'),
+                booking_data.get('end_date')
+            )
 
-                if not vehicle:
-                    # Si el vehículo se agotó, crear reembolso
-                    _logger.warning(
-                        f"REDSYS: Vehículo no disponible | TX:{self.id} | "
-                        f"Category:{booking_data.get('category_id')}"
-                    )
-                    # TODO: Implementar reembolso automático
-                    raise ValidationError(
-                        "El vehículo seleccionado ya no está disponible. "
-                        "Se procesará un reembolso automático."
-                    )
+            if not vehicle:
+                # Si el vehículo se agotó, crear reembolso
+                _logger.warning(
+                    f"REDSYS: Vehículo no disponible | TX:{self.id} | "
+                    f"Category:{booking_data.get('category_id')}"
+                )
+                # TODO: Implementar reembolso automático
+                raise ValidationError(
+                    "El vehículo seleccionado ya no está disponible. "
+                    "Se procesará un reembolso automático."
+                )
 
                 # 3. Crear CRM Lead
                 # Buscar stage sin depender de un nombre específico
@@ -202,7 +201,7 @@ class PaymentTransaction(models.Model):
                 except Exception:
                     pass
 
-                return contract
+            return contract
 
         except Exception as e:
             _logger.error(
