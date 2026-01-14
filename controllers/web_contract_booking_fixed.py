@@ -2837,7 +2837,7 @@ class WebsiteContractBookingFixed(http.Controller):
                 )
             
             # Guardar datos en sesión
-            request.session['booking_data'] = {
+            booking_data = {
                 'category_id': category_id,
                 'selected_price': selected_price,
                 'customer_email': customer_email,
@@ -2848,6 +2848,7 @@ class WebsiteContractBookingFixed(http.Controller):
                 'start_time': start_time,
                 'end_time': end_time,
             }
+            request.session['booking_data'] = booking_data
             
             # Obtener/crear partner
             partner = request.env['res.partner'].sudo().search([('email', '=', customer_email)], limit=1)
