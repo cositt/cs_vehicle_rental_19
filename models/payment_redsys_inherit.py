@@ -159,6 +159,7 @@ class PaymentTransaction(models.Model):
             lead_vals = {
                 'name': f"Consulta de Reserva - {booking_data.get('customer_name')}",
                 'partner_id': partner.id,
+                'company_id': vehicle.company_id.id,
                 'type': 'opportunity',
                 'email_from': booking_data.get('customer_email'),
                 'phone': booking_data.get('customer_phone'),
