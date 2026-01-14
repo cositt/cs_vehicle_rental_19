@@ -5,6 +5,17 @@ from odoo import fields, api, models
 from datetime import datetime, time
 
 
+def parse_time_str(time_str, default=None):
+    """Parse time string HH:MM to time object"""
+    if not time_str:
+        return default or time.min
+    try:
+        h, m = map(int, time_str.split(':'))
+        return time(h, m)
+    except:
+        return default or time.min
+
+
 class LeadRentalContract(models.TransientModel):
     """Lead Rental Contract"""
     _name = 'lead.rental.contract'
@@ -37,7 +48,6 @@ class LeadRentalContract(models.TransientModel):
                 if hasattr(lead, 'vehicle_id') and lead.vehicle_id:
                     res['vehicle_id'] = lead.vehicle_id.id
                 elif hasattr(lead, 'selected_category_id') and lead.selected_category_id:
-                    # Buscar un vehículo disponible de la categoría seleccionada
                     vehicle = self.env['fleet.vehicle'].search([
                         ('model_id.category_id', '=', lead.selected_category_id.id),
                         ('status', '=', 'available')
@@ -45,20 +55,24 @@ class LeadRentalContract(models.TransientModel):
                     if vehicle:
                         res['vehicle_id'] = vehicle.id
                 
-                # Fechas - convertir de Date a Datetime
+                # Obtener horas del lead
+                start_time_obj = parse_time_str(getattr(lead, 'start_time', None), time(9, 0))
+                end_time_obj = parse_time_str(getattr(lead, 'end_time', None), time(9, 0))
+                
+                # Fechas - convertir de Date a Datetime usando las horas del lead
                 if hasattr(lead, 'start_date') and lead.start_date:
                     if isinstance(lead.start_date, str):
                         date_obj = datetime.strptime(lead.start_date, '%Y-%m-%d').date()
-                        res['start_date'] = datetime.combine(date_obj, time.min)
+                        res['start_date'] = datetime.combine(date_obj, start_time_obj)
                     else:
-                        res['start_date'] = datetime.combine(lead.start_date, time.min)
+                        res['start_date'] = datetime.combine(lead.start_date, start_time_obj)
                 
                 if hasattr(lead, 'end_date') and lead.end_date:
                     if isinstance(lead.end_date, str):
                         date_obj = datetime.strptime(lead.end_date, '%Y-%m-%d').date()
-                        res['end_date'] = datetime.combine(date_obj, time.max)
+                        res['end_date'] = datetime.combine(date_obj, end_time_obj)
                     else:
-                        res['end_date'] = datetime.combine(lead.end_date, time.max)
+                        res['end_date'] = datetime.combine(lead.end_date, end_time_obj)
         
         return res
     
@@ -68,8 +82,9 @@ class LeadRentalContract(models.TransientModel):
         records = super().create(vals_list)
         for record in records:
             if record.crm_lead_id and (not record.partner_id or not record.vehicle_id or not record.start_date or not record.end_date):
-                # Llenar datos faltantes desde el lead
                 lead = record.crm_lead_id
+                start_time_obj = parse_time_str(getattr(lead, 'start_time', None), time(9, 0))
+                end_time_obj = parse_time_str(getattr(lead, 'end_time', None), time(9, 0))
                 
                 if not record.partner_id and lead.partner_id:
                     record.partner_id = lead.partner_id
@@ -78,10 +93,10 @@ class LeadRentalContract(models.TransientModel):
                     record.vehicle_id = lead.vehicle_id
                 
                 if not record.start_date and lead.start_date:
-                    record.start_date = datetime.combine(lead.start_date, time.min)
+                    record.start_date = datetime.combine(lead.start_date, start_time_obj)
                 
                 if not record.end_date and lead.end_date:
-                    record.end_date = datetime.combine(lead.end_date, time.max)
+                    record.end_date = datetime.combine(lead.end_date, end_time_obj)
         
         return records
     
@@ -90,17 +105,18 @@ class LeadRentalContract(models.TransientModel):
         """Update fields when lead changes"""
         if self.crm_lead_id:
             lead = self.crm_lead_id
-            # Convert Date fields to Datetime
+            start_time_obj = parse_time_str(getattr(lead, 'start_time', None), time(9, 0))
+            end_time_obj = parse_time_str(getattr(lead, 'end_time', None), time(9, 0))
+            
             start_datetime = False
             end_datetime = False
             if lead.start_date:
-                start_datetime = datetime.combine(lead.start_date, time.min)
+                start_datetime = datetime.combine(lead.start_date, start_time_obj)
             if lead.end_date:
-                end_datetime = datetime.combine(lead.end_date, time.max)
+                end_datetime = datetime.combine(lead.end_date, end_time_obj)
             
             self.partner_id = lead.partner_id if lead.partner_id else False
             
-            # Buscar vehículo por categoría si no hay vehículo específico
             if lead.vehicle_id:
                 self.vehicle_id = lead.vehicle_id
             elif hasattr(lead, 'selected_category_id') and lead.selected_category_id:
@@ -116,7 +132,10 @@ class LeadRentalContract(models.TransientModel):
 
     def action_create_rental_contract(self):
         """Create rental contract from lead"""
-        contract = self.env['vehicle.contract'].create({
+        # Obtener ubicación del lead
+        location = getattr(self.crm_lead_id, 'location', '') or ''
+        
+        contract_vals = {
             'crm_lead_id': self.crm_lead_id.id,
             'customer_id': self.partner_id.id,
             'customer_phone': self.partner_id.phone,
@@ -127,7 +146,11 @@ class LeadRentalContract(models.TransientModel):
             'fuel_type': self.vehicle_id.fuel_type,
             'start_date': self.start_date,
             'end_date': self.end_date,
-        })
+            'pick_up_city': location,
+            'drop_off_city': location,
+        }
+        
+        contract = self.env['vehicle.contract'].create(contract_vals)
         self.crm_lead_id.contract_id = contract.id
         return {
             'type': 'ir.actions.act_window',

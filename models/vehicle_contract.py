@@ -763,8 +763,12 @@ class VehicleContract(models.Model):
             if rec.start_date and rec.end_date and rec.start_date <= rec.end_date:
                 delta = rec.end_date - rec.start_date
                 
-                # Calcular días reales independientemente del tipo de renta
-                real_days = delta.days + 1
+                # Calcular días reales considerando horas
+                # Si start y end tienen la misma hora, calcular días exactos
+                total_hours = delta.total_seconds() / 3600
+                # Redondear hacia arriba: 24h = 1 día, 25h = 2 días, etc.
+                import math
+                real_days = max(1, math.ceil(total_hours / 24))  # 24h=1día, 25h=2días
                 
                 # SIEMPRE calcular días reales si hay fechas válidas
                 if rec.rent_type == 'days' or rec.pricing_type == 'flexirent' or rec.rent_type == False:

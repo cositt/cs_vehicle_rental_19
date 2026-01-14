@@ -25,6 +25,9 @@ class BookingEnquiryLead(models.Model):
     contract_id = fields.Many2one('vehicle.contract', string="Contract")
     customer_dni = fields.Char(string="DNI/NIE", help="Documento Nacional de Identidad o NIE del cliente")
     customer_dni_expiry_date = fields.Date(string="Fecha de Expiración del DNI", help="Fecha de expiración del documento de identidad")
+    location = fields.Char(string="Ubicación de Recogida", help="Ubicación donde el cliente recogerá el vehículo")
+    start_time = fields.Char(string="Hora de Inicio", help="Hora de recogida del vehículo")
+    end_time = fields.Char(string="Hora de Fin", help="Hora de devolución del vehículo")
 
     @api.model_create_multi
     def create(self, vals_list):

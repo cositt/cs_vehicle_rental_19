@@ -30,6 +30,9 @@ class RentalPaymentController(http.Controller):
             end_date = kw.get('end_date', '')
             start_time = kw.get('start_time', '')
             end_time = kw.get('end_time', '')
+            customer_dni = kw.get('customer_dni', '')
+            customer_dni_expiry_date = kw.get('customer_dni_expiry_date', '')
+            location = kw.get('location', '')
             
             _logger.info(f"RENTAL_PAYMENT: Processing payment for {customer_email}, amount: {selected_price}")
             
@@ -43,6 +46,9 @@ class RentalPaymentController(http.Controller):
                 'end_date': end_date,
                 'start_time': start_time,
                 'end_time': end_time,
+                'customer_dni': customer_dni,
+                'customer_dni_expiry_date': customer_dni_expiry_date,
+                'location': location,
             }
             
             # Guardar en sesión

@@ -169,6 +169,11 @@ class PaymentTransaction(models.Model):
                 'start_date': booking_data.get('start_date'),
                 'end_date': booking_data.get('end_date'),
                 'selected_category_id': int(booking_data.get('category_id')),
+                'customer_dni': booking_data.get('customer_dni'),
+                'customer_dni_expiry_date': booking_data.get('customer_dni_expiry_date'),
+                'location': booking_data.get('location'),
+                'start_time': booking_data.get('start_time'),
+                'end_time': booking_data.get('end_time'),
             }
             
             with open('/tmp/lead_creation.log', 'a') as lf:
