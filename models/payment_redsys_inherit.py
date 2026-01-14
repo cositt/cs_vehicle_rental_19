@@ -197,7 +197,7 @@ class PaymentTransaction(models.Model):
                 'currency_id': self.currency_id.id,
                 'status': 'a_draft',
                 'responsible_id': self.env.user.id,
-                'company_id': self.company_id.id,
+                'company_id': vehicle.company_id.id,
             })
 
             # 5. Vincular contract al lead
