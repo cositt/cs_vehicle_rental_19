@@ -14,4 +14,3 @@ from . import domain_debug_controller
 from . import test_endpoint
 from . import payment_controller
 from . import payment_gateway
-from . import debug_transactions
