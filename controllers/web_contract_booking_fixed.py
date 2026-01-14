@@ -2873,234 +2873,82 @@ class WebsiteContractBookingFixed(http.Controller):
 
     @http.route('/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def rental_payment(self, **kw):
-        """Create payment transaction for vehicle rental"""
-        import logging
+        """Create payment transaction for vehicle rental using Odoo standard flow"""
+        from odoo.http import request
         import json
-        import base64
-        import hmac
-        import hashlib
-        from werkzeug.wrappers import Response
-        import time as time_mod
+        import logging
         
         _logger = logging.getLogger(__name__)
         
         try:
-            _logger.error(f"RENTAL_PAYMENT_INPUT: {kw}")
-            # Extraer parámetros
+            # Obtener datos de la reserva
             category_id = int(kw.get('category_id', 0))
-            selected_price_str = kw.get('selected_price', '').strip()
-            selected_price = float(selected_price_str) if selected_price_str else 0
-            
-            # Recalcular a 135 EUR si está vacío
-            if selected_price <= 0:
-                selected_price = 135.00
-            customer_email = kw.get('customer_email', '').strip()
-            customer_name = kw.get('customer_name', 'Guest').strip()
-            customer_phone = kw.get('customer_phone', '').strip()
-            
+            selected_price = float(kw.get('selected_price', 0))
+            customer_name = kw.get('customer_name', '')
+            customer_email = kw.get('customer_email', '')
+            customer_phone = kw.get('customer_phone', '')
             start_date = kw.get('start_date', '')
             end_date = kw.get('end_date', '')
             start_time = kw.get('start_time', '')
             end_time = kw.get('end_time', '')
             
-            # Calcular rental_days desde start_date y end_date
-            rental_days = 1
-            if start_date and end_date:
-                try:
-                    from datetime import datetime
-                    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-                    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-                    days = (end_dt - start_dt).days
-                    if days > 0:
-                        rental_days = days
-                except:
-                    rental_days = 1
+            _logger.info(f"RENTAL_PAYMENT: Creating payment for {customer_email}")
             
-            # Calcular precio total
-            total_price = selected_price * rental_days
-
-            
-            # Validar campos requeridos
-            if not category_id or not customer_email:
-                return Response(
-                    json.dumps({"error": "Missing required fields"}),
-                    status=400,
-                    mimetype='application/json'
-                )
-            
-            # Guardar datos en sesión
+            # Preparar datos de booking
             booking_data = {
                 'category_id': category_id,
-                'selected_price': selected_price,
-                'customer_email': customer_email,
                 'customer_name': customer_name,
+                'customer_email': customer_email,
                 'customer_phone': customer_phone,
                 'start_date': start_date,
                 'end_date': end_date,
                 'start_time': start_time,
                 'end_time': end_time,
             }
+            
+            # Guardar en sesión
             request.session['booking_data'] = booking_data
             
-            # Obtener/crear partner
-            partner = request.env['res.partner'].sudo().search([('email', '=', customer_email)], limit=1)
-            if not partner:
-                partner = request.env['res.partner'].sudo().create({
-                    'name': customer_name,
-                    'email': customer_email,
-                    'phone': customer_phone,
-                    'customer_rank': 1,
-                })
-            else:
-                partner.sudo().write({
-                    'phone': customer_phone or partner.phone,
-                    'name': customer_name or partner.name,
-                })
+            # Obtener provider Redsys
+            providers = request.env['payment.provider'].search([('code', '=', 'redsys')], limit=1)
+            if not providers:
+                return "Error: No payment provider found"
             
-            order_number = str(int(time_mod.time()))
-            
-            # Buscar provider Redsys
-            # Buscar provider en estado 'test' primero (para desarrollo), luego 'enabled' (producción)
-            provider = request.env['payment.provider'].sudo().search([('code', '=', 'redsys'), ('state', '=', 'test')], limit=1)
-            if not provider:
-                provider = request.env['payment.provider'].sudo().search([('code', '=', 'redsys'), ('state', '=', 'enabled')], limit=1)
-            if not provider:
-                provider = request.env['payment.provider'].sudo().search([], limit=1)
-            
-            if not provider:
-                return Response(
-                    json.dumps({"error": "No payment provider found"}),
-                    status=500,
-                    mimetype='application/json'
-                )
-            
-            # Buscar o crear payment.method
-            payment_method = request.env['payment.method'].sudo().search([
-                ('provider_ids', 'in', [provider.id]),
-                ('name', '=', 'Credit Card')
+            # Obtener o crear payment_method
+            payment_methods = request.env['payment.method'].search([
+                ('provider_ids', 'in', providers.id)
             ], limit=1)
             
-            if not payment_method:
-                payment_method = request.env['payment.method'].sudo().create({
-                    'name': 'Credit Card',
+            if not payment_methods:
+                payment_methods = request.env['payment.method'].sudo().create({
+                    'name': 'Credit/Debit Card',
                     'code': 'card',
-                    'provider_ids': [(4, provider.id)],
+                    'image': 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==',
+                    'provider_ids': [(4, providers.id)],
                 })
             
-            # Detectar la compañía según el dominio (Sunset o Pinveco)
-            current_domain = request.httprequest.headers.get('Host', '').lower()
-            is_pinveco = 'pinveco' in current_domain
-            correct_company_id = 2 if is_pinveco else 1  # Pinveco=2, Sunset=1
-            
-            # Obtener la compañía correcta
-            correct_company = request.env['res.company'].sudo().search([('id', '=', correct_company_id)], limit=1)
-            if not correct_company:
-                correct_company = request.env.company
-            
-            _logger.info(f"RENTAL_PAYMENT: Creando transacción en compañía {correct_company.name}")
-            
-            # Crear payment.transaction EN LA COMPAÑÍA CORRECTA
-            # Usar with_company para que el contexto sea correcto
-            tx = request.env['payment.transaction'].with_company(correct_company).sudo().create({
-                'provider_id': provider.id,
-                'payment_method_id': payment_method.id,
-                'amount': total_price,
-                'currency_id': correct_company.currency_id.id,
-                'partner_id': partner.id,
-                'reference': order_number,
+            # Crear payment.transaction
+            tx_vals = {
                 'booking_data_json': json.dumps(booking_data),
-                'company_id': correct_company.id,
-            })
-            
-            _logger.info(f"Created payment.transaction: {tx.id}")
-
-            # ⭐ CORRECCIÓN OPCIÓN 3: Limpiar referencia de transacción
-            # Odoo calcula tx.reference con prefijo ORD, pero Redsys requiere solo 12 dígitos numéricos
-            clean_reference = order_number.zfill(12)  # "001767976393"
-            tx.sudo().write({'reference': clean_reference})
-            _logger.info(f"Fixed payment.transaction reference to: {clean_reference}")
-
-            # NOTA: La creación automática del contrato/booking fue eliminada.
-            # Ahora solo se crea el Lead cuando el pago es válido.
-            # El contrato se crea manualmente desde el CRM cuando se marca como "Ganado"
-            # desde la compañía correcta.
-            
-            
-            # Generar formulario Redsys usando HMAC-SHA256_V1
-            merchant_code = '369056973'
-            terminal = '1'
-            secret_key = 'sq7HjrUOBfKmC576ILgskD5srU870gJ7'
-            
-            amount_cents = int(tx.amount * 100)  # Usar importe de la transacción
-            currency = '978'  # EUR
-            
-            merchant_data = {
-                'Ds_Merchant_Amount': str(amount_cents),
-                'Ds_Merchant_Currency': str(currency),
-                'Ds_Merchant_Order': clean_reference,
-                'Ds_Merchant_MerchantCode': merchant_code,
-                'Ds_Merchant_Terminal': terminal,
-                'Ds_Merchant_TransactionType': '0',
-                'Ds_Merchant_MerchantURL': f'https://sunsetrent.es/payment/redsys/webhook',
-                'Ds_Merchant_UrlOK': f'https://sunsetrent.es/rental/success',
-                'Ds_Merchant_UrlKO': f'https://sunsetrent.es/rental/error',
+                'provider_id': providers.id,
+                'payment_method_id': payment_methods.id,
+                'amount': selected_price,
+                'currency_id': request.env.company.currency_id.id,
+                'partner_id': request.env.user.partner_id.id,
+                'reference': f'RENTAL-{int(__import__("time").time())}',
             }
             
-            # Codificar merchant_data en base64
-            merchant_json = json.dumps(merchant_data, separators=(",", ":"))
-            merchant_params = base64.b64encode(merchant_json.encode()).decode()
+            payment_tx = request.env['payment.transaction'].sudo().create(tx_vals)
             
-
-            # Usar la firma oficial del proveedor Redsys
-            signature_b64 = provider._redsys_calculate_signature(merchant_params, clean_reference, provider.redsys_secret_key)
-            _logger.info(f"Signature generated by provider: {signature_b64[:20]}...")
-
-
+            _logger.info(f"RENTAL_PAYMENT: payment.transaction created with ID {payment_tx.id}")
             
-            # Generar formulario HTML para Redsys
-            redsys_url = 'https://sis-t.redsys.es:25443/sis/realizarPago'
-            
-            from html import escape
-            
-            # DEBUG: Loguear los parámetros exactos que se envían
-            _logger.warning(f"DEBUG_REDSYS_PARAMS: MerchantCode={merchant_code}, Terminal={terminal}, Order={clean_reference}, Amount={amount_cents}")
-            _logger.warning(f"DEBUG_MERCHANT_JSON: {merchant_json}")
-            _logger.warning(f"DEBUG_MERCHANT_PARAMS_B64: {merchant_params[:100]}...")
-            _logger.warning(f"DEBUG_SIGNATURE: {signature_b64[:50]}...")
-            
-            html_form = f'''<!DOCTYPE html>
-<html>
-<head>
-    <title>Procesando pago...</title>
-</head>
-<body onload="document.redsysForm.submit();">
-    <form name="redsysForm" action="{redsys_url}" method="POST">
-        <input type="hidden" name="Ds_SignatureVersion" value="HMAC_SHA256_V1"/>
-        <input type="hidden" name="Ds_MerchantParameters" value="{merchant_params}"/>
-        <input type="hidden" name="Ds_Signature" value="{signature_b64}"/>
-        <noscript>
-            <p>Por favor haz clic en el botón para continuar:</p>
-            <input type="submit" value="Continuar"/>
-        </noscript>
-    </form>
-</body>
-</html>'''
-            
-            _logger.warning(f'REDSYS_FORM_HTML: {html_form}')
-            _logger.warning(f'REDSYS_PARAMS: merchant_params={merchant_params}')
-            _logger.warning(f'REDSYS_SIG: signature_b64={signature_b64}')
-            # Devolver HTML como página completa
-            return Response(html_form, status=200, mimetype="text/html")
+            # Redirigir al flujo estándar de Odoo
+            return request.redirect(f'/payment/process/{payment_tx.id}')
             
         except Exception as e:
-            _logger.error(f"RENTAL PAYMENT ERROR: {str(e)}", exc_info=True)
-            return Response(
-                json.dumps({"error": str(e)}),
-                status=500,
-                mimetype='application/json'
-            )
-
-
+            _logger.error(f"ERROR en rental_payment: {str(e)}", exc_info=True)
+            return f"Error: {str(e)}"
+    
     @http.route('/rental/payment-test', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def rental_payment_test(self, **kw):
         return "RENTAL PAYMENT TEST OK"
