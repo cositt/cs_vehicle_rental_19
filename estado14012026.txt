@@ -1,0 +1,203 @@
+================================================================================
+ESTADO DEL SISTEMA DE PAGOS REDSYS - 14/01/2026
+================================================================================
+
+PROBLEMA CRÍTICO:
+================================================================================
+Los LEADS NO SE ESTÁN CREANDO automáticamente después de pagos exitosos de Redsys.
+
+FLUJO ACTUAL (PARCIALMENTE FUNCIONAL):
+================================================================================
+1. ✅ Usuario accede a /rental/payment con datos de booking
+2. ✅ Se crea transacción (payment.transaction) con referencia 12 dígitos
+3. ✅ Se genera formulario Redsys con HMAC correcto
+4. ✅ Usuario completa pago en Redsys
+5. ✅ Redsys envía webhook a /payment/redsys/webhook
+6. ✅ Webhook recibido por Odoo (HTTP 200)
+7. ✅ Transacción encontrada por referencia (001768409400 = match correcto)
+8. ❌ Transacción se marca como 'error' en lugar de 'done'
+9. ❌ _apply_updates() nunca se ejecuta
+10. ❌ Lead nunca se crea
+
+PAGO REAL COMPLETADO (VERIFICADO):
+================================================================================
+Fecha: 14/01/2026 17:50
+Código Autorización: 179479
+Importe: 94,00€
+Número Pedido: 001768409400
+Comercio: Sunset Rent (369056973)
+Estado Transacción en Odoo: ERROR (INCORRECTO)
+
+Logs evidencia:
+- 16:50:00 - TX 152 creada: reference=001768409400 ✅
+- 16:50:09 - Webhook recibido, Ds_Response='0000' (éxito), HTTP 200 ✅
+- Pero TX 152 estado='error' en lugar de 'done' ❌
+
+ROOT CAUSE IDENTIFICADA:
+================================================================================
+El módulo payment_redsys estándar de Odoo NO está actualizando correctamente
+la transacción de estado 'draft'/'pending' a 'done' cuando recibe un webhook
+con Ds_Response='0000' (pago exitoso).
+
+Sin la transacción en 'done', el método _apply_updates() nunca se ejecuta,
+y por lo tanto el lead nunca se crea.
+
+INTENTOS DE FIX REALIZADOS:
+================================================================================
+
+1. payment_redsys_webhook_fix.py (CREADO - ESTADO PENDIENTE VERIFICACIÓN)
+   - Localización: /models/payment_redsys_webhook_fix.py
+   - Objetivo: Override _redsys_form_validate() para:
+     * Detectar Ds_Response='0000'
+     * Actualizar TX a estado 'done'
+     * Disparar _apply_updates()
+   
+   PROBLEMA: No se sabe si _redsys_form_validate() es el método correcto
+   que se ejecuta cuando Odoo procesa el webhook.
+
+2. order_number matching (COMPLETADO)
+   - Ahora order_number se genera ANTES de crear la transacción
+   - Se usa directamente como referencia
+   - Redsys y Odoo usan la misma referencia ✅
+
+CÓDIGO DE CREACIÓN DE LEADS (FUNCIONIONAL):
+================================================================================
+Localización: /models/payment_redsys_inherit.py
+
+Método: _apply_updates(payment_data)
+Estado: FUNCIONAL (se ejecutó exitosamente en 137 transacciones previas)
+Último lead creado: TX:137 → Lead ID=70
+
+El método SABE crear leads correctamente. El problema es que NO SE EJECUTA
+porque la transacción nunca llega a estado 'done'.
+
+LOG DE EVIDENCIA:
+================================================================================
+Archivo: /tmp/lead_creation.log
+Último evento:
+[SUCCESS] TX:137 - Lead creado: ID=70
+[CREATE] TX:130 - ...
+[SUCCESS] TX:130 - Lead creado: ID=69
+
+TX:152 (PAGO ACTUAL): NO APARECE EN EL LOG
+↓ Esto significa _apply_updates() nunca fue llamado
+
+ARCHIVO DE LOG DE ODOO:
+================================================================================
+/var/log/odoo.log
+
+2026-01-14 16:50:00,486 - TX 152 created with reference 001768409400 ✅
+2026-01-14 16:50:09,618 - Webhook notification received ✅
+2026-01-14 16:50:09,658 - POST /payment/redsys/webhook HTTP/1.0" 200 ✅
+
+Pero NO HAY:
+- PAYMENT_REDSYS_WEBHOOK_FIX logs (nuestro fix no se ejecutó)
+- Logs de _apply_updates()
+- Logs de creación de lead
+
+CAMBIOS REALIZADOS EN ESTA SESIÓN:
+================================================================================
+Branch: feature/redsys-booking-postpay
+
+Commits:
+1. 432d002 - FIX: Generar order_number antes de crear transacción
+2. b87b85d - FIX: Agregar modelo para procesar webhooks de Redsys
+
+Archivos modificados:
+- /controllers/rental_payment_fixed.py - order_number matching ✅
+- /models/payment_redsys_webhook_fix.py - webhook fix (PENDIENTE VERIFICACIÓN)
+- /models/__init__.py - import del nuevo modelo
+
+PUNTOS CRÍTICOS A INVESTIGAR:
+================================================================================
+
+1. MÉTODO CORRECTO DEL HOOK
+   ¿Cuál es el método exacto que Odoo llama cuando recibe webhook de Redsys?
+   Opciones probables:
+   - _redsys_form_validate()  <- Usado en nuestro fix
+   - _process_response_data()
+   - _redsys_process_response()
+   - Otro método interno de payment_redsys
+
+2. ESTADO DE LA TRANSACCIÓN
+   ¿Por qué state='error' en lugar de state='done'?
+   Investigar: ¿Hay validaciones fallando en Odoo?
+
+3. ORDEN DE EJECUCIÓN
+   ¿Cuándo se ejecuta _apply_updates()?
+   - ¿Inmediatamente después del webhook?
+   - ¿En un cron job?
+   - ¿Solo cuando state cambia a 'done'?
+
+SOLUCIÓN PROPUESTA PARA PRÓXIMAS PASOS:
+================================================================================
+
+OPCIÓN A (Recomendada):
+1. Enviar nuevo pago real desde Redsys
+2. Verificar si el fix payment_redsys_webhook_fix.py se ejecuta
+3. Ver logs PAYMENT_REDSYS_WEBHOOK_FIX en /var/log/odoo.log
+4. Si NO aparece: investigar método correcto del hook
+
+OPCIÓN B (Alternativa):
+1. Investigar código fuente de payment_redsys en Odoo 19
+2. Encontrar el método exacto que procesa webhooks
+3. Override con el método correcto
+4. Prueba con pago real
+
+OPCIÓN C (Quick Fix):
+1. Crear un Cron Job que:
+   - Busque transacciones con state='error' y reference válida
+   - Cambie a state='done'
+   - Execute _apply_updates()
+2. Ejecutar cada 5-10 minutos
+
+CONFIGURACIÓN ACTUAL:
+================================================================================
+Odoo: v19.0
+BD: db-sunsetrentpinveco (user: yomismo)
+Redsys: Merchant Code 369056973, Terminal 001
+Proveedor en Odoo: ID=22, Code=redsys, State=activo
+Moneda: EUR (125)
+Compañías: Sunset, Pinveco (ambas en EUR)
+
+ARCHIVOS CLAVE:
+================================================================================
+/controllers/rental_payment_fixed.py
+  - Crea transacción con booking_data_json
+  - Genera formulario Redsys con HMAC
+
+/models/payment_redsys_inherit.py
+  - Override _apply_updates() para crear leads
+  - Funciona correctamente cuando se ejecuta
+
+/models/payment_redsys_webhook_fix.py
+  - NUEVO: Intenta actualizar TX a 'done' cuando webhook es exitoso
+  - ESTADO: No verificado si se ejecuta correctamente
+
+COMMITS GIT:
+================================================================================
+432d002 - FIX: Generar order_number antes de crear transacción
+b87b85d - FIX: Agregar modelo para procesar webhooks de Redsys
+
+RESUMEN EJECUTIVO:
+================================================================================
+✅ Sistema de pago Redsys FUNCIONA (pagos se procesan)
+✅ Webhook se recibe correctamente
+✅ Código de creación de leads FUNCIONA (probado en 137 transacciones)
+❌ PROBLEMA: Transacción NO pasa a 'done' → Lead NO se crea
+🔧 SOLUCIÓN EN PROGRESO: payment_redsys_webhook_fix.py
+❓ BLOQUEANTE: No se conoce el método exacto que Odoo usa para procesar webhooks
+
+PRÓXIMO PASO INMEDIATO:
+================================================================================
+Investigar cuál es el hook/método correcto en el módulo payment_redsys de Odoo
+que se ejecuta cuando se recibe un webhook exitoso (Ds_Response='0000').
+
+Luego crear un override correcto que actualice la transacción a 'done' y
+dispare _apply_updates() para crear el lead.
+
+================================================================================
+Fecha de reporte: 14/01/2026 17:14
+Responsable: Juan + Warp
+Estado: CRÍTICO - BLOQUEANTE PARA PRODUCCIÓN
+================================================================================
