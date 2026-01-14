@@ -43,17 +43,12 @@ class PaymentTransaction(models.Model):
             )
 
             try:
-                # Idempotencia: Verificar si ya existe contrato para esta transacción
-                existing_contract = self.env['vehicle.contract'].search([
-                    ('payment_transaction_id', '=', self.id),
-                ])
-
-                if existing_contract:
+                # Idempotencia: Verificar si ya se creó lead para esta transacción
+                if self.booking_created:
                     _logger.warning(
                         f"REDSYS: Webhook duplicado detectado | TX:{self.id} | "
-                        f"Contract ya existe: {existing_contract.id}"
+                        f"Lead ya fue creado"
                     )
-                    self.booking_created = True
                     return
 
                 # Obtener datos de booking desde la sesión o del campo JSON

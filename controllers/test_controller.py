@@ -66,3 +66,34 @@ class TestController(http.Controller):
 
 
 
+
+    @http.route('/test/trigger-lead', auth='public', type='json', csrf=False)
+    def trigger_lead_creation(self, **kw):
+        """Test endpoint para disparar creación de Lead"""
+        try:
+            Payment = request.env['payment.transaction'].sudo()
+            tx = Payment.search([('reference', '=', 'TEST_FINAL_LEAD')], limit=1)
+            
+            if not tx:
+                return {'status': 'error', 'message': 'TX no encontrada'}
+            
+            # Ejecutar _apply_updates
+            tx._apply_updates({})
+            request.env.cr.commit()
+            
+            # Verificar Lead creado
+            leads = request.env['crm.lead'].sudo().search([('description', 'like', f'TX:{tx.id}')])
+            
+            return {
+                'status': 'ok',
+                'tx_id': tx.id,
+                'leads_created': len(leads),
+                'lead_ids': [l.id for l in leads]
+            }
+        except Exception as e:
+            import traceback
+            return {
+                'status': 'error',
+                'message': str(e),
+                'traceback': traceback.format_exc()
+            }
