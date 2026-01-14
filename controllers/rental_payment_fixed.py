@@ -84,7 +84,7 @@ class RentalPaymentController(http.Controller):
             # Ahora generar el formulario de Redsys
             merchant_code = '369056973'
             terminal = '1'
-            secret_key_b64 = 'c3E3SGpyVU9CZkttQzU3NklMZ3NrRDVzclU4NzBnSjc='
+            secret_key_b64 = 'sq7HjrUOBfKmC576ILgskD5srU870gJ7'
             
             amount_cents = int(selected_price * 100)
             currency = '978'  # EUR
