@@ -170,7 +170,7 @@ class PaymentTransaction(models.Model):
                 'end_date': booking_data.get('end_date'),
                 'selected_category_id': int(booking_data.get('category_id')),
                 'customer_dni': booking_data.get('customer_dni'),
-                'customer_dni_expiry_date': booking_data.get('customer_dni_expiry_date'),
+                'customer_dni_expiry_date': (booking_data.get('customer_dni_expiry_date') + '-01') if booking_data.get('customer_dni_expiry_date') and len(booking_data.get('customer_dni_expiry_date', '')) == 7 else booking_data.get('customer_dni_expiry_date'),
                 'location': booking_data.get('location'),
                 'start_time': booking_data.get('start_time'),
                 'end_time': booking_data.get('end_time'),
