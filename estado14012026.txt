@@ -201,3 +201,186 @@ Fecha de reporte: 14/01/2026 17:14
 Responsable: Juan + Warp
 Estado: CRÍTICO - BLOQUEANTE PARA PRODUCCIÓN
 ================================================================================
+
+================================================================================
+ANÁLISIS DE COMMITS SOBRE LEADS Y CONTRATOS
+================================================================================
+
+COMMITS ESPECÍFICOS QUE MENCIONAN LEADS Y CONTRATOS:
+================================================================================
+
+4c42656 | DOCUMENTO: Resumen detallado del estado del sistema - Leads no se crean
+40afdf4 | Fix: Persistir booking_data en transacción y establecer company_id en lead
+b140383 | Fix: Reemplazar búsqueda de contrato por búsqueda de flag booking_created
+4ddda9b | Fix: Crear SOLO Lead automático, sin Contrato automático ⭐ CRÍTICO
+6098f76 | Simplify: Eliminar búsqueda de vehículo de _create_lead_from_payment
+a01a0dd | Refactor: _create_booking_from_payment -> _create_lead_from_payment
+275d5bc | Fix: Corregir lógica de creación de Lead y Contract
+01c3506 | Fix: Remover savepoint que ocultaba errores de Lead creation
+4096a11 | Fix: Crear Lead sin dependencia de stage específico 'Ganado'
+1d322a2 | Fix: Create booking immediately instead of waiting for webhook
+be34253 | Redsys: definir booking_data y guardarlo en transacción (booking_data_json)
+0ee4b05 | Redsys: post-proceso de pago crea Lead/Contrato (hook vehicle_rental)
+
+ANÁLISIS CRÍTICO DE LA SECUENCIA:
+================================================================================
+
+ANTES (Anteriores a edfaed4):
+- 0ee4b05: Hook que crea Lead/Contrato tras pago exitoso
+- be34253: Guardaba booking_data_json para que webhook pudiera leerlo
+- 1d322a2: Se crea booking inmediatamente sin esperar webhook
+- 4096a11: Lead sin dependencia de stage 'Ganado'
+- 01c3506: Se removió savepoint que ocultaba errores
+- 275d5bc: Correcciones en lógica de creación
+- a01a0dd: Refactor: booking_from_payment → lead_from_payment (cambio de nombre)
+- 47f0c68: Refactor: Eliminación de creación automática de contrato
+- 4ddda9b: ⭐ PUNTO CLAVE - ELIMINA CREACIÓN AUTOMÁTICA DE CONTRATO
+         Solo crea Lead automático cuando pago es exitoso
+- 6098f76: Simplificación de lógica (elimina búsqueda de vehículo)
+- b140383: Cambio en lógica de búsqueda de contrato
+- 40afdf4: Persistencia de booking_data + company_id correcto
+- (14 commits posteriores hasta 4c42656)
+
+CAMBIOS ESTRUCTURALES EN ESTA SECUENCIA:
+================================================================================
+
+1. CREACIÓN DE CONTRATO (ANTES):
+   - Sistema creaba AUTOMÁTICAMENTE:
+     ✓ Lead
+     ✓ Contrato asociado
+   - Estado: Automático tras pago
+
+2. CREACIÓN DE CONTRATO (DESPUÉS - Commit 4ddda9b):
+   - Sistema AHORA crea SOLO:
+     ✓ Lead automático
+     ✗ Contrato NO se crea (debe crearse manualmente)
+   - Estado: Lead automático tras pago, Contrato manual
+
+3. REFACTORIZACIÓN DE NOMBRES:
+   - _create_booking_from_payment → _create_lead_from_payment
+   - Cambio de concepto: "booking" ahora es "lead"
+
+4. PERSISTENCIA DE DATOS:
+   - booking_data_json se guarda en transacción
+   - company_id se asigna correctamente al lead
+   - Datos disponibles para webhook
+
+COMMITS ANTERIORES A edfaed4 (LISTADO COMPLETO RELEVANTE):
+================================================================================
+
+CRÍTICOS - LEADS Y CONTRATOS:
+b140383 | 2026-01-14 16:24:19 | Fix: Reemplazar búsqueda de contrato por búsqueda de flag
+4ddda9b | 2026-01-14 16:19:35 | Fix: Crear SOLO Lead automático, sin Contrato automático ⭐
+6098f76 | 2026-01-14 16:13:31 | Simplify: Eliminar búsqueda de vehículo
+a01a0dd | 2026-01-14 16:07:21 | Refactor: booking_from_payment → lead_from_payment
+47f0c68 | 2026-01-14 16:03:33 | Refactor: Eliminar creación automática de contrato
+73b36a5 | 2026-01-14 15:51:21 | Fix: Usar with_company para contexto correcto
+0359356 | 2026-01-14 15:43:47 | Fix: Crear transacción en compañía correcta
+8fd13a5 | 2026-01-14 15:35:59 | Fix: Usar company_id correcto al buscar vehículos
+0615719 | 2026-01-14 15:35:34 | Revert "Fix: Buscar vehículos siempre en Sunset"
+6873ca1 | 2026-01-14 15:33:16 | Fix: Buscar vehículos siempre en Sunset
+52d5fb9 | 2026-01-14 15:25:58 | Fix: Usar company_id del vehículo al crear contrato
+6fe5652 | 2026-01-14 15:24:22 | Fix: Validación de disponibilidad por fechas
+275d5bc | 2026-01-14 12:16:21 | Fix: Corregir lógica de creación de Lead y Contract
+987caa4 | 2026-01-14 12:10:43 | Fix: Buscar vehículos en Sunset específicamente
+01c3506 | 2026-01-14 11:56:54 | Fix: Remover savepoint que ocultaba errores
+4096a11 | 2026-01-14 11:54:35 | Fix: Crear Lead sin dependencia de stage 'Ganado'
+1d322a2 | 2026-01-14 11:35:51 | Fix: Create booking immediately
+6f1532e | 2026-01-14 11:19:34 | Fix: Use official Redsys provider signature
+
+REDSYS INICIALES:
+806d18e | 2026-01-14 10:44:41 | Redsys: /rental/payment redirige a flujo estándar
+be34253 | 2026-01-14 10:12:16 | Redsys: definir booking_data y guardarlo en TX
+0ee4b05 | 2026-01-14 09:49:12 | Redsys: post-proceso crea Lead/Contrato
+
+OTROS:
+53ca71e | 2026-01-13 16:55:46 | Fix: Remover conexión SQL directa (memory leak)
+9c32365 | 2026-01-13 16:18:08 | Fix: Calcular y enviar precio total real
+b953eb3 | 2026-01-13 15:59:10 | Fix: Arreglar estructura HTML del formulario
+
+[Más 30+ commits previos de investigación y setup inicial de Redsys]
+
+================================================================================
+RESUMEN IMPORTANTE
+================================================================================
+
+Entre edfaed4 y 0ee4b05 hay cambios CRÍTICOS sobre leads y contratos:
+
+1. CREACIÓN AUTOMÁTICA DE CONTRATO ELIMINADA
+   Commit: 4ddda9b (2026-01-14 16:19:35)
+   Cambio: Se eliminó la creación automática de contrato
+   Impacto: SOLO se crea Lead automáticamente tras pago
+
+2. MÚLTIPLES REFACTORIZACIONES DE LA LÓGICA DE CREACIÓN
+   - Renombramento: _create_booking_from_payment → _create_lead_from_payment
+   - Simplificación: Eliminación de búsqueda de vehículo
+   - Correcciones: Savepoint que ocultaba errores removido
+
+3. CORRECCIONES DE company_id EN TODA LA CADENA
+   - Transacción se crea en compañía correcta
+   - Vehículos se buscan con company_id correcto
+   - Lead se crea con company_id del vehículo
+   - Contexto correcto con with_company()
+
+================================================================================
+LÍNEA DE TIEMPO DE CAMBIOS CRÍTICOS (14/01/2026)
+================================================================================
+
+09:49 - 0ee4b05: Hook inicial crea Lead/Contrato tras pago
+10:12 - be34253: booking_data se guarda en transacción para webhook
+10:44 - 806d18e: /rental/payment redirije a flujo estándar
+11:19 - 6f1532e: Firma oficial de Redsys
+11:35 - 1d322a2: Booking se crea inmediatamente (no espera webhook)
+11:54 - 4096a11: Lead sin dependencia de stage 'Ganado'
+11:56 - 01c3506: Savepoint que ocultaba errores se elimina
+12:10 - 987caa4: Búsqueda de vehículos en Sunset
+12:16 - 275d5bc: Correcciones en lógica de creación
+15:24 - 6fe5652: Validación de disponibilidad por fechas
+15:25 - 52d5fb9: company_id del vehículo al crear contrato
+15:33 - 6873ca1: Buscar siempre en Sunset
+15:35 - 0615719: Revert del anterior
+15:35 - 8fd13a5: Usar company_id correcto
+15:43 - 0359356: TX se crea en compañía correcta
+15:51 - 73b36a5: with_company para contexto correcto
+16:03 - 47f0c68: Eliminar creación automática de contrato
+16:07 - a01a0dd: Renombra función: booking → lead
+16:13 - 6098f76: Simplifica lógica
+16:19 - 4ddda9b: ⭐ ELIMINA CREACIÓN AUTOMÁTICA DE CONTRATO
+16:24 - b140383: Búsqueda de contrato por flag booking_created
+16:30 - edfaed4: Filtrar payment.provider por state='enabled'
+17:06 - 40afdf4: Persistencia de booking_data + company_id
+17:15 - fc79b43: Debug endpoints
+17:18 - a2f4d03: Moneda EUR
+17:27 - ad753f1: Flujo estándar de Odoo
+17:29 - 997478c: sudo() a búsquedas
+17:34 - 29b1b95: Comentar validación del formulario
+17:37 - 4b99699: Controlador separado para formulario
+17:39 - 3990d8d: Comentar payment_controller
+17:41 - 93c6b2f: Clave Redsys base64
+17:43 - d062965: Extraer dígitos del reference
+17:44 - 8ff3803: Revert de clave Redsys
+17:47 - 432d002: Order_number antes de crear TX
+17:55 - b87b85d: Webhook fix para actualizar TX a 'done'
+18:15 - 4c42656: Documento de estado del sistema
+
+================================================================================
+IMPLICACIONES DE ESTOS CAMBIOS
+================================================================================
+
+POSITIVO ✅:
+- Lead se crea automáticamente tras pago exitoso de Redsys
+- Datos de booking se persisten en transacción (booking_data_json)
+- company_id se asigna correctamente
+- Contrato se crea manualmente desde CRM (flujo más controlado)
+
+PROBLEMA ❌:
+- Transacción se queda en estado 'error' en lugar de 'done'
+- Por lo tanto _apply_updates() NUNCA se ejecuta
+- Lead NUNCA se crea automáticamente en la práctica
+- El webhook está implementado pero no se dispara
+
+SOLUCIÓN EN PROGRESO 🔧:
+- payment_redsys_webhook_fix.py intenta arreglarlo
+- Pero aún no se verifica si el hook es el correcto
+
+================================================================================
