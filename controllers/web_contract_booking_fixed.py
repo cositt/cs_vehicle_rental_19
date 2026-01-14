@@ -2899,6 +2899,7 @@ class WebsiteContractBookingFixed(http.Controller):
                 'currency_id': request.env.company.currency_id.id,
                 'partner_id': partner.id,
                 'reference': order_number,
+                'booking_data_json': json.dumps(booking_data),
             })
             
             _logger.info(f"Created payment.transaction: {tx.id}")
@@ -2924,7 +2925,7 @@ class WebsiteContractBookingFixed(http.Controller):
                 'Ds_Merchant_MerchantCode': merchant_code,
                 'Ds_Merchant_Terminal': terminal,
                 'Ds_Merchant_TransactionType': '0',
-                'Ds_Merchant_MerchantURL': f'https://sunsetrent.es/payment/webhook/{tx.id}',
+                'Ds_Merchant_MerchantURL': f'https://sunsetrent.es/payment/redsys/webhook',
                 'Ds_Merchant_UrlOK': f'https://sunsetrent.es/rental/success',
                 'Ds_Merchant_UrlKO': f'https://sunsetrent.es/rental/error',
             }
@@ -3046,7 +3047,7 @@ class WebsiteContractBookingFixed(http.Controller):
             'Ds_Merchant_MerchantCode': merchant_code,
             'Ds_Merchant_Terminal': terminal,
             'Ds_Merchant_TransactionType': '0',
-            'Ds_Merchant_MerchantURL': f'https://sunsetrent.es/payment/webhook/{tx_id}',
+            'Ds_Merchant_MerchantURL': f'https://sunsetrent.es/payment/redsys/webhook',
             'Ds_Merchant_UrlOK': f'https://sunsetrent.es/rental/success',
             'Ds_Merchant_UrlKO': f'https://sunsetrent.es/rental/error',
         }
