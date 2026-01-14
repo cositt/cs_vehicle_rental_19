@@ -3017,13 +3017,10 @@ class WebsiteContractBookingFixed(http.Controller):
             tx.sudo().write({'reference': clean_reference})
             _logger.info(f"Fixed payment.transaction reference to: {clean_reference}")
 
-            # ⭐ CREAR BOOKING INMEDIATAMENTE (sin esperar webhook de Redsys)
-            try:
-                tx.sudo()._create_booking_from_payment(booking_data)
-                _logger.info(f"Booking creado inmediatamente para TX:{tx.id}")
-            except Exception as e:
-                _logger.error(f"Error creando booking inmediatamente: {e}", exc_info=True)
-                # No fallar el flujo de pago - el booking falla pero el pago continúa
+            # NOTA: La creación automática del contrato/booking fue eliminada.
+            # Ahora solo se crea el Lead cuando el pago es válido.
+            # El contrato se crea manualmente desde el CRM cuando se marca como "Ganado"
+            # desde la compañía correcta.
             
             
             # Generar formulario Redsys usando HMAC-SHA256_V1
