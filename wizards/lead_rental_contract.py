@@ -135,6 +135,19 @@ class LeadRentalContract(models.TransientModel):
         # Obtener ubicación del lead
         location = getattr(self.crm_lead_id, 'location', '') or ''
         
+        # Buscar provincia/estado por nombre de ubicación
+        state_id = False
+        if location:
+            state = self.env['res.country.state'].search([
+                ('country_id.code', '=', 'ES'),
+                ('name', 'ilike', location)
+            ], limit=1)
+            if state:
+                state_id = state.id
+        
+        # España por defecto
+        spain = self.env['res.country'].search([('code', '=', 'ES')], limit=1)
+        
         contract_vals = {
             'crm_lead_id': self.crm_lead_id.id,
             'customer_id': self.partner_id.id,
@@ -148,6 +161,10 @@ class LeadRentalContract(models.TransientModel):
             'end_date': self.end_date,
             'pick_up_city': location,
             'drop_off_city': location,
+            'pick_up_state_id': state_id,
+            'pick_up_country_id': spain.id if spain else False,
+            'drop_off_state_id': state_id,
+            'drop_off_country_id': spain.id if spain else False,
         }
         
         contract = self.env['vehicle.contract'].create(contract_vals)

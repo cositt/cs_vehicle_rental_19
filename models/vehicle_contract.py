@@ -768,7 +768,7 @@ class VehicleContract(models.Model):
                 total_hours = delta.total_seconds() / 3600
                 # Redondear hacia arriba: 24h = 1 día, 25h = 2 días, etc.
                 import math
-                real_days = max(1, math.ceil(total_hours / 24))  # 24h=1día, 25h=2días
+                real_days = (rec.end_date.date() - rec.start_date.date()).days + 1
                 
                 # SIEMPRE calcular días reales si hay fechas válidas
                 if rec.rent_type == 'days' or rec.pricing_type == 'flexirent' or rec.rent_type == False:
