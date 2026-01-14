@@ -1696,7 +1696,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             const startDate = document.getElementById('start_date').value;
                             const location = document.getElementById('location_select') ? document.getElementById('location_select').value : '';
                             const endDate = document.getElementById('end_date').value;
-                            const categoryId = {category_id};
+                            const categoryId = document.getElementById('category_id') ? document.getElementById('category_id').value : document.querySelector('[name="category_id"]').value;
 
                             if (!startDate || !endDate) return;
 
@@ -1877,6 +1877,7 @@ class WebsiteContractBookingFixed(http.Controller):
 
                         // Función para validar el rango de fechas
                         function validateDateRange(showAlerts = true) {{
+                            console.log('validateDateRange called with showAlerts:', showAlerts);
                             const startDate = document.getElementById('start_date').value;
                             const endDate = document.getElementById('end_date').value;
                             const minDays = parseInt(document.getElementById('min_duration_days').value);
@@ -1924,8 +1925,71 @@ class WebsiteContractBookingFixed(http.Controller):
                                     document.getElementById('end_date').value = newEnd.toISOString().split('T')[0];
                                     return false;
                                 }}
+                                
+                                // NUEVO: Recargar vehículos disponibles cuando las fechas son válidas
+                                if (showAlerts) {{
+                                    reloadAvailableVehicles(startDate, endDate);
+                                }}
                             }}
                             return true;
+                        }}
+                        
+                        // NUEVA FUNCIÓN: Recargar vehículos disponibles para fechas específicas
+                        function reloadAvailableVehicles(startDate, endDate) {{
+                            console.log('reloadAvailableVehicles called with:', startDate, endDate);
+                            const categoryId = document.getElementById('category_id') ? document.getElementById('category_id').value : document.querySelector('[name="category_id"]').value;
+                            const location = document.getElementById('location_select').value;
+                            const vehicleContainer = document.getElementById('vehicles_container');
+                            
+                            if (!categoryId || !startDate || !endDate) {{
+                                return;
+                            }}
+                            
+                            // Mostrar indicador de carga
+                            vehicleContainer.innerHTML = `
+                                <div class="text-center w-100 p-4">
+                                    <div class="spinner-border text-warning mb-3" role="status">
+                                        <span class="visually-hidden">Verificando disponibilidad...</span>
+                                    </div>
+                                    <p>Verificando vehículos disponibles para estas fechas...</p>
+                                </div>
+                            `;
+                            
+                            // Hacer llamada al endpoint con fechas
+                            const formData = new FormData();
+                            formData.append('category_id', categoryId);
+                            formData.append('location', location);
+                            formData.append('start_date', startDate);
+                            formData.append('end_date', endDate);
+                            
+                            fetch('/web/get-available-vehicles', {{
+                                method: 'POST',
+                                body: formData
+                            }})
+                            .then(response => response.json())
+                            .then(data => {{
+                                if (data.success && data.vehicles.length > 0) {{
+                                    displayVehicles(data.vehicles);
+                                }} else {{
+                                    vehicleContainer.innerHTML = `
+                                        <div class="alert alert-warning w-100">
+                                            <i class="fa fa-exclamation-circle"></i>
+                                            <strong>Sin vehículos disponibles</strong>
+                                            <p class="mb-0">No hay vehículos disponibles para las fechas seleccionadas (${{startDate}} a ${{endDate}}). Por favor, elige otras fechas.</p>
+                                        </div>
+                                    `;
+                                }}
+                            }})
+                            .catch(error => {{
+                                console.error('Error reloading vehicles:', error);
+                                vehicleContainer.innerHTML = `
+                                    <div class="alert alert-danger w-100">
+                                        <i class="fa fa-exclamation-triangle"></i>
+                                        <strong>Error al verificar disponibilidad</strong>
+                                        <p class="mb-0">Hubo un problema al verificar los vehículos. Intenta nuevamente.</p>
+                                    </div>
+                                `;
+                            }});
                         }}
 
                         // Función para verificar disponibilidad de vehículos en la ubicación seleccionada
@@ -2342,6 +2406,34 @@ class WebsiteContractBookingFixed(http.Controller):
             # Ahora buscar solo los disponibles con el filtro de ubicación
             vehicles = request.env['fleet.vehicle'].sudo().search(domain)
             print(f"DEBUG: Found {len(vehicles)} available vehicles matching criteria")
+            
+            # Ahora filtrar por disponibilidad de fechas
+            if start_date and end_date:
+                from datetime import datetime
+                try:
+                    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+                    
+                    # Filtrar vehículos sin solapamientos
+                    available_vehicles = []
+                    for vehicle in vehicles:
+                        # Buscar contratos que se solapen con las fechas solicitadas
+                        overlapping = request.env['vehicle.contract'].sudo().search([
+                            ('vehicle_id', '=', vehicle.id),
+                            ('status', 'in', ['b_in_progress', 'c_return']),
+                            ('start_date', '<=', end_dt),
+                            ('end_date', '>=', start_dt),
+                        ])
+                        
+                        if not overlapping:
+                            available_vehicles.append(vehicle)
+                            print(f"DEBUG: Vehicle {vehicle.id} is available for dates {start_date} - {end_date}")
+                        else:
+                            print(f"DEBUG: Vehicle {vehicle.id} has conflict - skipping")
+                    
+                    vehicles = available_vehicles
+                except Exception as e:
+                    print(f"DEBUG: Error filtering by date: {e}")
 
             vehicles_data = []
             for vehicle in vehicles:
