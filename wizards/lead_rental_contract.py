@@ -4,6 +4,10 @@
 from odoo import fields, api, models
 from dateutil.relativedelta import relativedelta
 from datetime import datetime, time
+import json
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 def parse_time_str(time_str, default=None):
@@ -131,32 +135,73 @@ class LeadRentalContract(models.TransientModel):
             self.start_date = start_datetime
             self.end_date = end_datetime
 
-    def action_create_rental_contract(self):
-        """Create rental contract from lead"""
-        # Leer booking_data desde la última transacción Redsys del partner (24h)
-        tx = self.env['payment.transaction'].sudo().search([
-            ('partner_id', '=', self.partner_id.id),
+    def _find_redsys_transaction(self):
+        """
+        Buscar la transacción Redsys asociada al booking.
+        Estrategia: buscar por email del cliente en booking_data_json (más fiable que partner_id)
+        """
+        # Obtener email del lead/partner
+        email = self.partner_id.email or self.crm_lead_id.email_from
+        if not email:
+            _logger.warning("WIZARD: No se encontró email para buscar transacción")
+            return None, {}
+        
+        email_lower = email.strip().lower()
+        
+        # Buscar transacciones Redsys recientes (últimas 48h) que contengan este email
+        recent_txs = self.env['payment.transaction'].sudo().search([
             ('state', 'in', ['done', 'authorized']),
             ('provider_code', '=', 'redsys'),
-            ('create_date', '>=', fields.Datetime.now() - relativedelta(hours=24)),
-        ], order='id desc', limit=1)
-        import json
-        booking_data = {}
-        if tx and tx.booking_data_json:
+            ('booking_data_json', '!=', False),
+            ('create_date', '>=', fields.Datetime.now() - relativedelta(hours=48)),
+        ], order='id desc', limit=20)
+        
+        for tx in recent_txs:
             try:
-                booking_data = json.loads(tx.booking_data_json) or {}
-            except Exception:
-                booking_data = {}
-        # Calcular precio por día
+                booking_data = json.loads(tx.booking_data_json) if tx.booking_data_json else {}
+                tx_email = (booking_data.get('customer_email') or '').strip().lower()
+                if tx_email == email_lower:
+                    _logger.info(f"WIZARD: Transacción encontrada por email - TX ID={tx.id}, amount={tx.amount}")
+                    return tx, booking_data
+            except Exception as e:
+                _logger.warning(f"WIZARD: Error parseando booking_data de TX {tx.id}: {e}")
+                continue
+        
+        _logger.warning(f"WIZARD: No se encontró transacción para email {email}")
+        return None, {}
+
+    def action_create_rental_contract(self):
+        """Create rental contract from lead"""
+        # Buscar transacción Redsys por email (más fiable)
+        tx, booking_data = self._find_redsys_transaction()
+        
+        # Obtener precio por día desde booking_data
         daily_rate = 0.0
-        try:
-            daily_rate = float(booking_data.get('selected_price', 0.0))
-        except (ValueError, TypeError):
-            daily_rate = 0.0
+        total_paid = 0.0
+        num_days = 1
+        
+        if booking_data:
+            try:
+                daily_rate = float(booking_data.get('selected_price', 0.0))
+                total_paid = float(booking_data.get('total_price', 0.0))
+                num_days = int(booking_data.get('num_days', 1)) or 1
+                _logger.info(f"WIZARD: booking_data encontrado - daily_rate={daily_rate}, total_paid={total_paid}, num_days={num_days}")
+            except (ValueError, TypeError) as e:
+                _logger.warning(f"WIZARD: Error parseando precios de booking_data: {e}")
+        
+        # Fallback: calcular desde tx.amount si no hay daily_rate
         if not daily_rate and tx and self.start_date and self.end_date:
             days = (self.end_date.date() - self.start_date.date()).days or 1
             daily_rate = (tx.amount or 0.0) / max(1, days)
-        # Obtener ubicación del lead
+            total_paid = tx.amount or 0.0
+            num_days = days
+            _logger.info(f"WIZARD: Fallback - daily_rate calculado={daily_rate}, total_paid={total_paid}")
+        
+        # Si aún no tenemos total_paid pero tenemos tx
+        if not total_paid and tx:
+            total_paid = tx.amount or 0.0
+        
+        # Obtener ubicación
         location = (booking_data.get('location') or getattr(self.crm_lead_id, 'location', '') or '')
         
         # Buscar provincia/estado por nombre de ubicación
@@ -189,21 +234,28 @@ class LeadRentalContract(models.TransientModel):
             'pick_up_country_id': spain.id if spain else False,
             'drop_off_state_id': state_id,
             'drop_off_country_id': spain.id if spain else False,
-            'rent': daily_rate,
+            'rent': daily_rate,  # Precio por día
+            'rent_type': 'days',  # Tipo de alquiler: días
+            'discount_reason': 'Precio de reserva web',  # Auto-rellenado para evitar validación
         }
+        
+        _logger.info(f"WIZARD: Creando contrato con rent={daily_rate} €/día")
         
         contract = self.env['vehicle.contract'].create(contract_vals)
         self.crm_lead_id.contract_id = contract.id
-        # Crear línea en Detalles de pago del vehículo con el cobro Redsys
-        if hasattr(contract, 'vehicle_payment_option_ids') and tx:
+        
+        # Crear línea en Detalles de pago del vehículo con el cobro Redsys (total pagado)
+        if tx and total_paid > 0:
             self.env['vehicle.payment.option'].sudo().create({
                 'name': f'Pago online Redsys ({tx.reference})',
                 'payment_date': fields.Date.context_today(self),
-                'payment_amount': tx.amount,
+                'payment_amount': total_paid,  # TOTAL pagado, no precio/día
                 'vehicle_contract_id': contract.id,
                 'company_id': contract.company_id.id,
                 'currency_id': contract.currency_id.id,
             })
+            _logger.info(f"WIZARD: Creada línea de pago Redsys por {total_paid}€")
+        
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'vehicle.contract',

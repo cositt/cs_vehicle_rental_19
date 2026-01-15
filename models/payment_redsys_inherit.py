@@ -164,11 +164,11 @@ class PaymentTransaction(models.Model):
                 'email_from': booking_data.get('customer_email'),
                 'phone': booking_data.get('customer_phone'),
                 'description': (
-                    f"Reserva procesada vía web | TX:{self.id}\n\n",
-                    f"--- RESUMEN DEL ALQUILER ---\n",
-                    f"- Tarifa: {float(booking_data.get('selected_price', 0.0)):.2f} €/día\n",
-                    f"- Fechas: {booking_data.get('start_date')} {booking_data.get('start_time')} → {booking_data.get('end_date')} {booking_data.get('end_time')}\n",
-                    f"- Ubicación: {booking_data.get('location')}\n",
+                    f"Reserva procesada vía web | TX:{self.id}<br/><br/>"
+                    f"--- RESUMEN DEL ALQUILER ---<br/>"
+                    f"- Tarifa: {float(booking_data.get('selected_price', 0.0)):.2f} €/día<br/>"
+                    f"- Fechas: {booking_data.get('start_date')} {booking_data.get('start_time')} → {booking_data.get('end_date')} {booking_data.get('end_time')}<br/>"
+                    f"- Ubicación: {booking_data.get('location')}<br/>"
                     f"- Transacción Redsys: {self.reference}"
                 ),
                 'stage_id': lead_stage_id,

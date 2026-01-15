@@ -1,0 +1,42 @@
+================================================================================
+ESTADO DEL PROYECTO - 14/01/2026
+================================================================================
+
+RESUMEN EJECUTIVO
+- Redsys operativo: pagos OK, webhook OK, leads se generan y resumen visible en Notas.
+- Creación de contratos desde Lead: usa booking_data_json para fijar Alquiler/Día y añade línea en 'Detalles de pago'.
+- Cálculo de días del contrato: corregido a días civiles exactos (sin +1).
+- País/Provincia: España por defecto; provincia por nombre de ubicación (booking_data/location).
+
+CAMBIOS CLAVE EN ESTA SESIÓN
+1) EUR activado en BD (iso_numeric=978) para superar validación de moneda del webhook.
+2) Captura y persistencia de booking_data: DNI, caducidad DNI (normalizada YYYY-MM-DD), ubicación, horas, precio seleccionado.
+3) Lead: se añade resumen visual en Notas (tarifa, fechas, ubicación, ref Redsys).
+4) Wizard Crear Contrato: lee booking_data_json de la última transacción Redsys (24h),
+   - 'rent' = selected_price o prorrateo desde total/ días
+   - inserta línea en 'Detalles de pago del vehículo' con el cobro Redsys
+5) Contrato: cálculo de días civiles correcto (fin - inicio).
+
+PENDIENTE/NOTAS
+- Si se desea persistir 'selected_price' como campo del Lead, hace falta actualizar el módulo desde Apps.
+- Los campos nuevos de Lead (start_time, end_time, location) ya están en código; su columna se crea al actualizar el módulo.
+
+ÚLTIMOS 3 COMMITS
+--------------------------------------------------------------------------------
+b6adac3 2026-01-14 21:48:12 +0100 UX: Resumen visual del alquiler en Notas del Lead\n\n- Añade bloque de resumen (tarifa, fechas, ubicación, ref Redsys) en description\n- Evita requerir campo selected_price en crm.lead (se elimina de lead_vals)\n\nCo-Authored-By: Warp <agent@warp.dev>
+327d9da 2026-01-14 21:38:18 +0100 Fix: Usar booking_data_json de payment.transaction al crear contrato y rellenar Detalles de pago\n\n- Lee la última transacción Redsys (24h) del partner y parsea booking_data_json\n- Establece rent (€/día) con selected_price del booking o prorratea desde el total\n- Usa location desde booking_data si existe\n- Crea línea en 'Detalles de pago del vehículo' marcada como pagada\n\nSin cambios de esquema; solo lógica del wizard.\n\nCo-Authored-By: Warp <agent@warp.dev>
+b094ee8 2026-01-14 21:09:11 +0100 Revert "Fix urgente: Remover campo selected_price del Lead"
+
+EXPLICACIÓN DE LOS ÚLTIMOS 3 COMMITS
+1) Commit más reciente:
+   - Mejora UX: añade bloque de resumen en Notas del Lead con Tarifa, Fechas, Ubicación y Ref Redsys.
+   - Evita depender de columnas nuevas (no requiere upgrade) quitando 'selected_price' del lead_vals.
+
+2) Segundo más reciente:
+   - Wizard Crear Contrato: usa booking_data_json de payment.transaction para fijar 'rent' y ubicación.
+   - Crea una línea en 'Detalles de pago del vehículo' con el importe cobrado (Redsys).
+
+3) Tercero más reciente:
+   - vehicle_contract: corrige el cálculo de días a diferencia de fechas (sin +1).
+
+FIN DEL ESTADO
