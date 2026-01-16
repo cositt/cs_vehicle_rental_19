@@ -1,0 +1,89 @@
+================================================================================
+ESTADO DEL MÓDULO VEHICLE_RENTAL - INTEGRACIÓN REDSYS MULTI-COMPAÑÍA
+Fecha: 16 de Enero de 2026
+================================================================================
+
+COMMIT DE SEGURIDAD Y REFERENCIA
+================================
+*** IMPORTANTE: acb6035 ***
+
+Este commit es el punto de referencia donde TODO FUNCIONA para Sunset.
+Si algo falla, volver a este commit con:
+    git reset --hard acb6035
+
+================================================================================
+
+RESUMEN DEL DÍA
+===============
+
+1. PROBLEMA INICIAL
+   - Los Leads creados desde Pinveco se asignaban a la compañía Sunset
+   - Las URLs de Redsys estaban hardcodeadas a sunsetrent.es
+   - La configuración de Redsys usaba siempre las credenciales de Sunset
+
+2. CAMBIOS REALIZADOS (sobre acb6035)
+
+   a) rental_payment_fixed.py:
+      - Añadido company_id del website al booking_data
+      - URLs de retorno (UrlOK, UrlKO) dinámicas según website
+      - URL del webhook dinámica según website
+      - Configuración Redsys (merchant_code, secret_key) obtenida del 
+        payment.provider de cada compañía
+
+   b) payment_redsys_inherit.py:
+      - _find_available_vehicle() ahora recibe company_id como parámetro
+      - Busca vehículos en la compañía correcta (del booking_data)
+      - Fallback a Sunset para transacciones antiguas sin company_id
+
+3. ESTADO ACTUAL
+
+   ✅ SUNSET (sunsetrent.es):
+      - Reservas funcionan correctamente
+      - Leads se crean en compañía Sunset
+      - Webhook de Redsys funciona
+      - SSL válido
+
+   ❌ PINVECO (pinveco.sunsetrentpinveco.srv.cositt.net):
+      - Reservas se crean correctamente
+      - Pago en Redsys funciona (usa su propio comercio 357620244)
+      - Webhook de Redsys falla con error 422
+      - CAUSA: El dominio NO tiene certificado SSL válido
+      - Redsys requiere SSL válido para enviar notificaciones HTTP
+
+4. PENDIENTE PARA PINVECO
+
+   - Generar certificado SSL con Let's Encrypt:
+     sudo certbot --nginx -d pinveco.sunsetrentpinveco.srv.cositt.net
+   
+   - Una vez con SSL válido, el webhook funcionará y se crearán los Leads
+
+5. CONFIGURACIÓN EN ODOO
+
+   Provider Sunset (ID 16):
+   - company_id: 1 (Sunset)
+   - merchant_code: 369056973
+   
+   Provider Pinveco (ID 22):
+   - company_id: 2 (Pinveco)
+   - merchant_code: 357620244
+
+6. COMMITS REALIZADOS HOY (sobre acb6035)
+
+   - 760ee91: Fix multi-compañía - company_id en booking_data
+   - e840b8f: URLs de retorno dinámicas según website
+   - eefcab8: Webhook a sunsetrent.es (revertido luego)
+   - c6c2bf0: Configuración Redsys por compañía
+   - (último): Webhook dinámico según website
+
+================================================================================
+
+PARA RESTAURAR A ESTADO FUNCIONAL (solo Sunset):
+    git reset --hard acb6035
+    sudo docker restart odoo-sunsetrentpinveco
+
+PARA CONTINUAR CON MULTI-COMPAÑÍA:
+    1. Generar SSL para pinveco.sunsetrentpinveco.srv.cositt.net
+    2. Probar reserva desde Pinveco
+    3. Verificar que el Lead se crea en compañía Pinveco
+
+================================================================================
