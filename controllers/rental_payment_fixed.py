@@ -146,9 +146,9 @@ class RentalPaymentController(http.Controller):
                 'Ds_Merchant_MerchantCode': merchant_code,
                 'Ds_Merchant_Terminal': terminal,
                 'Ds_Merchant_TransactionType': '0',
-                'Ds_Merchant_MerchantURL': 'https://sunsetrent.es/payment/redsys/webhook',
-                'Ds_Merchant_UrlOK': 'https://sunsetrent.es/rental/success',
-                'Ds_Merchant_UrlKO': 'https://sunsetrent.es/rental/error',
+                'Ds_Merchant_MerchantURL': f'https://{request.website.domain.replace("http://", "").replace("https://", "")}/payment/redsys/webhook',
+                'Ds_Merchant_UrlOK': f'https://{request.website.domain.replace("http://", "").replace("https://", "")}/rental/success',
+                'Ds_Merchant_UrlKO': f'https://{request.website.domain.replace("http://", "").replace("https://", "")}/rental/error',
             }
             
             # Codificar a base64
