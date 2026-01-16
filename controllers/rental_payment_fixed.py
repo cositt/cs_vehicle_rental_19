@@ -84,6 +84,7 @@ class RentalPaymentController(http.Controller):
                 'selected_price': selected_price,  # Precio por día (para el contrato)
                 'total_price': total_price,        # Precio total cobrado
                 'num_days': num_days,              # Número de días
+                'company_id': request.website.company_id.id,  # Compañía del website
             }
             
             # Guardar en sesión
