@@ -129,10 +129,19 @@ class RentalPaymentController(http.Controller):
             payment_tx = request.env['payment.transaction'].sudo().create(tx_vals)
             _logger.info(f"RENTAL_PAYMENT: Created transaction ID {payment_tx.id} with reference {order_number}, amount={total_price}€")
             
-            # Ahora generar el formulario de Redsys
-            merchant_code = '369056973'
+            # Obtener configuración Redsys de la compañía del website
+            company_id = request.website.company_id.id
+            redsys_provider = request.env['payment.provider'].sudo().search([
+                ('code', '=', 'redsys'),
+                ('company_id', '=', company_id)
+            ], limit=1)
+            
+            if not redsys_provider:
+                return "Error: No Redsys provider configured for this company"
+            
+            merchant_code = redsys_provider.redsys_merchant_code
             terminal = '1'
-            secret_key_b64 = 'sq7HjrUOBfKmC576ILgskD5srU870gJ7'
+            secret_key_b64 = redsys_provider.redsys_secret_key
             
             # FIX 1: Usar total_price para Redsys
             amount_cents = int(total_price * 100)
