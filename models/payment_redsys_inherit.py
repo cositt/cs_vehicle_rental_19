@@ -116,7 +116,8 @@ class PaymentTransaction(models.Model):
             partner = self._find_or_create_partner(
                 booking_data.get('customer_name'),
                 booking_data.get('customer_email'),
-                booking_data.get('customer_phone')
+                booking_data.get('customer_phone'),
+                booking_data.get('company_id')
             )
             with open('/tmp/method_execution.log', 'a') as me:
                 me.write(f"[PARTNER_OK] TX:{self.id} - Partner ID={partner.id}\n")
@@ -222,13 +223,13 @@ class PaymentTransaction(models.Model):
             )
             raise
 
-    def _find_or_create_partner(self, name, email, phone):
+    def _find_or_create_partner(self, name, email, phone, company_id=None):
         """Encontrar o crear partner (cliente)"""
         Partner = self.env['res.partner']
 
         # Buscar por email si existe
         if email:
-            partner = Partner.sudo().search([
+            partner = Partner.sudo().search([('company_id', '=', company_id),
                 ('email', '=', email.strip().lower())
             ], limit=1)
             if partner:
@@ -238,7 +239,7 @@ class PaymentTransaction(models.Model):
         # Buscar por teléfono si existe
         if phone:
             clean_phone = phone.replace(' ', '').replace('-', '').replace('+', '')
-            partners = Partner.sudo().search([
+            partners = Partner.sudo().search([('company_id', '=', company_id),
                 ('phone', '!=', False)
             ])
             for partner in partners:
@@ -253,6 +254,7 @@ class PaymentTransaction(models.Model):
             'email': email,
             'phone': phone,
             'customer_rank': 1,
+            'company_id': company_id,
             'comment': f'Contacto creado vía reserva web | Fecha: {datetime.now()}',
         })
         _logger.info(f"REDSYS: Nuevo partner creado: {partner.name} ({partner.id})")
