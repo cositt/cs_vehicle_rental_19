@@ -90,10 +90,18 @@ class RentalPaymentController(http.Controller):
             # Guardar en sesión
             request.session['booking_data'] = booking_data
             
-            # Obtener provider Redsys
-            provider = request.env['payment.provider'].sudo().search([('code', '=', 'redsys')], limit=1)
-            if not provider:
-                return "Error: No Redsys provider found"
+            # Obtener provider Redsys de la compañía del website
+            company_id = request.website.company_id.id
+            redsys_provider = request.env['payment.provider'].sudo().search([
+                ('code', '=', 'redsys'),
+                ('company_id', '=', company_id)
+            ], limit=1)
+            
+            if not redsys_provider:
+                return "Error: No Redsys provider configured for this company"
+            
+            # Usar redsys_provider también como provider genérico para payment_method
+            provider = redsys_provider
             
             # Obtener o crear payment_method
             payment_method = request.env['payment.method'].sudo().search([
@@ -118,7 +126,7 @@ class RentalPaymentController(http.Controller):
             # FIX 1: Usar total_price en la transacción
             tx_vals = {
                 'booking_data_json': json.dumps(booking_data),
-                'provider_id': provider.id,
+                'provider_id': redsys_provider.id,  # FIX: Usar provider de la compañía del website
                 'payment_method_id': payment_method.id,
                 'amount': total_price,  # CAMBIADO: Usar precio TOTAL
                 'currency_id': request.env.company.currency_id.id,
@@ -128,16 +136,6 @@ class RentalPaymentController(http.Controller):
             
             payment_tx = request.env['payment.transaction'].sudo().create(tx_vals)
             _logger.info(f"RENTAL_PAYMENT: Created transaction ID {payment_tx.id} with reference {order_number}, amount={total_price}€")
-            
-            # Obtener configuración Redsys de la compañía del website
-            company_id = request.website.company_id.id
-            redsys_provider = request.env['payment.provider'].sudo().search([
-                ('code', '=', 'redsys'),
-                ('company_id', '=', company_id)
-            ], limit=1)
-            
-            if not redsys_provider:
-                return "Error: No Redsys provider configured for this company"
             
             merchant_code = redsys_provider.redsys_merchant_code
             terminal = '1'
@@ -155,7 +153,7 @@ class RentalPaymentController(http.Controller):
                 'Ds_Merchant_MerchantCode': merchant_code,
                 'Ds_Merchant_Terminal': terminal,
                 'Ds_Merchant_TransactionType': '0',
-                'Ds_Merchant_MerchantURL': 'https://sunsetrent.es/payment/redsys/webhook',
+                'Ds_Merchant_MerchantURL': f'https://{request.website.domain.replace("http://", "").replace("https://", "")}/payment/redsys/webhook',
                 'Ds_Merchant_UrlOK': f'https://{request.website.domain.replace("http://", "").replace("https://", "")}/rental/success',
                 'Ds_Merchant_UrlKO': f'https://{request.website.domain.replace("http://", "").replace("https://", "")}/rental/error',
             }
