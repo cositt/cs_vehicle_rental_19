@@ -56,6 +56,7 @@ class ReturnDeposit(models.TransientModel):
             'move_type': 'out_refund',
             'journal_id': sale_journal.id,
             'invoice_date': fields.Date.today(),
+                'invoice_date_due': fields.Date.today(),
             'invoice_line_ids': invoice_lines,
             'vehicle_contract_id': contract.id
         }

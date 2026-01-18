@@ -645,6 +645,7 @@ class VehicleContractPricing(models.Model):
             'move_type': 'out_invoice',
             'journal_id': sale_journal.id,
             'invoice_date': fields.Date.today(),
+            'invoice_date_due': fields.Date.today(),  # Fecha vencimiento = hoy (ya pagado)
             'invoice_origin': self.reference_no,
             'invoice_line_ids': invoice_lines,
             'narration': f"Factura automática generada desde contrato {self.reference_no}",
