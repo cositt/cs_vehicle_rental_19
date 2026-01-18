@@ -637,9 +637,13 @@ class VehicleContractPricing(models.Model):
                 invoice_lines.append((0, 0, extra_line))
         
         # Crear la factura
+        # Obtener journal de ventas de la compañía
+        sale_journal = self._get_sale_journal()
+        
         invoice_vals = {
             'partner_id': self.customer_id.id,
             'move_type': 'out_invoice',
+            'journal_id': sale_journal.id,
             'invoice_date': fields.Date.today(),
             'invoice_origin': self.reference_no,
             'invoice_line_ids': invoice_lines,

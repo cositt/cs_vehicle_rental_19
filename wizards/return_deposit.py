@@ -49,9 +49,12 @@ class ReturnDeposit(models.TransientModel):
         }
         invoice_lines.append((0, 0, invoice_line_vals))
         # Prepare invoice
+        # Obtener journal de ventas del contrato
+        sale_journal = contract._get_sale_journal()
         data = {
             'partner_id': contract.customer_id.id,
             'move_type': 'out_refund',
+            'journal_id': sale_journal.id,
             'invoice_date': fields.Date.today(),
             'invoice_line_ids': invoice_lines,
             'vehicle_contract_id': contract.id

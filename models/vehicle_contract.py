@@ -522,6 +522,40 @@ class VehicleContract(models.Model):
         """Return to cancel"""
         self.status = 'd_cancel'
 
+
+    def _get_sale_journal(self):
+        """
+        Obtener diario de ventas con estrategia de fallback.
+        Busca en múltiples niveles antes de fallar.
+        """
+        self.ensure_one()
+        company = self.company_id or self.env.company
+        journal = None
+        
+        # Fallback 1: Buscar journal de ventas de la compañía
+        journal = self.env['account.journal'].search([
+            ('company_id', '=', company.id),
+            ('type', '=', 'sale'),
+        ], limit=1)
+        
+        # Fallback 2: Journal predeterminado de Odoo
+        if not journal and hasattr(company, 'account_sale_tax_id'):
+            # Intentar obtener desde la configuración de la compañía
+            journal = self.env['account.journal'].search([
+                ('type', '=', 'sale'),
+                ('company_id', '=', company.id),
+            ], order='sequence', limit=1)
+        
+        # Si no hay nada, error informativo
+        if not journal:
+            raise UserError(_(
+                'No se puede crear la factura: no existe un diario de ventas '
+                'configurado para la compañía "%s". '
+                'Por favor, vaya a Contabilidad > Configuración > Diarios '
+                'y cree un diario de tipo "Ventas".'
+            ) % company.name)
+        
+        return journal
     def action_vehicle_rent_deposit(self):
         """Handle vehicle rent deposit process."""
         if self.if_any_deposit and not self.deposit:
@@ -538,9 +572,12 @@ class VehicleContract(models.Model):
                 'price_unit': self.deposit,
             }
             invoice_lines.append((0, 0, invoice_line_vals))
+            # Obtener journal de ventas
+            sale_journal = self._get_sale_journal()
             data = {
                 'partner_id': self.customer_id.id,
                 'move_type': 'out_invoice',
+                'journal_id': sale_journal.id,
                 'invoice_date': fields.Date.today(),
                 'invoice_line_ids': invoice_lines,
                 'vehicle_contract_id': self.id
@@ -917,9 +954,11 @@ class VehicleContract(models.Model):
         }
         invoice_lines = [(0, 0, extra_charge_line)]
         # Prepare invoice data
+        sale_journal = self._get_sale_journal()
         data = {
             'partner_id': self.customer_id.id,
             'move_type': 'out_invoice',
+            'journal_id': sale_journal.id,
             'invoice_date': fields.Date.today(),
             'invoice_line_ids': invoice_lines,
             'vehicle_contract_id': self.id,
@@ -1176,9 +1215,11 @@ class VehicleContract(models.Model):
                 'price_unit': record.amount,
             }
             invoice_lines.append((0, 0, extra_service))
+        sale_journal = self._get_sale_journal()
         data = {
             'partner_id': self.customer_id.id,
             'move_type': 'out_invoice',
+            'journal_id': sale_journal.id,
             'invoice_date': fields.Date.today(),
             'invoice_line_ids': invoice_lines,
             'vehicle_contract_id': self.id
@@ -1252,9 +1293,11 @@ class VehicleContract(models.Model):
                     'price_unit': rec.cancellation_charge
                 }
                 invoice_line = [(0, 0, cancellation_data)]
+        sale_journal = self._get_sale_journal()
         data = {
             'partner_id': self.customer_id.id,
             'move_type': 'out_invoice',
+            'journal_id': sale_journal.id,
             'invoice_date': fields.Date.today(),
             'invoice_line_ids': invoice_line,
             'vehicle_contract_id': self.id
