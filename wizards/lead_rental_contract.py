@@ -241,8 +241,32 @@ class LeadRentalContract(models.TransientModel):
         
         _logger.info(f"WIZARD: Creando contrato con rent={daily_rate} €/día")
         
+        # ============================================
+        # CREAR SALE.ORDER PARA INTEGRACIÓN CON VENTAS
+        # ============================================
+        sale_order = self._create_sale_order(
+            partner=self.partner_id,
+            lead=self.crm_lead_id,
+            vehicle=self.vehicle_id,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            daily_rate=daily_rate,
+            total_paid=total_paid,
+            num_days=num_days,
+            tx=tx,
+        )
+        _logger.info(f"WIZARD: Sale.order creado: {sale_order.name if sale_order else 'None'}")
+        
+        # Añadir sale_order_id a contract_vals
+        if sale_order:
+            contract_vals['sale_order_id'] = sale_order.id
+        
         contract = self.env['vehicle.contract'].create(contract_vals)
         self.crm_lead_id.contract_id = contract.id
+        
+        # Vincular sale.order con el contrato
+        if sale_order:
+            sale_order.vehicle_contract_id = contract.id
         
         # Crear línea en Detalles de pago del vehículo con el cobro Redsys (total pagado)
         if tx and total_paid > 0:
@@ -263,3 +287,63 @@ class LeadRentalContract(models.TransientModel):
             'view_mode': 'form',
             'target': 'current',
         }
+    
+    def _create_sale_order(self, partner, lead, vehicle, start_date, end_date, daily_rate, total_paid, num_days, tx=None):
+        """
+        Crear sale.order vinculado al lead para que aparezca en Ventas.
+        El pedido se crea como confirmado ya que el pago está realizado.
+        """
+        try:
+            # Obtener producto de alquiler
+            rental_product = self.env.ref('vehicle_rental.vehicle_rent_charge', raise_if_not_found=False)
+            if not rental_product:
+                _logger.warning("WIZARD: Producto vehicle_rent_charge no encontrado, no se creará sale.order")
+                return None
+            
+            # Obtener compañía del vehículo o del lead
+            company = vehicle.company_id or lead.company_id or self.env.company
+            
+            # Preparar líneas del pedido
+            order_lines = []
+            
+            # Línea principal: Alquiler del vehículo
+            vehicle_name = f"{vehicle.model_id.brand_id.name}/{vehicle.model_id.name}" if vehicle.model_id else vehicle.name
+            rental_description = (
+                f"Alquiler de vehículo - {vehicle_name} | "
+                f"Matrícula: {vehicle.license_plate} | "
+                f"Período: {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')} | "
+                f"Días: {num_days}"
+            )
+            rental_line = {
+                'product_id': rental_product.id,
+                'name': rental_description,
+                'product_uom_qty': num_days,
+                'price_unit': daily_rate,
+            }
+            order_lines.append((0, 0, rental_line))
+            
+            # Crear el sale.order
+            sale_note = f"Reserva web - Pago Redsys: {tx.reference if tx else 'N/A'} | Total pagado: {total_paid:.2f}€"
+            sale_vals = {
+                'partner_id': partner.id,
+                'opportunity_id': lead.id,
+                'company_id': company.id,
+                'vehicle_id': vehicle.id,
+                'rental_start_date': start_date,
+                'rental_end_date': end_date,
+                'order_line': order_lines,
+                'note': sale_note,
+            }
+            
+            sale_order = self.env['sale.order'].sudo().create(sale_vals)
+            
+            # Confirmar el pedido automáticamente (ya está pagado)
+            sale_order.action_confirm()
+            
+            _logger.info(f"WIZARD: Sale.order {sale_order.name} creado y confirmado para lead {lead.id}")
+            
+            return sale_order
+            
+        except Exception as e:
+            _logger.error(f"WIZARD: Error creando sale.order: {e}", exc_info=True)
+            return None
