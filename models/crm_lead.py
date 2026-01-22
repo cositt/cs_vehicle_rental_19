@@ -25,6 +25,10 @@ class BookingEnquiryLead(models.Model):
     contract_id = fields.Many2one('vehicle.contract', string="Contract")
     customer_dni = fields.Char(string="DNI/NIE", help="Documento Nacional de Identidad o NIE del cliente")
     customer_dni_expiry_date = fields.Date(string="Fecha de Expiración del DNI", help="Fecha de expiración del documento de identidad")
+    location = fields.Char(string="Ubicación de Recogida", help="Ubicación donde el cliente recogerá el vehículo")
+    start_time = fields.Char(string="Hora de Inicio", help="Hora de recogida del vehículo")
+    end_time = fields.Char(string="Hora de Fin", help="Hora de devolución del vehículo")
+    selected_price = fields.Float(string="Precio de Reserva", help="Precio pagado en la web por la reserva")
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -176,3 +180,44 @@ class BookingEnquiryLead(models.Model):
                 }
             else:
                 raise UserError(_('No hay contrato asociado a este lead.'))
+
+    @api.depends('partner_id', 'email_from', 'phone', 'email_domain_criterion', 'company_id')
+    def _compute_potential_lead_duplicates(self):
+        """Override to filter duplicates by company_id - avoid cross-company permission errors"""
+        SEARCH_RESULT_LIMIT = 21
+
+        for lead in self:
+            lead_id = lead._origin.id
+            company_id = lead.company_id.id if lead.company_id else False
+            
+            # Domain base: mismo company_id y diferente lead
+            common_lead_domain = [
+                ('id', '!=', lead_id),
+                ('company_id', '=', company_id),
+            ]
+
+            duplicate_lead_ids = self.env['crm.lead']
+
+            # Check email domain duplicates
+            if lead.email_domain_criterion:
+                duplicate_lead_ids |= self.env['crm.lead'].sudo().with_context(active_test=False).search(
+                    common_lead_domain + [('email_domain_criterion', '=', lead.email_domain_criterion)],
+                    limit=SEARCH_RESULT_LIMIT
+                )
+            
+            # Check same commercial partner duplicates  
+            if lead.partner_id and lead.partner_id.commercial_partner_id:
+                duplicate_lead_ids |= lead.with_context(active_test=False).search(
+                    common_lead_domain + [('partner_id', 'child_of', lead.partner_id.commercial_partner_id.ids)],
+                    limit=SEARCH_RESULT_LIMIT
+                )
+            
+            # Check phone duplicates
+            if lead.phone_sanitized:
+                duplicate_lead_ids |= self.env['crm.lead'].sudo().with_context(active_test=False).search(
+                    common_lead_domain + [('phone_sanitized', '=', lead.phone_sanitized)],
+                    limit=SEARCH_RESULT_LIMIT
+                )
+
+            lead.duplicate_lead_ids = duplicate_lead_ids + lead
+            lead.duplicate_lead_count = len(duplicate_lead_ids)

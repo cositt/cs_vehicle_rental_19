@@ -18,10 +18,10 @@
                        readonly="1" 
                        widget="monetary"
                        string="💰 Precio Calculado Automáticamente"
-                       invisible="calculated_rent == 0"/>
+                       invisible="calculated_rent == 0 or crm_lead_id"/>
                 <field name="price_manually_modified" invisible="1"/>
                 <div class="alert alert-warning" role="alert" 
-                     invisible="not price_manually_modified">
+                     invisible="not price_manually_modified or crm_lead_id">
                     <i class="fa fa-exclamation-triangle"/> 
                     <strong>Precio Modificado Manualmente</strong>
                     <p><field name="discount_reason" placeholder="Explicar motivo de la modificación..."/></p>

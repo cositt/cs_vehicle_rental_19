@@ -1696,7 +1696,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             const startDate = document.getElementById('start_date').value;
                             const location = document.getElementById('location_select') ? document.getElementById('location_select').value : '';
                             const endDate = document.getElementById('end_date').value;
-                            const categoryId = document.getElementById('category_id') ? document.getElementById('category_id').value : document.querySelector('[name="category_id"]').value;
+                            const categoryId = {category_id};
 
                             if (!startDate || !endDate) return;
 
@@ -1877,7 +1877,6 @@ class WebsiteContractBookingFixed(http.Controller):
 
                         // Función para validar el rango de fechas
                         function validateDateRange(showAlerts = true) {{
-                            console.log('validateDateRange called with showAlerts:', showAlerts);
                             const startDate = document.getElementById('start_date').value;
                             const endDate = document.getElementById('end_date').value;
                             const minDays = parseInt(document.getElementById('min_duration_days').value);
@@ -1925,71 +1924,8 @@ class WebsiteContractBookingFixed(http.Controller):
                                     document.getElementById('end_date').value = newEnd.toISOString().split('T')[0];
                                     return false;
                                 }}
-                                
-                                // NUEVO: Recargar vehículos disponibles cuando las fechas son válidas
-                                if (showAlerts) {{
-                                    reloadAvailableVehicles(startDate, endDate);
-                                }}
                             }}
                             return true;
-                        }}
-                        
-                        // NUEVA FUNCIÓN: Recargar vehículos disponibles para fechas específicas
-                        function reloadAvailableVehicles(startDate, endDate) {{
-                            console.log('reloadAvailableVehicles called with:', startDate, endDate);
-                            const categoryId = document.getElementById('category_id') ? document.getElementById('category_id').value : document.querySelector('[name="category_id"]').value;
-                            const location = document.getElementById('location_select').value;
-                            const vehicleContainer = document.getElementById('vehicles_container');
-                            
-                            if (!categoryId || !startDate || !endDate) {{
-                                return;
-                            }}
-                            
-                            // Mostrar indicador de carga
-                            vehicleContainer.innerHTML = `
-                                <div class="text-center w-100 p-4">
-                                    <div class="spinner-border text-warning mb-3" role="status">
-                                        <span class="visually-hidden">Verificando disponibilidad...</span>
-                                    </div>
-                                    <p>Verificando vehículos disponibles para estas fechas...</p>
-                                </div>
-                            `;
-                            
-                            // Hacer llamada al endpoint con fechas
-                            const formData = new FormData();
-                            formData.append('category_id', categoryId);
-                            formData.append('location', location);
-                            formData.append('start_date', startDate);
-                            formData.append('end_date', endDate);
-                            
-                            fetch('/web/get-available-vehicles', {{
-                                method: 'POST',
-                                body: formData
-                            }})
-                            .then(response => response.json())
-                            .then(data => {{
-                                if (data.success && data.vehicles.length > 0) {{
-                                    displayVehicles(data.vehicles);
-                                }} else {{
-                                    vehicleContainer.innerHTML = `
-                                        <div class="alert alert-warning w-100">
-                                            <i class="fa fa-exclamation-circle"></i>
-                                            <strong>Sin vehículos disponibles</strong>
-                                            <p class="mb-0">No hay vehículos disponibles para las fechas seleccionadas (${{startDate}} a ${{endDate}}). Por favor, elige otras fechas.</p>
-                                        </div>
-                                    `;
-                                }}
-                            }})
-                            .catch(error => {{
-                                console.error('Error reloading vehicles:', error);
-                                vehicleContainer.innerHTML = `
-                                    <div class="alert alert-danger w-100">
-                                        <i class="fa fa-exclamation-triangle"></i>
-                                        <strong>Error al verificar disponibilidad</strong>
-                                        <p class="mb-0">Hubo un problema al verificar los vehículos. Intenta nuevamente.</p>
-                                    </div>
-                                `;
-                            }});
                         }}
 
                         // Función para verificar disponibilidad de vehículos en la ubicación seleccionada
@@ -2406,34 +2342,6 @@ class WebsiteContractBookingFixed(http.Controller):
             # Ahora buscar solo los disponibles con el filtro de ubicación
             vehicles = request.env['fleet.vehicle'].sudo().search(domain)
             print(f"DEBUG: Found {len(vehicles)} available vehicles matching criteria")
-            
-            # Ahora filtrar por disponibilidad de fechas
-            if start_date and end_date:
-                from datetime import datetime
-                try:
-                    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-                    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-                    
-                    # Filtrar vehículos sin solapamientos
-                    available_vehicles = []
-                    for vehicle in vehicles:
-                        # Buscar contratos que se solapen con las fechas solicitadas
-                        overlapping = request.env['vehicle.contract'].sudo().search([
-                            ('vehicle_id', '=', vehicle.id),
-                            ('status', 'in', ['b_in_progress', 'c_return']),
-                            ('start_date', '<=', end_dt),
-                            ('end_date', '>=', start_dt),
-                        ])
-                        
-                        if not overlapping:
-                            available_vehicles.append(vehicle)
-                            print(f"DEBUG: Vehicle {vehicle.id} is available for dates {start_date} - {end_date}")
-                        else:
-                            print(f"DEBUG: Vehicle {vehicle.id} has conflict - skipping")
-                    
-                    vehicles = available_vehicles
-                except Exception as e:
-                    print(f"DEBUG: Error filtering by date: {e}")
 
             vehicles_data = []
             for vehicle in vehicles:
@@ -2871,6 +2779,226 @@ class WebsiteContractBookingFixed(http.Controller):
     def test_rental_payment(self):
         return "TEST RENTAL PAYMENT OK"
 
+    @http.route('/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
+    def rental_payment(self, **kw):
+        """Create payment transaction for vehicle rental"""
+        import logging
+        import json
+        import base64
+        import hmac
+        import hashlib
+        from werkzeug.wrappers import Response
+        import time as time_mod
+        
+        _logger = logging.getLogger(__name__)
+        
+        try:
+            _logger.error(f"RENTAL_PAYMENT_INPUT: {kw}")
+            # Extraer parámetros
+            category_id = int(kw.get('category_id', 0))
+            selected_price_str = kw.get('selected_price', '').strip()
+            selected_price = float(selected_price_str) if selected_price_str else 0
+            
+            # Recalcular a 135 EUR si está vacío
+            if selected_price <= 0:
+                selected_price = 135.00
+            customer_email = kw.get('customer_email', '').strip()
+            customer_name = kw.get('customer_name', 'Guest').strip()
+            customer_phone = kw.get('customer_phone', '').strip()
+            
+            start_date = kw.get('start_date', '')
+            end_date = kw.get('end_date', '')
+            start_time = kw.get('start_time', '')
+            end_time = kw.get('end_time', '')
+            
+            # Calcular rental_days desde start_date y end_date
+            rental_days = 1
+            if start_date and end_date:
+                try:
+                    from datetime import datetime
+                    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+                    days = (end_dt - start_dt).days
+                    if days > 0:
+                        rental_days = days
+                except:
+                    rental_days = 1
+            
+            # Calcular precio total
+            total_price = selected_price * rental_days
+
+            
+            # Validar campos requeridos
+            if not category_id or not customer_email:
+                return Response(
+                    json.dumps({"error": "Missing required fields"}),
+                    status=400,
+                    mimetype='application/json'
+                )
+            
+            # Guardar datos en sesión
+            request.session['booking_data'] = {
+                'category_id': category_id,
+                'selected_price': selected_price,
+                'customer_email': customer_email,
+                'customer_name': customer_name,
+                'customer_phone': customer_phone,
+                'start_date': start_date,
+                'end_date': end_date,
+                'start_time': start_time,
+                'end_time': end_time,
+            }
+            
+            # Obtener/crear partner
+            partner = request.env['res.partner'].sudo().search([('email', '=', customer_email)], limit=1)
+            if not partner:
+                partner = request.env['res.partner'].sudo().create({
+                    'name': customer_name,
+                    'email': customer_email,
+                    'phone': customer_phone,
+                    'customer_rank': 1,
+                })
+            else:
+                partner.sudo().write({
+                    'phone': customer_phone or partner.phone,
+                    'name': customer_name or partner.name,
+                })
+            
+            order_number = str(int(time_mod.time()))
+            
+            # Buscar provider Redsys
+            provider = request.env['payment.provider'].sudo().search([('code', '=', 'redsys')], limit=1)
+            if not provider:
+                provider = request.env['payment.provider'].sudo().search([], limit=1)
+            
+            if not provider:
+                return Response(
+                    json.dumps({"error": "No payment provider found"}),
+                    status=500,
+                    mimetype='application/json'
+                )
+            
+            # Buscar o crear payment.method
+            payment_method = request.env['payment.method'].sudo().search([
+                ('provider_ids', 'in', [provider.id]),
+                ('name', '=', 'Credit Card')
+            ], limit=1)
+            
+            if not payment_method:
+                payment_method = request.env['payment.method'].sudo().create({
+                    'name': 'Credit Card',
+                    'code': 'card',
+                    'provider_ids': [(4, provider.id)],
+                })
+            
+            # Crear payment.transaction
+            tx = request.env['payment.transaction'].sudo().create({
+                'provider_id': provider.id,
+                'payment_method_id': payment_method.id,
+                'amount': total_price,
+                'currency_id': request.env.company.currency_id.id,
+                'partner_id': partner.id,
+                'reference': order_number,
+            })
+            
+            _logger.info(f"Created payment.transaction: {tx.id}")
+
+            # ⭐ CORRECCIÓN OPCIÓN 3: Limpiar referencia de transacción
+            # Odoo calcula tx.reference con prefijo ORD, pero Redsys requiere solo 12 dígitos numéricos
+            clean_reference = order_number.zfill(12)  # "001767976393"
+            tx.sudo().write({'reference': clean_reference})
+            _logger.info(f"Fixed payment.transaction reference to: {clean_reference}")
+            
+            # Generar formulario Redsys usando HMAC-SHA256_V1
+            merchant_code = '369056973'
+            terminal = '1'
+            secret_key = 'sq7HjrUOBfKmC576ILgskD5srU870gJ7'
+            
+            amount_cents = int(tx.amount * 100)  # Usar importe de la transacción
+            currency = '978'  # EUR
+            
+            merchant_data = {
+                'Ds_Merchant_Amount': str(amount_cents),
+                'Ds_Merchant_Currency': str(currency),
+                'Ds_Merchant_Order': clean_reference,
+                'Ds_Merchant_MerchantCode': merchant_code,
+                'Ds_Merchant_Terminal': terminal,
+                'Ds_Merchant_TransactionType': '0',
+                'Ds_Merchant_MerchantURL': f'https://sunsetrent.es/payment/webhook/{tx.id}',
+                'Ds_Merchant_UrlOK': f'https://sunsetrent.es/rental/success',
+                'Ds_Merchant_UrlKO': f'https://sunsetrent.es/rental/error',
+            }
+            
+            # Codificar merchant_data en base64
+            merchant_json = json.dumps(merchant_data, separators=(",", ":"))
+            merchant_params = base64.b64encode(merchant_json.encode()).decode()
+            
+
+
+            # Generar firma HMAC-SHA256 (especificación Redsys)
+            # La clave secreta se decodifica desde base64
+            # Firma = Base64(HMAC-SHA256(merchant_params_b64, base64_decode(secret_key)))
+            try:
+                # Derivar clave usando 3DES-CBC según especificación Redsys
+                derived_key = self._derive_key_3des_cbc(secret_key, clean_reference)
+                
+                # Calcular HMAC-SHA256 con la clave derivada
+                signature = hmac.new(
+                    derived_key,
+                    merchant_params.encode(),
+                    hashlib.sha256
+                ).digest()
+                signature_b64 = base64.b64encode(signature).decode()
+                _logger.info(f"Signature generated (3DES-CBC): {signature_b64[:20]}...")
+            except Exception as e:
+                _logger.error(f"Error generating signature: {e}", exc_info=True)
+                signature_b64 = ''
+
+            
+            # Generar formulario HTML para Redsys
+            redsys_url = 'https://sis-t.redsys.es:25443/sis/realizarPago'
+            
+            from html import escape
+            
+            # DEBUG: Loguear los parámetros exactos que se envían
+            _logger.warning(f"DEBUG_REDSYS_PARAMS: MerchantCode={merchant_code}, Terminal={terminal}, Order={clean_reference}, Amount={amount_cents}")
+            _logger.warning(f"DEBUG_MERCHANT_JSON: {merchant_json}")
+            _logger.warning(f"DEBUG_MERCHANT_PARAMS_B64: {merchant_params[:100]}...")
+            _logger.warning(f"DEBUG_SIGNATURE: {signature_b64[:50]}...")
+            
+            html_form = f'''<!DOCTYPE html>
+<html>
+<head>
+    <title>Procesando pago...</title>
+</head>
+<body onload="document.redsysForm.submit();">
+    <form name="redsysForm" action="{redsys_url}" method="POST">
+        <input type="hidden" name="Ds_SignatureVersion" value="HMAC_SHA256_V1"/>
+        <input type="hidden" name="Ds_MerchantParameters" value="{merchant_params}"/>
+        <input type="hidden" name="Ds_Signature" value="{signature_b64}"/>
+        <noscript>
+            <p>Por favor haz clic en el botón para continuar:</p>
+            <input type="submit" value="Continuar"/>
+        </noscript>
+    </form>
+</body>
+</html>'''
+            
+            _logger.warning(f'REDSYS_FORM_HTML: {html_form}')
+            _logger.warning(f'REDSYS_PARAMS: merchant_params={merchant_params}')
+            _logger.warning(f'REDSYS_SIG: signature_b64={signature_b64}')
+            # Devolver HTML como página completa
+            return html_form
+            
+        except Exception as e:
+            _logger.error(f"RENTAL PAYMENT ERROR: {str(e)}", exc_info=True)
+            return Response(
+                json.dumps({"error": str(e)}),
+                status=500,
+                mimetype='application/json'
+            )
+
+
     @http.route('/rental/payment-test', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def rental_payment_test(self, **kw):
         return "RENTAL PAYMENT TEST OK"
@@ -2918,7 +3046,7 @@ class WebsiteContractBookingFixed(http.Controller):
             'Ds_Merchant_MerchantCode': merchant_code,
             'Ds_Merchant_Terminal': terminal,
             'Ds_Merchant_TransactionType': '0',
-            'Ds_Merchant_MerchantURL': f'https://sunsetrent.es/payment/redsys/webhook',
+            'Ds_Merchant_MerchantURL': f'https://sunsetrent.es/payment/webhook/{tx_id}',
             'Ds_Merchant_UrlOK': f'https://sunsetrent.es/rental/success',
             'Ds_Merchant_UrlKO': f'https://sunsetrent.es/rental/error',
         }

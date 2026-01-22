@@ -225,8 +225,9 @@ class VehicleContractPricing(models.Model):
             if pricing_rule:
                 record.calculated_rent = pricing_rule.price_per_unit
                 
-                # SIEMPRE actualizar el campo rent, pero solo rent_type si no está definido
-                record.rent = pricing_rule.price_per_unit
+                # Solo actualizar rent si no tiene valor o es 0 (no sobrescribir valor del wizard)
+                if not record.rent or record.rent == 0:
+                    record.rent = pricing_rule.price_per_unit
                 if not record.rent_type or record.rent_type == False:
                     record.rent_type = 'days'
                 
@@ -456,7 +457,8 @@ class VehicleContractPricing(models.Model):
     def _check_discount_reason_required(self):
         """Si el precio fue modificado manualmente, requiere motivo"""
         for record in self:
-            if record.price_manually_modified and not record.discount_reason:
+            # No exigir motivo si viene de reserva web (tiene crm_lead_id)
+            if record.price_manually_modified and not record.discount_reason and not record.crm_lead_id:
                 raise ValidationError(
                     _('Debes indicar el motivo de la modificación de precio en el campo "Motivo del Descuento".')
                 )
@@ -635,10 +637,15 @@ class VehicleContractPricing(models.Model):
                 invoice_lines.append((0, 0, extra_line))
         
         # Crear la factura
+        # Obtener journal de ventas de la compañía
+        sale_journal = self._get_sale_journal()
+        
         invoice_vals = {
             'partner_id': self.customer_id.id,
             'move_type': 'out_invoice',
+            'journal_id': sale_journal.id,
             'invoice_date': fields.Date.today(),
+            'invoice_date_due': fields.Date.today(),  # Fecha vencimiento = hoy (ya pagado)
             'invoice_origin': self.reference_no,
             'invoice_line_ids': invoice_lines,
             'narration': f"Factura automática generada desde contrato {self.reference_no}",
