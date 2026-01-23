@@ -87,7 +87,6 @@
                     <field name="valid_from"/>
                     <filter string="Activas" name="active" domain="[('active', '=', True)]"/>
                     <filter string="Inactivas" name="inactive" domain="[('active', '=', False)]"/>
-                    <separator/>
                     <filter string="Débito" name="debit" domain="[('card_type', '=', 'debit')]"/>
                     <filter string="Crédito" name="credit" domain="[('card_type', '=', 'credit')]"/>
                     <group expand="0" string="Agrupar por">
