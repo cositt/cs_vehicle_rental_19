@@ -2,12 +2,12 @@
 <odoo>
     <data>
 
-        <!-- vehicle.deposit.rule Tree View -->
-        <record id="vehicle_deposit_rule_tree" model="ir.ui.view">
-            <field name="name">vehicle.deposit.rule.tree</field>
+        <!-- vehicle.deposit.rule List View -->
+        <record id="vehicle_deposit_rule_list" model="ir.ui.view">
+            <field name="name">vehicle.deposit.rule.list</field>
             <field name="model">vehicle.deposit.rule</field>
             <field name="arch" type="xml">
-                <tree string="Reglas de Depósito" decoration-muted="not active">
+                <list string="Reglas de Depósito" decoration-muted="not active">
                     <field name="name"/>
                     <field name="vehicle_category_id"/>
                     <field name="card_type" widget="badge" decoration-warning="card_type == 'debit'" decoration-info="card_type == 'credit'"/>
@@ -16,7 +16,7 @@
                     <field name="valid_from"/>
                     <field name="valid_until"/>
                     <field name="active" widget="boolean_toggle"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -108,7 +108,7 @@
             <field name="name">Reglas de Depósitos Dinámicos</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">vehicle.deposit.rule</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     Crear una nueva regla de depósito dinámico
