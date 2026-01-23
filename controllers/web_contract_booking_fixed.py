@@ -1467,12 +1467,16 @@ class WebsiteContractBookingFixed(http.Controller):
                                         const bin = cardNumber.substring(0, 6);
                                         cardBinInput.value = bin;
                                         
-                                        // Validar con Freebinchecker
-                                        fetch(`https://lookup.binlist.net/${{bin}}`)
+                                        // Validar con el endpoint de Odoo (que llama a Freebinchecker desde servidor)
+                                        fetch('/web/validate-bin', {{
+                                            method: 'POST',
+                                            headers: {{'Content-Type': 'application/json'}},
+                                            body: JSON.stringify({{bin: bin}})
+                                        }})
                                             .then(response => response.json())
                                             .then(data => {{
-                                                if (data && data.type) {{
-                                                    const detectedType = data.type.toLowerCase();
+                                                if (data.success && data.card_type) {{
+                                                    const detectedType = data.card_type.toLowerCase();
                                                     if (detectedType === 'credit' || detectedType === 'debit') {{
                                                         cardTypeInput.value = detectedType;
                                                         document.getElementById('card_type_hidden').value = detectedType;
@@ -1488,7 +1492,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                             cardTypeIcon.style.color = '#28a745';
                                                         }}
                                                         
-                                                        console.log('[INFO] Freebinchecker detectó: ' + detectedType);
+                                                        console.log('[INFO] BIN validado: ' + detectedType);
                                                         updateDepositDisplay();
                                                     }}
                                                 }} else {{

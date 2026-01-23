@@ -286,3 +286,40 @@ class RentalPaymentController(http.Controller):
         except Exception as e:
             _logger.error(f"ERROR en rental_payment_error: {str(e)}", exc_info=True)
             return f"Error: {str(e)}"
+
+    @http.route('/web/validate-bin', auth='public', type='json', methods=['POST'], csrf=False)
+    def validate_bin(self, **kw):
+        """Valida un BIN de tarjeta usando Freebinchecker desde el servidor"""
+        try:
+            bin_number = kw.get('bin', '')
+            
+            if not bin_number or len(bin_number) < 6:
+                return {'error': 'BIN inválido', 'card_type': None}
+            
+            # Llamar a Freebinchecker desde el servidor (sin problemas CORS)
+            import requests
+            try:
+                response = requests.get(f'https://lookup.binlist.net/{bin_number}', timeout=5)
+                if response.status_code == 200:
+                    data = response.json()
+                    card_type = data.get('type', 'unknown').lower()
+                    
+                    if card_type in ['credit', 'debit']:
+                        return {
+                            'success': True,
+                            'card_type': card_type,
+                            'bin': bin_number,
+                            'scheme': data.get('scheme', 'unknown'),
+                            'type': data.get('type', 'unknown'),
+                        }
+                    else:
+                        return {'error': 'Tipo de tarjeta no soportado', 'card_type': None}
+                else:
+                    return {'error': f'BIN no encontrado (status {response.status_code})', 'card_type': None}
+            except requests.exceptions.RequestException as e:
+                _logger.warning(f"Error validando BIN con Freebinchecker: {e}")
+                return {'error': 'Error al validar BIN', 'card_type': None}
+        
+        except Exception as e:
+            _logger.error(f"ERROR en validate_bin: {str(e)}", exc_info=True)
+            return {'error': str(e), 'card_type': None}
