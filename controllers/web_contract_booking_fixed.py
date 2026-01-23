@@ -2984,6 +2984,48 @@ class WebsiteContractBookingFixed(http.Controller):
     @http.route('/rental/success', auth='public', website=True, type='http', methods=['GET', 'POST'], csrf=False)
     def rental_payment_success(self, **kw):
         """Payment success page after Redsys redirect"""
+        import logging
+        _logger = logging.getLogger(__name__)
+        
+        try:
+            _logger.warning(f"RENTAL_PAYMENT SUCCESS: Endpoint llamado con parámetros: {kw}")
+            
+            # Buscar la transacción de pago más reciente SIN booking creado
+            payment_tx = request.env['payment.transaction'].sudo().search([
+                ('provider_code', '=', 'redsys'),
+                ('booking_created', '=', False),
+            ], limit=1, order='create_date desc')
+            
+            _logger.warning(f"RENTAL_PAYMENT SUCCESS: Payment TX encontrada: {payment_tx}")
+            
+            if payment_tx:
+                _logger.info(f"RENTAL_PAYMENT SUCCESS: Transacción encontrada TX:{payment_tx.id}")
+                
+                # Marcar como done si aún no lo está
+                if payment_tx.state != 'done':
+                    payment_tx.write({'state': 'done'})
+                    _logger.info(f"RENTAL_PAYMENT SUCCESS: Transacción marcada como done TX:{payment_tx.id}")
+                
+                # Obtener booking_data
+                booking_data = request.session.get('booking_data')
+                _logger.info(f"RENTAL_PAYMENT SUCCESS: Booking data: {booking_data}")
+                
+                # Llamar directamente a _create_lead_from_payment sin pasar por _apply_updates
+                try:
+                    if booking_data:
+                        payment_tx._create_lead_from_payment(booking_data)
+                        payment_tx.booking_created = True
+                        _logger.info(f"RENTAL_PAYMENT SUCCESS: Lead creado exitosamente TX:{payment_tx.id}")
+                    else:
+                        _logger.warning("RENTAL_PAYMENT SUCCESS: No hay booking_data para crear lead")
+                except Exception as e:
+                    _logger.error(f"RENTAL_PAYMENT SUCCESS: Error en _create_lead_from_payment: {str(e)}", exc_info=True)
+            else:
+                _logger.warning("RENTAL_PAYMENT SUCCESS: No se encontró transacción de pago")
+                
+        except Exception as e:
+            _logger.error(f"ERROR en rental_payment_success: {str(e)}", exc_info=True)
+        
         return """
         <!DOCTYPE html>
         <html>

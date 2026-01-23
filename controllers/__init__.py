@@ -15,3 +15,5 @@ from . import test_endpoint
 # from . import payment_controller
 from . import payment_gateway
 from . import rental_payment_fixed
+from . import rental_payment_success
+from . import redsys_webhook

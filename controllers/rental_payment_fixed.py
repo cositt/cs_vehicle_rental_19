@@ -81,10 +81,10 @@ class RentalPaymentController(http.Controller):
                 'customer_dni': customer_dni,
                 'customer_dni_expiry_date': customer_dni_expiry_date,
                 'location': location,
-                'selected_price': selected_price,  # Precio por día (para el contrato)
-                'total_price': total_price,        # Precio total cobrado
-                'num_days': num_days,              # Número de días
-                'company_id': request.website.company_id.id,  # Compañía del website
+                'selected_price': selected_price,
+                'total_price': total_price,
+                'num_days': num_days,
+                'company_id': request.website.company_id.id,
             }
             
             # Guardar en sesión
@@ -100,7 +100,6 @@ class RentalPaymentController(http.Controller):
             if not redsys_provider:
                 return "Error: No Redsys provider configured for this company"
             
-            # Usar redsys_provider también como provider genérico para payment_method
             provider = redsys_provider
             
             # Obtener o crear payment_method
@@ -121,14 +120,13 @@ class RentalPaymentController(http.Controller):
             
             # Generar order_number PRIMERO (Redsys requiere 12 dígitos numéricos)
             timestamp_str = str(int(time.time()))
-            order_number = timestamp_str[-12:].zfill(12)  # Últimos 12 dígitos rellenados a 12
+            order_number = timestamp_str[-12:].zfill(12)
             
-            # FIX 1: Usar total_price en la transacción
             tx_vals = {
                 'booking_data_json': json.dumps(booking_data),
-                'provider_id': redsys_provider.id,  # FIX: Usar provider de la compañía del website
+                'provider_id': redsys_provider.id,
                 'payment_method_id': payment_method.id,
-                'amount': total_price,  # CAMBIADO: Usar precio TOTAL
+                'amount': total_price,
                 'currency_id': request.env.company.currency_id.id,
                 'partner_id': request.env.user.partner_id.id if request.env.user.partner_id else request.env.ref('base.public_partner').id,
                 'reference': order_number,
@@ -141,11 +139,18 @@ class RentalPaymentController(http.Controller):
             terminal = '1'
             secret_key_b64 = redsys_provider.redsys_secret_key
             
-            # FIX 1: Usar total_price para Redsys
+            # Verificar que secret_key_b64 no sea booleano antes de decodificar
+            if not secret_key_b64 or isinstance(secret_key_b64, bool):
+                _logger.error("RENTAL_PAYMENT: Redsys secret_key no configurado")
+                return f"<h1>Error: Método de pago no configurado</h1><p>El método de pago Redsys no está completamente configurado. Por favor, contacte con el administrador.</p>"
+            
             amount_cents = int(total_price * 100)
             currency = '978'  # EUR
             
             # Preparar datos del merchant
+            domain = request.httprequest.host
+            # TODO: PRODUCCIÓN - Cambiar de https:// a http:// si es necesario para testing local
+            # En producción usar https:// con dominio público válido
             merchant_data = {
                 'Ds_Merchant_Amount': str(amount_cents),
                 'Ds_Merchant_Currency': currency,
@@ -153,17 +158,34 @@ class RentalPaymentController(http.Controller):
                 'Ds_Merchant_MerchantCode': merchant_code,
                 'Ds_Merchant_Terminal': terminal,
                 'Ds_Merchant_TransactionType': '0',
-                'Ds_Merchant_MerchantURL': f'https://{request.website.domain.replace("http://", "").replace("https://", "")}/payment/redsys/webhook',
-                'Ds_Merchant_UrlOK': f'https://{request.website.domain.replace("http://", "").replace("https://", "")}/rental/success',
-                'Ds_Merchant_UrlKO': f'https://{request.website.domain.replace("http://", "").replace("https://", "")}/rental/error',
+                'Ds_Merchant_MerchantURL': f'http://{domain}/payment/redsys/webhook',
+                'Ds_Merchant_UrlOK': f'http://{domain}/rental/success',
+                'Ds_Merchant_UrlKO': f'http://{domain}/rental/error',
             }
+            
+            _logger.info(f"RENTAL_PAYMENT: Merchant data = {merchant_data}")
             
             # Codificar a base64
             merchant_json = json.dumps(merchant_data, separators=(',', ':'))
             merchant_b64 = base64.b64encode(merchant_json.encode('utf-8')).decode('ascii')
             
-            # Derivar clave 3DES-CBC
-            secret_decoded = base64.b64decode(secret_key_b64)
+            _logger.info(f"RENTAL_PAYMENT: Merchant JSON = {merchant_json}")
+            _logger.info(f"RENTAL_PAYMENT: Merchant B64 = {merchant_b64}")
+            
+            # Derivar clave 3DES-CBC - limpiar y validar secret_key
+            secret_key_str = str(secret_key_b64).strip()
+            
+            # Agregar padding si es necesario
+            padding = 4 - len(secret_key_str) % 4
+            if padding != 4:
+                secret_key_str += '=' * padding
+            
+            try:
+                secret_decoded = base64.b64decode(secret_key_str)
+            except Exception as e:
+                _logger.error(f"RENTAL_PAYMENT: Error decodificando secret_key: {e}")
+                return f"<h1>Error: Configuración de Redsys inválida</h1><p>La clave secreta de Redsys no es válida. Por favor, contacte con el administrador.</p>"
+            
             order_bytes = order_number.encode('utf-8')
             pad = (-len(order_bytes)) % 8
             order_padded = order_bytes + b'\x00' * pad
