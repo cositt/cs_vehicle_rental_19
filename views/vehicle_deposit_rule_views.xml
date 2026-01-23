@@ -104,7 +104,7 @@
         </record>
 
         <!-- Action -->
-        <record id="vehicle_deposit_rule_action" model="ir.actions.act_window">
+        <record id="action_vehicle_deposit_rule" model="ir.actions.act_window">
             <field name="name">Reglas de Depósitos Dinámicos</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">vehicle.deposit.rule</field>
@@ -123,13 +123,6 @@
                 </p>
             </field>
         </record>
-
-        <!-- Menu Item -->
-        <menuitem id="menu_vehicle_deposit_rule" 
-                  name="Reglas de Depósitos" 
-                  parent="main_menu_vehicle_rental" 
-                  action="vehicle_deposit_rule_action" 
-                  sequence="11"/>
 
     </data>
 </odoo>
