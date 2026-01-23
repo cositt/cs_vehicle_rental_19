@@ -1323,19 +1323,19 @@ class WebsiteContractBookingFixed(http.Controller):
                                                     <h5 class="mb-3">Información de Pago</h5>
                                                     <div class="row">
                                                         <div class="col-md-6 mb-3">
-                                                            <label for="card_type" class="form-label">Tipo de Tarjeta <span class="text-danger">*</span></label>
-                                                            <select class="form-select" id="card_type" name="card_type" required>
-                                                                <option value="">Selecciona tipo...</option>
-                                                                <option value="debit">Tarjeta de Débito</option>
-                                                                <option value="credit">Tarjeta de Crédito</option>
-                                                            </select>
-                                                            <small class="text-muted d-block mt-1">Se detectará automáticamente al ingresar el número</small>
+                                                            <label for="card_number" class="form-label">Número de Tarjeta <span class="text-danger">*</span></label>
+                                                            <input type="text" class="form-control" id="card_number" name="card_number" placeholder="Ej: 4548 8100 0000 0003" inputmode="numeric" maxlength="19" required/>
+                                                            <input type="hidden" id="card_bin" name="card_bin"/>
+                                                            <small class="text-muted d-block mt-1">Se detectará automáticamente el tipo de tarjeta</small>
                                                         </div>
                                                         <div class="col-md-6 mb-3">
-                                                            <label for="card_number" class="form-label">Número de Tarjeta <span class="text-danger">*</span></label>
-                                                            <input type="text" class="form-control" id="card_number" name="card_number" placeholder="Ej: 123456XXXXXXXXXX" inputmode="numeric" maxlength="19" required/>
-                                                            <input type="hidden" id="card_bin" name="card_bin"/>
-                                                            <small class="text-muted d-block mt-1">Se validará automáticamente con Freebinchecker</small>
+                                                            <label class="form-label">Tipo de Tarjeta Detectado</label>
+                                                            <div class="alert alert-light border mb-0 d-flex align-items-center" style="height: 38px;">
+                                                                <i id="card_type_icon" class="fa fa-credit-card me-2" style="font-size: 18px; color: #0c63e4;"></i>
+                                                                <span id="card_type_display" class="fw-bold" style="color: #333;">Ingresa el número de tarjeta</span>
+                                                            </div>
+                                                            <input type="hidden" id="card_type" name="card_type" value="credit"/>
+                                                            <input type="hidden" name="card_type_hidden" id="card_type_hidden" value="credit"/>
                                                         </div>
                                                     </div>
 
@@ -1449,9 +1449,11 @@ class WebsiteContractBookingFixed(http.Controller):
 
                         // Event listeners para validación de tarjeta y cálculo de depósito
                         document.addEventListener('DOMContentLoaded', function() {{
-                            const cardTypeSelect = document.getElementById('card_type');
                             const cardNumberInput = document.getElementById('card_number');
                             const cardBinInput = document.getElementById('card_bin');
+                            const cardTypeInput = document.getElementById('card_type');
+                            const cardTypeDisplay = document.getElementById('card_type_display');
+                            const cardTypeIcon = document.getElementById('card_type_icon');
                             const depositDisplay = document.getElementById('deposit_display');
                             const totalDisplay = document.getElementById('total_display');
                             const selectedPrice = document.getElementById('selected_price');
@@ -1472,36 +1474,60 @@ class WebsiteContractBookingFixed(http.Controller):
                                                 if (data && data.type) {{
                                                     const detectedType = data.type.toLowerCase();
                                                     if (detectedType === 'credit' || detectedType === 'debit') {{
-                                                        cardTypeSelect.value = detectedType;
+                                                        cardTypeInput.value = detectedType;
+                                                        document.getElementById('card_type_hidden').value = detectedType;
+                                                        
+                                                        // Actualizar display del tipo
+                                                        if (detectedType === 'credit') {{
+                                                            cardTypeDisplay.textContent = '💳 Tarjeta de Crédito';
+                                                            cardTypeIcon.className = 'fa fa-credit-card me-2';
+                                                            cardTypeIcon.style.color = '#0c63e4';
+                                                        }} else {{
+                                                            cardTypeDisplay.textContent = '🏦 Tarjeta de Débito';
+                                                            cardTypeIcon.className = 'fa fa-university me-2';
+                                                            cardTypeIcon.style.color = '#28a745';
+                                                        }}
+                                                        
                                                         console.log('[INFO] Freebinchecker detectó: ' + detectedType);
                                                         updateDepositDisplay();
                                                     }}
+                                                }} else {{
+                                                    cardTypeDisplay.textContent = '❓ Tipo no identificado';
+                                                    cardTypeIcon.className = 'fa fa-question-circle me-2';
+                                                    cardTypeIcon.style.color = '#ff9800';
                                                 }}
                                             }})
                                             .catch(error => {{
                                                 console.warn('[WARNING] Error validando BIN: ' + error);
+                                                cardTypeDisplay.textContent = '⚠️ Error al validar';
+                                                cardTypeIcon.className = 'fa fa-exclamation-triangle me-2';
+                                                cardTypeIcon.style.color = '#dc3545';
                                             }});
+                                    }} else {{
+                                        cardTypeDisplay.textContent = 'Ingresa el número de tarjeta';
+                                        cardTypeIcon.className = 'fa fa-credit-card me-2';
+                                        cardTypeIcon.style.color = '#0c63e4';
                                     }}
                                 }});
                             }}
 
-                            // Escuchar cambios en el tipo de tarjeta
-                            if (cardTypeSelect) {{
-                                cardTypeSelect.addEventListener('change', updateDepositDisplay);
-                            }}
-
                             // Función para actualizar el depósito dinámico
                             function updateDepositDisplay() {{
-                                const cardType = cardTypeSelect.value;
+                                const cardType = cardTypeInput.value;
                                 const rentalPrice = parseFloat(selectedPrice?.value || 0);
                                 
                                 if (depositDisplay && totalDisplay) {{
                                     if (cardType) {{
-                                        depositDisplay.textContent = 'Tipo: ' + (cardType === 'credit' ? 'Crédito' : 'Débito');
-                                        totalDisplay.textContent = 'Total con depósito: ' + rentalPrice.toFixed(2) + 'EUR (a confirmar)';
+                                        depositDisplay.innerHTML = `
+                                            <div style="font-size: 14px;">
+                                                <div><i class="fa fa-money me-2"></i><strong>Tipo:</strong> ${cardType === 'credit' ? 'Crédito' : 'Débito'}</div>
+                                                <div class="mt-2"><i class="fa fa-shield me-2"></i><strong>Monto:</strong> Calculando...</div>
+                                            </div>
+                                        `;
+                                        totalDisplay.textContent = 'Total con depósito: ' + rentalPrice.toFixed(2) + ' EUR (a confirmar)';
                                     }} else {{
-                                        depositDisplay.textContent = 'Selecciona tipo de tarjeta para calcular depósito';
-                                        totalDisplay.textContent = '0EUR';
+                                        depositDisplay.textContent = 'El depósito se calculará una vez detectado el tipo de tarjeta';
+                                        totalDisplay.textContent = 'EUR 0.00';
                                     }}
                                 }}
                             }}
@@ -1709,7 +1735,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             validateForm();
 
                             // Añadir listeners para validación en tiempo real
-                            const inputs = ['customer_name', 'customer_email', 'customer_phone', 'customer_dni', 'customer_dni_expiry_date', 'card_type', 'card_number', 'start_date', 'end_date', 'start_time', 'end_time'];
+                            const inputs = ['customer_name', 'customer_email', 'customer_phone', 'customer_dni', 'customer_dni_expiry_date', 'card_number', 'start_date', 'end_date', 'start_time', 'end_time'];
                             inputs.forEach(inputId => {{
                                 const input = document.getElementById(inputId);
                                 if (input) {{
