@@ -289,9 +289,10 @@ class RentalPaymentController(http.Controller):
 
     @http.route('/rental/validate-bin', auth='public', type='http', methods=['POST'], csrf=False)
     def validate_bin(self):
-        """Valida un BIN de tarjeta usando patrones locales primero, Freebinchecker como fallback"""
+        """Valida un BIN de tarjeta usando Freebinchecker desde el servidor"""
         try:
             import json
+            import requests
             import time
             
             # Obtener los datos del body JSON
@@ -308,64 +309,51 @@ class RentalPaymentController(http.Controller):
                 return request.make_response(json.dumps({'error': 'BIN inválido', 'card_type': None}), 
                                           [('Content-Type', 'application/json')])
             
-            # Primero intentar detectar por patrones conocidos de BIN
-            # Visa: comienza con 4
-            # Mastercard: comienza con 5 o 2
-            # American Express: comienza con 3 (34 o 37)
-            # Discover: comienza con 6
-            
-            card_type = None
-            first_digit = bin_number[0]
-            first_two = bin_number[:2]
-            
-            # Patrones básicos para detectar débito vs crédito (aproximado basado en estadísticas)
-            if first_digit == '4':  # Visa
-                # Visa puede ser ambos, pero intentamos con Freebinchecker
-                card_type = 'credit'  # Por defecto Visa es crédito
-            elif first_digit in ['5', '2']:  # Mastercard
-                # Mastercard puede ser ambos
-                card_type = 'credit'  # Por defecto Mastercard es crédito
-            elif first_two in ['34', '37']:  # American Express
-                card_type = 'credit'  # Amex es siempre crédito
-            elif first_digit == '6':  # Discover
-                card_type = 'credit'  # Discover típicamente es crédito
-            
-            # Si no pudimos detectar por patrón, intentar con Freebinchecker (con rate limiting)
-            if not card_type:
-                import requests
-                try:
-                    url = f'https://lookup.binlist.net/{bin_number}'
-                    _logger.info(f"VALIDATE_BIN: Llamando a {url}")
-                    # Agregar User-Agent y headers para evitar bloqueos
-                    headers = {'User-Agent': 'Mozilla/5.0'}
-                    response = requests.get(url, timeout=5, headers=headers)
-                    _logger.info(f"VALIDATE_BIN: Response status = {response.status_code}")
-                    
-                    if response.status_code == 200:
-                        response_data = response.json()
-                        _logger.info(f"VALIDATE_BIN: Response data = {response_data}")
-                        card_type = response_data.get('type', '').lower()
-                    elif response.status_code == 429:
-                        _logger.warning(f"VALIDATE_BIN: Rate limit alcanzado, usando detección por patrón")
-                        card_type = 'credit'  # Default a crédito si no podemos validar
-                except Exception as e:
-                    _logger.warning(f"VALIDATE_BIN: Error llamando Freebinchecker: {e}, usando patrón")
-                    card_type = 'credit'  # Default a crédito si hay error
-            
-            _logger.info(f"VALIDATE_BIN: Card type detectado = '{card_type}'")
-            
-            if card_type and card_type in ['credit', 'debit']:
-                result = {
-                    'success': True,
-                    'card_type': card_type,
-                    'bin': bin_number,
+            # Llamar a Freebinchecker desde el servidor (sin problemas CORS)
+            try:
+                url = f'https://lookup.binlist.net/{bin_number}'
+                _logger.info(f"VALIDATE_BIN: Llamando a {url}")
+                
+                # Agregar headers y timeout para evitar problemas
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Accept': 'application/json',
                 }
-                _logger.info(f"VALIDATE_BIN: Retornando resultado exitoso: {result}")
-                return request.make_response(json.dumps(result), 
+                
+                response = requests.get(url, timeout=10, headers=headers)
+                _logger.info(f"VALIDATE_BIN: Response status = {response.status_code}")
+                
+                if response.status_code == 200:
+                    response_data = response.json()
+                    _logger.info(f"VALIDATE_BIN: Response data = {response_data}")
+                    card_type = response_data.get('type', 'unknown').lower()
+                    _logger.info(f"VALIDATE_BIN: Card type detectado = '{card_type}'")
+                    
+                    if card_type in ['credit', 'debit']:
+                        result = {
+                            'success': True,
+                            'card_type': card_type,
+                            'bin': bin_number,
+                            'scheme': response_data.get('scheme', 'unknown'),
+                        }
+                        _logger.info(f"VALIDATE_BIN: Retornando resultado exitoso: {result}")
+                        return request.make_response(json.dumps(result), 
+                                                  [('Content-Type', 'application/json')])
+                    else:
+                        _logger.warning(f"VALIDATE_BIN: Tipo de tarjeta no válido: '{card_type}'")
+                        return request.make_response(json.dumps({'error': 'Tipo de tarjeta no válido', 'card_type': None}), 
+                                                  [('Content-Type', 'application/json')])
+                else:
+                    _logger.warning(f"VALIDATE_BIN: BIN no encontrado (status {response.status_code})")
+                    return request.make_response(json.dumps({'error': f'BIN no encontrado (status {response.status_code})', 'card_type': None}), 
+                                              [('Content-Type', 'application/json')])
+            except requests.exceptions.Timeout as e:
+                _logger.error(f"VALIDATE_BIN: Timeout en Freebinchecker: {e}")
+                return request.make_response(json.dumps({'error': 'Timeout al validar BIN', 'card_type': None}), 
                                           [('Content-Type', 'application/json')])
-            else:
-                _logger.warning(f"VALIDATE_BIN: Tipo de tarjeta no identificado: '{card_type}'")
-                return request.make_response(json.dumps({'error': 'Tipo de tarjeta no identificado', 'card_type': None}), 
+            except requests.exceptions.RequestException as e:
+                _logger.error(f"VALIDATE_BIN: Error de requests con Freebinchecker: {e}", exc_info=True)
+                return request.make_response(json.dumps({'error': 'Error al validar BIN', 'card_type': None}), 
                                           [('Content-Type', 'application/json')])
         
         except Exception as e:
