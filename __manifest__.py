@@ -33,7 +33,6 @@
         'data/report_paper_format.xml',
         'data/ir_cron.xml',
         'data/website_menu.xml',
-        'data/vehicle_deposit_rule_access.xml',
         # Security
         'security/ir.model.access.csv',
         'security/security.xml',
@@ -108,6 +107,8 @@
         'views/templates/debug_fleet_page.xml',
         'views/redsys_payment_form.xml',
         'views/redsys_checkout.xml',
+        # Access rules (después de que se carguen las vistas del deposito)
+        'data/vehicle_deposit_rule_access.xml',
         # Menus (debe estar al final para que se carguen DESPUÉS de todas las vistas y actions)
         'views/menus.xml',
     ],
