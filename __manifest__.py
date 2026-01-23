@@ -134,6 +134,7 @@
         ],
         'web.assets_frontend': [
             'vehicle_rental/static/src/css/fleet_grid.css',
+            'vehicle_rental/static/src/js/card_validation.js',
         ],
     },
     'images': ['static/description/cover.gif'],
