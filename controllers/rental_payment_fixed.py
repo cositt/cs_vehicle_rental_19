@@ -292,32 +292,44 @@ class RentalPaymentController(http.Controller):
         """Valida un BIN de tarjeta usando Freebinchecker desde el servidor"""
         try:
             bin_number = kw.get('bin', '')
+            _logger.info(f"VALIDATE_BIN: BIN recibido = '{bin_number}'")
             
             if not bin_number or len(bin_number) < 6:
+                _logger.warning(f"VALIDATE_BIN: BIN inválido o muy corto: '{bin_number}'")
                 return {'error': 'BIN inválido', 'card_type': None}
             
             # Llamar a Freebinchecker desde el servidor (sin problemas CORS)
             import requests
             try:
-                response = requests.get(f'https://lookup.binlist.net/{bin_number}', timeout=5)
+                url = f'https://lookup.binlist.net/{bin_number}'
+                _logger.info(f"VALIDATE_BIN: Llamando a {url}")
+                response = requests.get(url, timeout=5)
+                _logger.info(f"VALIDATE_BIN: Response status = {response.status_code}")
+                
                 if response.status_code == 200:
                     data = response.json()
+                    _logger.info(f"VALIDATE_BIN: Response data = {data}")
                     card_type = data.get('type', 'unknown').lower()
+                    _logger.info(f"VALIDATE_BIN: Card type detectado = '{card_type}'")
                     
                     if card_type in ['credit', 'debit']:
-                        return {
+                        result = {
                             'success': True,
                             'card_type': card_type,
                             'bin': bin_number,
                             'scheme': data.get('scheme', 'unknown'),
                             'type': data.get('type', 'unknown'),
                         }
+                        _logger.info(f"VALIDATE_BIN: Retornando resultado exitoso: {result}")
+                        return result
                     else:
+                        _logger.warning(f"VALIDATE_BIN: Tipo de tarjeta no soportado: '{card_type}'")
                         return {'error': 'Tipo de tarjeta no soportado', 'card_type': None}
                 else:
+                    _logger.warning(f"VALIDATE_BIN: BIN no encontrado (status {response.status_code})")
                     return {'error': f'BIN no encontrado (status {response.status_code})', 'card_type': None}
             except requests.exceptions.RequestException as e:
-                _logger.warning(f"Error validando BIN con Freebinchecker: {e}")
+                _logger.error(f"VALIDATE_BIN: Error de requests con Freebinchecker: {e}", exc_info=True)
                 return {'error': 'Error al validar BIN', 'card_type': None}
         
         except Exception as e:
