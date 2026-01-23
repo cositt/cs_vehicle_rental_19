@@ -84,16 +84,8 @@
                 <search string="Buscar Reglas de Depósito">
                     <field name="vehicle_category_id"/>
                     <field name="card_type"/>
-                    <field name="valid_from"/>
                     <filter string="Activas" name="active" domain="[('active', '=', True)]"/>
                     <filter string="Inactivas" name="inactive" domain="[('active', '=', False)]"/>
-                    <filter string="Débito" name="debit" domain="[('card_type', '=', 'debit')]"/>
-                    <filter string="Crédito" name="credit" domain="[('card_type', '=', 'credit')]"/>
-                    <group expand="0" string="Agrupar por">
-                        <filter string="Categoría de Vehículo" name="group_category" context="{'group_by': 'vehicle_category_id'}"/>
-                        <filter string="Tipo de Tarjeta" name="group_card_type" context="{'group_by': 'card_type'}"/>
-                        <filter string="Vigencia Desde" name="group_valid_from" context="{'group_by': 'valid_from'}"/>
-                    </group>
                 </search>
             </field>
         </record>
