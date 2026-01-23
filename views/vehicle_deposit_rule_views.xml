@@ -126,8 +126,8 @@
 
         <!-- Menu Item -->
         <menuitem id="menu_vehicle_deposit_rule" name="Reglas de Depósitos" 
-                  parent="vehicle_rental.menu_vehicle_rental_settings" 
-                  action="vehicle_deposit_rule_action" sequence="30"/>
+                  parent="vehicle_rental.main_menu_vehicle_rental" 
+                  action="vehicle_deposit_rule_action" sequence="11"/>
 
     </data>
 </odoo>
