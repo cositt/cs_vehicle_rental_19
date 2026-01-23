@@ -288,10 +288,14 @@ class RentalPaymentController(http.Controller):
             return f"Error: {str(e)}"
 
     @http.route('/rental/validate-bin', auth='public', type='json', methods=['POST'], csrf=False)
-    def validate_bin(self, **kw):
+    def validate_bin(self):
         """Valida un BIN de tarjeta usando Freebinchecker desde el servidor"""
         try:
-            bin_number = kw.get('bin', '')
+            # En endpoints type='json', los parámetros vienen en request.jsonrpc
+            data = request.jsonrpc or {}
+            bin_number = data.get('params', {}).get('bin', '')
+            
+            _logger.info(f"VALIDATE_BIN: data recibido = {data}")
             _logger.info(f"VALIDATE_BIN: BIN recibido = '{bin_number}'")
             
             if not bin_number or len(bin_number) < 6:
