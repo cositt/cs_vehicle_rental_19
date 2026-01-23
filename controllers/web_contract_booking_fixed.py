@@ -1468,7 +1468,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                         cardBinInput.value = bin;
                                         
                                         // Validar con el endpoint de Odoo (que llama a Freebinchecker desde servidor)
-                                        fetch('/web/validate-bin', {{
+                                        fetch('/rental/validate-bin', {{
                                             method: 'POST',
                                             headers: {{'Content-Type': 'application/json'}},
                                             body: JSON.stringify({{bin: bin}})

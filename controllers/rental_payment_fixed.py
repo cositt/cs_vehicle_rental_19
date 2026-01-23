@@ -287,7 +287,7 @@ class RentalPaymentController(http.Controller):
             _logger.error(f"ERROR en rental_payment_error: {str(e)}", exc_info=True)
             return f"Error: {str(e)}"
 
-    @http.route('/web/validate-bin', auth='public', type='json', methods=['POST'], csrf=False)
+    @http.route('/rental/validate-bin', auth='public', type='json', methods=['POST'], csrf=False)
     def validate_bin(self, **kw):
         """Valida un BIN de tarjeta usando Freebinchecker desde el servidor"""
         try:
