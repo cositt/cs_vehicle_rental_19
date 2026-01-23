@@ -1518,9 +1518,10 @@ class WebsiteContractBookingFixed(http.Controller):
                                 
                                 if (depositDisplay && totalDisplay) {{
                                     if (cardType) {{
+                                        let typeLabel = cardType === 'credit' ? 'Crédito' : 'Débito';
                                         depositDisplay.innerHTML = `
                                             <div style="font-size: 14px;">
-                                                <div><i class="fa fa-money me-2"></i><strong>Tipo:</strong> ${cardType === 'credit' ? 'Crédito' : 'Débito'}</div>
+                                                <div><i class="fa fa-money me-2"></i><strong>Tipo:</strong> ` + typeLabel + `</div>
                                                 <div class="mt-2"><i class="fa fa-shield me-2"></i><strong>Monto:</strong> Calculando...</div>
                                             </div>
                                         `;
