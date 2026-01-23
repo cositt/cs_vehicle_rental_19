@@ -65,6 +65,7 @@
         'views/vehicle_pricing_rule_views.xml',
         'views/vehicle_insurance_pricing_views.xml',
         'views/vehicle_contract_pricing_views.xml',
+        'views/vehicle_deposit_rule_views.xml',
         # Reports
         'reports/vehicle_contract_report.xml',
         'report/vehicle_contract_report_views.xml',

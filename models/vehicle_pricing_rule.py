@@ -149,6 +149,23 @@ class VehiclePricingRule(models.Model):
     )
 
     # ============================================
+    # DEPÓSITOS POR TIPO DE TARJETA
+    # ============================================
+    deposit_debit = fields.Monetary(
+        string='Depósito Tarjeta Débito',
+        default=0,
+        currency_field='currency_id',
+        help='Cantidad adicional de depósito para tarjetas de débito. Se suma al precio del alquiler.'
+    )
+
+    deposit_credit = fields.Monetary(
+        string='Depósito Tarjeta Crédito',
+        default=0,
+        currency_field='currency_id',
+        help='Cantidad adicional de depósito para tarjetas de crédito. Se suma al precio del alquiler.'
+    )
+
+    # ============================================
     # VIGENCIA TEMPORAL
     # ============================================
     valid_from = fields.Date(
