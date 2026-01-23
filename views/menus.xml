@@ -63,7 +63,7 @@
         <menuitem id="menu_vehicle_deposit_rule"
                   name="Reglas de Depósitos"
                   parent="main_menu_vehicle_rental"
-                  action="vehicle_deposit_rule_action"
+                  action="vehicle_rental.vehicle_deposit_rule_action"
                   sequence="11"/>
 
         <menuitem id="menu_configuration" name="Configuraciones" parent="main_menu_vehicle_rental" sequence="20"/>
