@@ -287,20 +287,25 @@ class RentalPaymentController(http.Controller):
             _logger.error(f"ERROR en rental_payment_error: {str(e)}", exc_info=True)
             return f"Error: {str(e)}"
 
-    @http.route('/rental/validate-bin', auth='public', type='json', methods=['POST'], csrf=False)
+    @http.route('/rental/validate-bin', auth='public', type='http', methods=['POST'], csrf=False)
     def validate_bin(self):
         """Valida un BIN de tarjeta usando Freebinchecker desde el servidor"""
         try:
-            # En endpoints type='json', los parámetros vienen en request.jsonrpc
-            data = request.jsonrpc or {}
-            bin_number = data.get('params', {}).get('bin', '')
+            import json
+            # Obtener los datos del body JSON
+            try:
+                body_data = json.loads(request.httprequest.data.decode('utf-8'))
+                bin_number = body_data.get('bin', '')
+            except:
+                bin_number = request.params.get('bin', '')
             
-            _logger.info(f"VALIDATE_BIN: data recibido = {data}")
+            _logger.info(f"VALIDATE_BIN: body_data = {request.httprequest.data}")
             _logger.info(f"VALIDATE_BIN: BIN recibido = '{bin_number}'")
             
             if not bin_number or len(bin_number) < 6:
                 _logger.warning(f"VALIDATE_BIN: BIN inválido o muy corto: '{bin_number}'")
-                return {'error': 'BIN inválido', 'card_type': None}
+                return request.make_response(json.dumps({'error': 'BIN inválido', 'card_type': None}), 
+                                          [('Content-Type', 'application/json')])
             
             # Llamar a Freebinchecker desde el servidor (sin problemas CORS)
             import requests
@@ -311,9 +316,9 @@ class RentalPaymentController(http.Controller):
                 _logger.info(f"VALIDATE_BIN: Response status = {response.status_code}")
                 
                 if response.status_code == 200:
-                    data = response.json()
-                    _logger.info(f"VALIDATE_BIN: Response data = {data}")
-                    card_type = data.get('type', 'unknown').lower()
+                    response_data = response.json()
+                    _logger.info(f"VALIDATE_BIN: Response data = {response_data}")
+                    card_type = response_data.get('type', 'unknown').lower()
                     _logger.info(f"VALIDATE_BIN: Card type detectado = '{card_type}'")
                     
                     if card_type in ['credit', 'debit']:
@@ -321,21 +326,26 @@ class RentalPaymentController(http.Controller):
                             'success': True,
                             'card_type': card_type,
                             'bin': bin_number,
-                            'scheme': data.get('scheme', 'unknown'),
-                            'type': data.get('type', 'unknown'),
+                            'scheme': response_data.get('scheme', 'unknown'),
+                            'type': response_data.get('type', 'unknown'),
                         }
                         _logger.info(f"VALIDATE_BIN: Retornando resultado exitoso: {result}")
-                        return result
+                        return request.make_response(json.dumps(result), 
+                                                  [('Content-Type', 'application/json')])
                     else:
                         _logger.warning(f"VALIDATE_BIN: Tipo de tarjeta no soportado: '{card_type}'")
-                        return {'error': 'Tipo de tarjeta no soportado', 'card_type': None}
+                        return request.make_response(json.dumps({'error': 'Tipo de tarjeta no soportado', 'card_type': None}), 
+                                                  [('Content-Type', 'application/json')])
                 else:
                     _logger.warning(f"VALIDATE_BIN: BIN no encontrado (status {response.status_code})")
-                    return {'error': f'BIN no encontrado (status {response.status_code})', 'card_type': None}
+                    return request.make_response(json.dumps({'error': f'BIN no encontrado (status {response.status_code})', 'card_type': None}), 
+                                              [('Content-Type', 'application/json')])
             except requests.exceptions.RequestException as e:
                 _logger.error(f"VALIDATE_BIN: Error de requests con Freebinchecker: {e}", exc_info=True)
-                return {'error': 'Error al validar BIN', 'card_type': None}
+                return request.make_response(json.dumps({'error': 'Error al validar BIN', 'card_type': None}), 
+                                          [('Content-Type', 'application/json')])
         
         except Exception as e:
             _logger.error(f"ERROR en validate_bin: {str(e)}", exc_info=True)
-            return {'error': str(e), 'card_type': None}
+            return request.make_response(json.dumps({'error': str(e), 'card_type': None}), 
+                                      [('Content-Type', 'application/json')])
