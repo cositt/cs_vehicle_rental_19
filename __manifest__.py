@@ -33,6 +33,7 @@
         'data/report_paper_format.xml',
         'data/ir_cron.xml',
         'data/website_menu.xml',
+        'data/vehicle_deposit_rule_access.xml',
         # Security
         'security/ir.model.access.csv',
         'security/security.xml',
