@@ -1284,6 +1284,8 @@ class WebsiteContractBookingFixed(http.Controller):
                                                     <input type="hidden" name="selected_vehicle_id" id="selected_vehicle_id" value=""/>
                                                     <input type="hidden" name="min_duration_days" id="min_duration_days" value=""/>
                                                     <input type="hidden" name="max_duration_days" id="max_duration_days" value=""/>
+                                                    <input type="hidden" name="card_type" id="card_type_hidden" value="debit"/>
+                                                    <input type="hidden" name="card_bin" id="card_bin_hidden" value=""/>
 
                                                     <h5 class="mb-3">Datos de contacto</h5>
                                                     <div class="row">
@@ -1314,6 +1316,46 @@ class WebsiteContractBookingFixed(http.Controller):
                                                         <div class="col-md-6 mb-3">
                                                             <label for="customer_dni_expiry_date" class="form-label">Fecha de Expiración del DNI (Mes/Año) <span class="text-danger">*</span></label>
                                                             <input type="month" class="form-control" id="customer_dni_expiry_date" name="customer_dni_expiry_date" required/>
+                                                        </div>
+                                                    </div>
+
+                                                    <hr class="my-4">
+                                                    <h5 class="mb-3">Información de Pago</h5>
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="card_type" class="form-label">Tipo de Tarjeta <span class="text-danger">*</span></label>
+                                                            <select class="form-select" id="card_type" name="card_type" required>
+                                                                <option value="">Selecciona tipo...</option>
+                                                                <option value="debit">Tarjeta de Débito</option>
+                                                                <option value="credit">Tarjeta de Crédito</option>
+                                                            </select>
+                                                            <small class="text-muted d-block mt-1">Se detectará automáticamente al ingresar el número</small>
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="card_number" class="form-label">Número de Tarjeta <span class="text-danger">*</span></label>
+                                                            <input type="text" class="form-control" id="card_number" name="card_number" placeholder="Ej: 123456XXXXXXXXXX" inputmode="numeric" maxlength="19" required/>
+                                                            <input type="hidden" id="card_bin" name="card_bin"/>
+                                                            <small class="text-muted d-block mt-1">Se validará automáticamente con Freebinchecker</small>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Sección de Depósito Dinámico -->
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-3">
+                                                            <div class="alert alert-info mb-0" style="border-left: 4px solid #0c63e4;">
+                                                                <strong><i class="fa fa-shield me-2"></i>Depósito de Seguridad</strong>
+                                                                <div id="deposit_display" class="mt-2" style="font-size: 14px; color: #666;">
+                                                                    Selecciona tipo de tarjeta para calcular depósito
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <div class="alert alert-warning mb-0" style="border-left: 4px solid #ff9800;">
+                                                                <strong><i class="fa fa-euro me-2"></i>Total a Pagar</strong>
+                                                                <div id="total_display" class="mt-2" style="font-size: 18px; font-weight: bold; color: #e67e22;">
+                                                                    0EUR
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
 
@@ -1403,6 +1445,66 @@ class WebsiteContractBookingFixed(http.Controller):
                             dynamicPricingRadio.addEventListener('change', togglePricingSections);
 
                             togglePricingSections();
+                        }});
+
+                        // Event listeners para validación de tarjeta y cálculo de depósito
+                        document.addEventListener('DOMContentLoaded', function() {{
+                            const cardTypeSelect = document.getElementById('card_type');
+                            const cardNumberInput = document.getElementById('card_number');
+                            const cardBinInput = document.getElementById('card_bin');
+                            const depositDisplay = document.getElementById('deposit_display');
+                            const totalDisplay = document.getElementById('total_display');
+                            const selectedPrice = document.getElementById('selected_price');
+
+                            // Validar BIN cuando el usuario ingrese 6+ dígitos
+                            if (cardNumberInput) {{
+                                cardNumberInput.addEventListener('input', function() {{
+                                    let cardNumber = this.value.replace(/\D/g, '');
+                                    
+                                    if (cardNumber.length >= 6) {{
+                                        const bin = cardNumber.substring(0, 6);
+                                        cardBinInput.value = bin;
+                                        
+                                        // Validar con Freebinchecker
+                                        fetch(`https://lookup.binlist.net/${{bin}}`)
+                                            .then(response => response.json())
+                                            .then(data => {{
+                                                if (data && data.type) {{
+                                                    const detectedType = data.type.toLowerCase();
+                                                    if (detectedType === 'credit' || detectedType === 'debit') {{
+                                                        cardTypeSelect.value = detectedType;
+                                                        console.log('[INFO] Freebinchecker detectó: ' + detectedType);
+                                                        updateDepositDisplay();
+                                                    }}
+                                                }}
+                                            }})
+                                            .catch(error => {{
+                                                console.warn('[WARNING] Error validando BIN: ' + error);
+                                            }});
+                                    }}
+                                }});
+                            }}
+
+                            // Escuchar cambios en el tipo de tarjeta
+                            if (cardTypeSelect) {{
+                                cardTypeSelect.addEventListener('change', updateDepositDisplay);
+                            }}
+
+                            // Función para actualizar el depósito dinámico
+                            function updateDepositDisplay() {{
+                                const cardType = cardTypeSelect.value;
+                                const rentalPrice = parseFloat(selectedPrice?.value || 0);
+                                
+                                if (depositDisplay && totalDisplay) {{
+                                    if (cardType) {{
+                                        depositDisplay.textContent = 'Tipo: ' + (cardType === 'credit' ? 'Crédito' : 'Débito');
+                                        totalDisplay.textContent = 'Total con depósito: ' + rentalPrice.toFixed(2) + 'EUR (a confirmar)';
+                                    }} else {{
+                                        depositDisplay.textContent = 'Selecciona tipo de tarjeta para calcular depósito';
+                                        totalDisplay.textContent = '0EUR';
+                                    }}
+                                }}
+                            }}
                         }});
 
                         // Función para actualizar las opciones de kilometraje según la duración
@@ -1607,7 +1709,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             validateForm();
 
                             // Añadir listeners para validación en tiempo real
-                            const inputs = ['customer_name', 'customer_email', 'customer_phone', 'customer_dni', 'customer_dni_expiry_date', 'start_date', 'end_date', 'start_time', 'end_time'];
+                            const inputs = ['customer_name', 'customer_email', 'customer_phone', 'customer_dni', 'customer_dni_expiry_date', 'card_type', 'card_number', 'start_date', 'end_date', 'start_time', 'end_time'];
                             inputs.forEach(inputId => {{
                                 const input = document.getElementById(inputId);
                                 if (input) {{
@@ -1626,10 +1728,19 @@ class WebsiteContractBookingFixed(http.Controller):
                             const customerPhone = document.getElementById('customer_phone').value;
                             const customerDni = document.getElementById('customer_dni').value;
                             const customerDniExpiry = document.getElementById('customer_dni_expiry_date').value;
+                            const cardType = document.getElementById('card_type').value;
+                            const cardNumber = document.getElementById('card_number').value;
+                            const cardBin = document.getElementById('card_bin').value;
                             const startDate = document.getElementById('start_date').value;
                             const endDate = document.getElementById('end_date').value;
                             const startTime = document.getElementById('start_time').value;
                             const endTime = document.getElementById('end_time').value;
+
+                            // Sincronizar valores de tarjeta a hidden inputs
+                            document.getElementById('card_type_hidden').value = cardType;
+                            if (cardBin) {{
+                                document.getElementById('card_bin_hidden').value = cardBin;
+                            }}
 
                             const submitBtn = document.getElementById('submit_btn');
                             const requirements = document.getElementById('submit_requirements');
@@ -1660,8 +1771,11 @@ class WebsiteContractBookingFixed(http.Controller):
                                 }}
                             }}
 
+                            // Validar que la tarjeta esté completa (tipo + número con al menos 6 dígitos)
+                            const cardValid = cardType && cardNumber && cardBin.length >= 6;
+
                             // Verificar si todos los campos están completos
-                            const allFieldsComplete = customerName && customerEmail && customerPhone && customerDni && customerDniExpiry && startDate && endDate && startTime && endTime && dniValid;
+                            const allFieldsComplete = customerName && customerEmail && customerPhone && customerDni && customerDniExpiry && cardValid && startDate && endDate && startTime && endTime && dniValid;
 
                             if (allFieldsComplete && pricingType && !vehicleId) {{
                                 // Cargar vehículos disponibles
