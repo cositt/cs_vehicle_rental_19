@@ -1,17 +1,7 @@
 # -*- coding: utf-8 -*-
-"""
-Controlador para procesar pagos de alquiler de vehículos con Redsys
-"""
 from odoo import http
 from odoo.http import request
-import json
-import logging
-import base64
-import hmac
-import hashlib
-import subprocess
-import tempfile
-import os
+import json, logging, base64, hmac, hashlib, subprocess, tempfile, os
 from datetime import datetime
 
 _logger = logging.getLogger(__name__)
@@ -19,24 +9,19 @@ _logger = logging.getLogger(__name__)
 class RentalPaymentController(http.Controller):
     @http.route('/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def rental_payment(self, **kw):
-        """Procesar pago de alquiler con Redsys"""
         try:
-            # Obtener datos
             category_id = int(kw.get('category_id', 0))
-            
-            # DEBUG: Log del valor raw de selected_price
             selected_price_raw = kw.get('selected_price', '')
             _logger.info(f"RENTAL_PAYMENT DEBUG: selected_price raw = '{selected_price_raw}'")
             
-            # Convertir selected_price con validación
             try:
                 selected_price = float(selected_price_raw) if selected_price_raw else 0
             except (ValueError, TypeError):
                 selected_price = 0
-                _logger.warning(f"RENTAL_PAYMENT: selected_price inválido: '{selected_price_raw}'")
+                _logger.warning(f"RENTAL_PAYMENT: selected_price invalido: '{selected_price_raw}'")
             
             if selected_price <= 0:
-                _logger.warning("RENTAL_PAYMENT: selected_price no recibido o inválido, usando fallback 135€")
+                _logger.warning("RENTAL_PAYMENT: selected_price no recibido o invalido, usando fallback 135")
                 selected_price = 135.0
             
             customer_name = kw.get('customer_name', '')
@@ -49,8 +34,9 @@ class RentalPaymentController(http.Controller):
             customer_dni = kw.get('customer_dni', '')
             customer_dni_expiry_date = kw.get('customer_dni_expiry_date', '')
             location = kw.get('location', '')
+            card_type = kw.get('card_type', 'debit')
+            card_bin = kw.get('card_bin', '')
             
-            # FIX 1: Calcular número de días de alquiler
             num_days = 1
             if start_date and end_date:
                 try:
@@ -59,16 +45,30 @@ class RentalPaymentController(http.Controller):
                     num_days = (end_dt - start_dt).days
                     if num_days < 1:
                         num_days = 1
-                    _logger.info(f"RENTAL_PAYMENT: Calculados {num_days} días ({start_date} → {end_date})")
+                    _logger.info(f"RENTAL_PAYMENT: Calculados {num_days} dias ({start_date} - {end_date})")
                 except Exception as e:
-                    _logger.warning(f"RENTAL_PAYMENT: Error calculando días: {e}, usando 1 día")
+                    _logger.warning(f"RENTAL_PAYMENT: Error calculando dias: {e}, usando 1 dia")
                     num_days = 1
             
-            # FIX 1: Calcular precio TOTAL (precio/día × días)
             total_price = selected_price * num_days
-            _logger.info(f"RENTAL_PAYMENT: Precio/día={selected_price}€ × {num_days} días = {total_price}€ TOTAL")
+            _logger.info(f"RENTAL_PAYMENT: Precio/dia={selected_price}EUR x {num_days} dias = {total_price}EUR TOTAL")
             
-            # Preparar datos de booking (guardar precio/día para el contrato)
+            deposit_amount = 0
+            if category_id:
+                try:
+                    deposit_rule = request.env['vehicle.deposit.rule'].get_deposit_amount(
+                        category_id, card_type, total_price
+                    )
+                    deposit_amount = float(deposit_rule) if deposit_rule else 0
+                    if deposit_amount > 0:
+                        _logger.info(f"RENTAL_PAYMENT: Deposito calculado = {deposit_amount}EUR para tarjeta {card_type}")
+                except Exception as e:
+                    _logger.warning(f"RENTAL_PAYMENT: Error calculando deposito: {e}, usando 0EUR")
+                    deposit_amount = 0
+            
+            total_with_deposit = total_price + deposit_amount
+            _logger.info(f"RENTAL_PAYMENT: Total = {total_price}EUR (alquiler) + {deposit_amount}EUR (deposito) = {total_with_deposit}EUR")
+            
             booking_data = {
                 'category_id': category_id,
                 'customer_name': customer_name,
@@ -83,14 +83,16 @@ class RentalPaymentController(http.Controller):
                 'location': location,
                 'selected_price': selected_price,
                 'total_price': total_price,
+                'deposit_amount': deposit_amount,
+                'total_with_deposit': total_with_deposit,
+                'card_type': card_type,
+                'card_bin': card_bin,
                 'num_days': num_days,
                 'company_id': request.website.company_id.id,
             }
             
-            # Guardar en sesión
             request.session['booking_data'] = booking_data
             
-            # Obtener provider Redsys de la compañía del website
             company_id = request.website.company_id.id
             redsys_provider = request.env['payment.provider'].sudo().search([
                 ('code', '=', 'redsys'),
@@ -101,8 +103,6 @@ class RentalPaymentController(http.Controller):
                 return "Error: No Redsys provider configured for this company"
             
             provider = redsys_provider
-            
-            # Obtener o crear payment_method
             payment_method = request.env['payment.method'].sudo().search([
                 ('provider_ids', 'in', provider.id)
             ], limit=1)
@@ -115,10 +115,7 @@ class RentalPaymentController(http.Controller):
                     'provider_ids': [(4, provider.id)],
                 })
             
-            # Crear transacción de pago
             import time
-            
-            # Generar order_number PRIMERO (Redsys requiere 12 dígitos numéricos)
             timestamp_str = str(int(time.time()))
             order_number = timestamp_str[-12:].zfill(12)
             
@@ -126,31 +123,23 @@ class RentalPaymentController(http.Controller):
                 'booking_data_json': json.dumps(booking_data),
                 'provider_id': redsys_provider.id,
                 'payment_method_id': payment_method.id,
-                'amount': total_price,
+                'amount': total_with_deposit,
                 'currency_id': request.env.company.currency_id.id,
                 'partner_id': request.env.user.partner_id.id if request.env.user.partner_id else request.env.ref('base.public_partner').id,
                 'reference': order_number,
             }
             
             payment_tx = request.env['payment.transaction'].sudo().create(tx_vals)
-            _logger.info(f"RENTAL_PAYMENT: Created transaction ID {payment_tx.id} with reference {order_number}, amount={total_price}€")
+            _logger.info(f"RENTAL_PAYMENT: Created transaction ID {payment_tx.id} with reference {order_number}, amount={total_with_deposit}EUR")
             
             merchant_code = redsys_provider.redsys_merchant_code
             terminal = '1'
             secret_key_b64 = redsys_provider.redsys_secret_key
             
-            # Verificar que secret_key_b64 no sea booleano antes de decodificar
-            if not secret_key_b64 or isinstance(secret_key_b64, bool):
-                _logger.error("RENTAL_PAYMENT: Redsys secret_key no configurado")
-                return f"<h1>Error: Método de pago no configurado</h1><p>El método de pago Redsys no está completamente configurado. Por favor, contacte con el administrador.</p>"
+            amount_cents = int(total_with_deposit * 100)
+            currency = '978'
             
-            amount_cents = int(total_price * 100)
-            currency = '978'  # EUR
-            
-            # Preparar datos del merchant
             domain = request.httprequest.host
-            # TODO: PRODUCCIÓN - Cambiar de https:// a http:// si es necesario para testing local
-            # En producción usar https:// con dominio público válido
             merchant_data = {
                 'Ds_Merchant_Amount': str(amount_cents),
                 'Ds_Merchant_Currency': currency,
@@ -158,24 +147,20 @@ class RentalPaymentController(http.Controller):
                 'Ds_Merchant_MerchantCode': merchant_code,
                 'Ds_Merchant_Terminal': terminal,
                 'Ds_Merchant_TransactionType': '0',
-                'Ds_Merchant_MerchantURL': f'http://{domain}/payment/redsys/webhook',
-                'Ds_Merchant_UrlOK': f'http://{domain}/rental/success',
-                'Ds_Merchant_UrlKO': f'http://{domain}/rental/error',
+                'Ds_Merchant_MerchantURL': f'https://{domain}/payment/redsys/webhook',
+                'Ds_Merchant_UrlOK': f'https://{domain}/rental/success',
+                'Ds_Merchant_UrlKO': f'https://{domain}/rental/error',
             }
             
             _logger.info(f"RENTAL_PAYMENT: Merchant data = {merchant_data}")
             
-            # Codificar a base64
             merchant_json = json.dumps(merchant_data, separators=(',', ':'))
             merchant_b64 = base64.b64encode(merchant_json.encode('utf-8')).decode('ascii')
             
             _logger.info(f"RENTAL_PAYMENT: Merchant JSON = {merchant_json}")
             _logger.info(f"RENTAL_PAYMENT: Merchant B64 = {merchant_b64}")
             
-            # Derivar clave 3DES-CBC - limpiar y validar secret_key
             secret_key_str = str(secret_key_b64).strip()
-            
-            # Agregar padding si es necesario
             padding = 4 - len(secret_key_str) % 4
             if padding != 4:
                 secret_key_str += '=' * padding
@@ -184,7 +169,7 @@ class RentalPaymentController(http.Controller):
                 secret_decoded = base64.b64decode(secret_key_str)
             except Exception as e:
                 _logger.error(f"RENTAL_PAYMENT: Error decodificando secret_key: {e}")
-                return f"<h1>Error: Configuración de Redsys inválida</h1><p>La clave secreta de Redsys no es válida. Por favor, contacte con el administrador.</p>"
+                return f"<h1>Error: Configuracion de Redsys invalida</h1><p>La clave secreta de Redsys no es valida. Por favor, contacte con el administrador.</p>"
             
             order_bytes = order_number.encode('utf-8')
             pad = (-len(order_bytes)) % 8
@@ -214,12 +199,10 @@ class RentalPaymentController(http.Controller):
             finally:
                 os.unlink(order_path)
             
-            # Generar firma
             signature = base64.b64encode(
                 hmac.new(derived_key, merchant_b64.encode('ascii'), hashlib.sha256).digest()
             ).decode('ascii')
             
-            # Generar formulario HTML
             html = f"""
             <!DOCTYPE html>
             <html>
@@ -244,4 +227,62 @@ class RentalPaymentController(http.Controller):
             
         except Exception as e:
             _logger.error(f"ERROR en rental_payment: {str(e)}", exc_info=True)
+            return f"Error: {str(e)}"
+    
+    @http.route('/rental/success', auth='public', website=True, type='http', methods=['GET', 'POST'])
+    def rental_payment_success(self, **kw):
+        try:
+            _logger.info(f"RENTAL_PAYMENT SUCCESS: Parametros recibidos = {kw}")
+            booking_data = request.session.get('booking_data')
+            
+            return f"""
+            <html>
+                <head>
+                    <title>Pago Exitoso</title>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                        .success {{ color: green; font-size: 24px; }}
+                        .info {{ margin-top: 20px; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="success">OK Pago realizado correctamente</div>
+                    <div class="info">
+                        <p>Tu reserva ha sido procesada exitosamente.</p>
+                        <p>Pronto recibiras un correo de confirmacion.</p>
+                        <a href="/">Volver a inicio</a>
+                    </div>
+                </body>
+            </html>
+            """
+        except Exception as e:
+            _logger.error(f"ERROR en rental_payment_success: {str(e)}", exc_info=True)
+            return f"Error: {str(e)}"
+    
+    @http.route('/rental/error', auth='public', website=True, type='http', methods=['GET', 'POST'])
+    def rental_payment_error(self, **kw):
+        try:
+            _logger.error(f"RENTAL_PAYMENT ERROR: Parametros de error recibidos = {kw}")
+            
+            return f"""
+            <html>
+                <head>
+                    <title>Pago Cancelado</title>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                        .error {{ color: red; font-size: 24px; }}
+                        .info {{ margin-top: 20px; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="error">X El pago ha sido cancelado o ha fallado</div>
+                    <div class="info">
+                        <p>Puedes intentar de nuevo.</p>
+                        <a href="/web/booking-enquiry">Volver a reservar</a>
+                    </div>
+                </body>
+            </html>
+            """
+        except Exception as e:
+            _logger.error(f"ERROR en rental_payment_error: {str(e)}", exc_info=True)
             return f"Error: {str(e)}"
