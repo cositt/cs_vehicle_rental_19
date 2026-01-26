@@ -1448,100 +1448,189 @@ class WebsiteContractBookingFixed(http.Controller):
                         }});
 
                         // Event listeners para validación de tarjeta y cálculo de depósito
-                        document.addEventListener('DOMContentLoaded', function() {{
+                        function initCardValidation() {{
                             const cardNumberInput = document.getElementById('card_number');
                             const cardBinInput = document.getElementById('card_bin');
                             const cardTypeInput = document.getElementById('card_type');
                             const cardTypeDisplay = document.getElementById('card_type_display');
                             const cardTypeIcon = document.getElementById('card_type_icon');
+
+                            if (!cardNumberInput) {{
+                                return;
+                            }}
+
+                            // Validar BIN cuando el usuario ingrese 6+ dígitos CON DEBOUNCE
+                            let binValidationTimeout = null;
+                            let lastBinValidated = null;
+                            
+                            cardNumberInput.addEventListener('input', function() {{
+                                let cardNumber = this.value.replace(/\D/g, '');
+                                
+                                if (cardNumber.length >= 6) {{
+                                    const bin = cardNumber.substring(0, 6);
+                                    cardBinInput.value = bin;
+                                    
+                                    if (binValidationTimeout) {{
+                                        clearTimeout(binValidationTimeout);
+                                    }}
+                                    
+                                    cardTypeDisplay.textContent = '✏️ Escribiendo...';
+                                    cardTypeIcon.className = 'fa fa-pencil me-2';
+                                    cardTypeIcon.style.color = '#6c757d';
+                                    
+                                    binValidationTimeout = setTimeout(function() {{
+                                        if (bin !== lastBinValidated) {{
+                                            lastBinValidated = bin;
+                                            
+                                            cardTypeDisplay.textContent = '⏳ Validando...';
+                                            cardTypeIcon.className = 'fa fa-hourglass-half me-2';
+                                            cardTypeIcon.style.color = '#6c757d';
+                                            
+                                            fetch('/rental/validate-bin', {{
+                                                method: 'POST',
+                                                headers: {{'Content-Type': 'application/json'}},
+                                                body: JSON.stringify({{bin: bin}})
+                                            }})
+                                                .then(response => response.json())
+                                                .then(data => {{
+                                                    if (data.success && data.card_type) {{
+                                                        const detectedType = data.card_type.toLowerCase();
+                                                        if (detectedType === 'credit' || detectedType === 'debit') {{
+                                                            cardTypeInput.value = detectedType;
+                                                            document.getElementById('card_type_hidden').value = detectedType;
+                                                            
+                                                            if (detectedType === 'credit') {{
+                                                                cardTypeDisplay.textContent = '💳 Tarjeta de Crédito';
+                                                                cardTypeIcon.className = 'fa fa-credit-card me-2';
+                                                                cardTypeIcon.style.color = '#0c63e4';
+                                                            }} else {{
+                                                                cardTypeDisplay.textContent = '🏦 Tarjeta de Débito';
+                                                                cardTypeIcon.className = 'fa fa-university me-2';
+                                                                cardTypeIcon.style.color = '#28a745';
+                                                            }}
+                                                            
+                                                            // Si ya hay una tarifa seleccionada, recalcular el depósito
+                                                            const selectedPrice = document.getElementById('selected_price');
+                                                            if (selectedPrice && selectedPrice.value) {{
+                                                                updateDepositDisplay();
+                                                            }}
+                                                        }}
+                                                    }} else {{
+                                                        cardTypeDisplay.textContent = '❌ ' + (data.error || 'Error');
+                                                        cardTypeIcon.className = 'fa fa-times-circle me-2';
+                                                        cardTypeIcon.style.color = '#dc3545';
+                                                    }}
+                                                }})
+                                                .catch(error => {{
+                                                    cardTypeDisplay.textContent = '⚠️ Error';
+                                                    cardTypeIcon.className = 'fa fa-exclamation-triangle me-2';
+                                                    cardTypeIcon.style.color = '#dc3545';
+                                                }});
+                                        }}
+                                    }}, 2000);
+                                }} else {{
+                                    cardTypeDisplay.textContent = 'Ingresa el número de tarjeta';
+                                    cardTypeIcon.className = 'fa fa-credit-card me-2';
+                                    cardTypeIcon.style.color = '#0c63e4';
+                                    lastBinValidated = null;
+                                }}
+                            }});
+                        }}
+
+                        // Ejecutar cuando el DOM esté listo
+                        if (document.readyState === 'loading') {{
+                            document.addEventListener('DOMContentLoaded', initCardValidation);
+                        }} else {{
+                            initCardValidation();
+                        }}
+
+                        // Función para actualizar el depósito dinámico
+                        function updateDepositDisplay() {{
+                            const cardTypeInput = document.getElementById('card_type');
                             const depositDisplay = document.getElementById('deposit_display');
                             const totalDisplay = document.getElementById('total_display');
                             const selectedPrice = document.getElementById('selected_price');
-
-                            // Validar BIN cuando el usuario ingrese 6+ dígitos
-                            if (cardNumberInput) {{
-                                cardNumberInput.addEventListener('input', function() {{
-                                    let cardNumber = this.value.replace(/\D/g, '');
-                                    
-                                    if (cardNumber.length >= 6) {{
-                                        const bin = cardNumber.substring(0, 6);
-                                        cardBinInput.value = bin;
-                                        
-                                        // Validar con el endpoint de Odoo (que llama a Freebinchecker desde servidor)
-                                        fetch('/rental/validate-bin', {{
-                                            method: 'POST',
-                                            headers: {{'Content-Type': 'application/json'}},
-                                            body: JSON.stringify({{bin: bin}})
-                                        }})
-                                            .then(response => response.json())
-                                            .then(data => {{
-                                                if (data.success && data.card_type) {{
-                                                    const detectedType = data.card_type.toLowerCase();
-                                                    if (detectedType === 'credit' || detectedType === 'debit') {{
-                                                        cardTypeInput.value = detectedType;
-                                                        document.getElementById('card_type_hidden').value = detectedType;
-                                                        
-                                                        // Actualizar display del tipo
-                                                        if (detectedType === 'credit') {{
-                                                            cardTypeDisplay.textContent = '💳 Tarjeta de Crédito';
-                                                            cardTypeIcon.className = 'fa fa-credit-card me-2';
-                                                            cardTypeIcon.style.color = '#0c63e4';
-                                                        }} else {{
-                                                            cardTypeDisplay.textContent = '🏦 Tarjeta de Débito';
-                                                            cardTypeIcon.className = 'fa fa-university me-2';
-                                                            cardTypeIcon.style.color = '#28a745';
-                                                        }}
-                                                        
-                                                        console.log('[INFO] BIN validado: ' + detectedType);
-                                                        updateDepositDisplay();
-                                                    }}
-                                                }} else {{
-                                                    cardTypeDisplay.textContent = '❓ Tipo no identificado';
-                                                    cardTypeIcon.className = 'fa fa-question-circle me-2';
-                                                    cardTypeIcon.style.color = '#ff9800';
-                                                }}
-                                            }})
-                                            .catch(error => {{
-                                                console.warn('[WARNING] Error validando BIN: ' + error);
-                                                cardTypeDisplay.textContent = '⚠️ Error al validar';
-                                                cardTypeIcon.className = 'fa fa-exclamation-triangle me-2';
-                                                cardTypeIcon.style.color = '#dc3545';
-                                            }});
-                                    }} else {{
-                                        cardTypeDisplay.textContent = 'Ingresa el número de tarjeta';
-                                        cardTypeIcon.className = 'fa fa-credit-card me-2';
-                                        cardTypeIcon.style.color = '#0c63e4';
-                                    }}
-                                }});
+                            const categoryIdInput = document.querySelector('input[name="category_id"]');
+                            
+                            const cardType = cardTypeInput ? cardTypeInput.value : '';
+                            const rentalPrice = parseFloat(selectedPrice ? selectedPrice.value : 0);
+                            const categoryId = categoryIdInput ? parseInt(categoryIdInput.value) : 0;
+                            
+                            console.log('[DEBUG updateDepositDisplay] cardType=' + cardType + ', rentalPrice=' + rentalPrice + ', categoryId=' + categoryId);
+                            
+                            if (!depositDisplay || !totalDisplay) {{
+                                return;
                             }}
-
-                            // Función para actualizar el depósito dinámico
-                            function updateDepositDisplay() {{
-                                const cardType = cardTypeInput.value;
-                                const rentalPrice = parseFloat(selectedPrice?.value || 0);
-                                
-                                if (depositDisplay && totalDisplay) {{
-                                    if (cardType) {{
+                            
+                            // Si no hay tipo de tarjeta, no calcular depósito
+                            if (!cardType) {{
+                                console.log('[DEBUG] Sin cardType - no se calcula depósito');
+                                depositDisplay.textContent = 'Primero debes validar el tipo de tarjeta';
+                                totalDisplay.textContent = 'EUR 0.00';
+                                return;
+                            }}
+                            
+                            // Si no hay precio seleccionado
+                            if (rentalPrice <= 0) {{
+                                console.log('[DEBUG] rentalPrice <= 0');
+                                depositDisplay.textContent = 'Selecciona una tarifa para calcular el depósito';
+                                totalDisplay.textContent = 'EUR 0.00';
+                                return;
+                            }}
+                            
+                            // Validar que categoryId sea válido
+                            if (!categoryId) {{
+                                console.warn('[DEBUG] categoryId es 0 - NO se calculará depósito');
+                                depositDisplay.innerHTML = '<div style="font-size: 14px; color: #999;">Selecciona una categoría</div>';
+                                return;
+                            }}
+                            
+                            // Mostrar estado "calculando..."
+                            depositDisplay.innerHTML = '<div style="font-size: 14px;"><i class="fa fa-spinner fa-spin me-2"></i>Calculando depósito...</div>';
+                            
+                            console.log('[DEBUG] Enviando solicitud con: category_id=' + categoryId + ', card_type=' + cardType + ', total_price=' + rentalPrice);
+                            
+                            // Llamar al endpoint para calcular depósito
+                            fetch('/rental/calculate-deposit', {{
+                                method: 'POST',
+                                headers: {{'Content-Type': 'application/json'}},
+                                body: JSON.stringify({{
+                                    category_id: categoryId,
+                                    card_type: cardType,
+                                    total_price: rentalPrice
+                                }})
+                            }})
+                                .then(response => {{
+                                    console.log('[DEBUG] Response status=' + response.status);
+                                    if (!response.ok) {{
+                                        throw new Error('HTTP ' + response.status);
+                                    }}
+                                    return response.json();
+                                }})
+                                .then(data => {{
+                                    console.log('[DEBUG] Response data=' + JSON.stringify(data));
+                                    if (data.success) {{
+                                        const depositAmount = data.deposit_amount || 0;
+                                        const totalWithDeposit = data.total_with_deposit || 0;
                                         let typeLabel = cardType === 'credit' ? 'Crédito' : 'Débito';
-                                        depositDisplay.innerHTML = `
-                                            <div style="font-size: 14px;">
-                                                <div><i class="fa fa-money me-2"></i><strong>Tipo:</strong> ` + typeLabel + `</div>
-                                                <div class="mt-2"><i class="fa fa-shield me-2"></i><strong>Monto:</strong> Calculando...</div>
-                                            </div>
-                                        `;
-                                        totalDisplay.textContent = 'Total con depósito: ' + rentalPrice.toFixed(2) + ' EUR (a confirmar)';
+                                        
+                                        depositDisplay.innerHTML = '<div style="font-size: 14px;"><div><i class="fa fa-money me-2"></i><strong>Tipo:</strong> ' + typeLabel + '</div><div class="mt-2"><i class="fa fa-shield me-2"></i><strong>Monto:</strong> ' + depositAmount.toFixed(2) + ' EUR</div></div>';
+                                        totalDisplay.innerHTML = '<strong style="color: #e67e22; font-size: 20px;">' + totalWithDeposit.toFixed(2) + ' EUR</strong><br><small style="color: #999;">' + rentalPrice.toFixed(2) + ' EUR (alquiler) + ' + depositAmount.toFixed(2) + ' EUR (depósito)</small>';
                                     }} else {{
-                                        depositDisplay.textContent = 'El depósito se calculará una vez detectado el tipo de tarjeta';
-                                        totalDisplay.textContent = 'EUR 0.00';
+                                        console.error('[ERROR] Error del servidor: ' + data.error);
+                                        depositDisplay.innerHTML = '<div style="font-size: 14px; color: #dc3545;"><i class="fa fa-exclamation-triangle me-2"></i>' + (data.error || 'Error desconocido') + '</div>';
+                                        totalDisplay.textContent = 'Error';
                                     }}
-                                }}
-                            }}
-                        }});
+                                }})
+                                .catch(error => {{
+                                    console.error('[ERROR CRÍTICO] ' + error.message);
+                                    depositDisplay.innerHTML = '<div style="font-size: 14px; color: #dc3545;"><i class="fa fa-exclamation-triangle me-2"></i>Error: ' + error.message + '</div>';
+                                    totalDisplay.textContent = 'Error';
+                                }});
+                        }}
 
                         // Función para actualizar las opciones de kilometraje según la duración
                         function updateKmOptions() {{
-                            const duration = document.getElementById('duration_select').value;
-                            const kmSelect = document.getElementById('km_select');
 
                             if (!duration) {{
                                 kmSelect.disabled = true;
@@ -1635,6 +1724,12 @@ class WebsiteContractBookingFixed(http.Controller):
 
                             // Actualizar fecha de fin si ya hay fecha de inicio
                             updateEndDate();
+                            
+                            // Calcular y mostrar depósito SOLO si hay tarjeta validada
+                            const cardTypeValue = document.getElementById('card_type')?.value;
+                            if (cardTypeValue) {{
+                                updateDepositDisplay();
+                            }}
 
                             // Validar formulario
                             validateForm();
@@ -1697,6 +1792,12 @@ class WebsiteContractBookingFixed(http.Controller):
 
                                     // Actualizar fecha de fin si ya hay fecha de inicio
                                     updateEndDate();
+                                    
+                                    // Calcular y mostrar depósito SOLO si hay tarjeta validada
+                                    const cardTypeValue = document.getElementById('card_type')?.value;
+                                    if (cardTypeValue) {{
+                                        updateDepositDisplay();
+                                    }}
 
                                     // Validar formulario
                                     validateForm();

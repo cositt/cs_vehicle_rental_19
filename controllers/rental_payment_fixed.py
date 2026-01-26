@@ -446,3 +446,65 @@ class RentalPaymentController(http.Controller):
             _logger.error(f"ERROR en validate_bin: {str(e)}", exc_info=True)
             return request.make_response(json.dumps({'error': str(e), 'card_type': None}), 
                                       [('Content-Type', 'application/json')])
+    
+    @http.route('/rental/calculate-deposit', auth='public', type='http', methods=['POST'], csrf=False)
+    def calculate_deposit(self):
+        """Calcula el depósito dinámico basado en tipo de tarjeta y categoría de vehículo"""
+        try:
+            # Obtener parámetros del body JSON
+            try:
+                body_data = json.loads(request.httprequest.data.decode('utf-8'))
+                category_id = int(body_data.get('category_id', 0))
+                card_type = body_data.get('card_type', 'debit')
+                total_price = float(body_data.get('total_price', 0))
+            except Exception as e:
+                _logger.warning(f"CALCULATE_DEPOSIT: Error parseando JSON: {e}")
+                category_id = int(request.params.get('category_id', 0))
+                card_type = request.params.get('card_type', 'debit')
+                total_price = float(request.params.get('total_price', 0))
+            
+            _logger.info(f"CALCULATE_DEPOSIT: Solicitado - category_id={category_id}, card_type={card_type}, total_price={total_price}")
+            
+            if not category_id or not card_type or total_price <= 0:
+                _logger.warning(f"CALCULATE_DEPOSIT: Parámetros inválidos")
+                return request.make_response(json.dumps({
+                    'success': False,
+                    'error': 'Parámetros inválidos',
+                    'deposit_amount': 0
+                }), [('Content-Type', 'application/json')])
+            
+            # Calcular depósito usando el modelo
+            try:
+                deposit_amount = request.env['vehicle.deposit.rule'].sudo().get_deposit_amount(
+                    category_id, card_type, total_price
+                )
+                deposit_amount = float(deposit_amount) if deposit_amount else 0
+                total_with_deposit = total_price + deposit_amount
+                
+                _logger.info(f"CALCULATE_DEPOSIT: Depósito calculado = {deposit_amount}EUR para {card_type} en categoría {category_id}")
+                
+                result = {
+                    'success': True,
+                    'deposit_amount': round(deposit_amount, 2),
+                    'total_with_deposit': round(total_with_deposit, 2),
+                    'card_type': card_type
+                }
+                
+                return request.make_response(json.dumps(result), 
+                                          [('Content-Type', 'application/json')])
+            
+            except Exception as e:
+                _logger.error(f"CALCULATE_DEPOSIT: Error calculando depósito: {str(e)}", exc_info=True)
+                return request.make_response(json.dumps({
+                    'success': False,
+                    'error': f'Error al calcular depósito: {str(e)}',
+                    'deposit_amount': 0
+                }), [('Content-Type', 'application/json')])
+        
+        except Exception as e:
+            _logger.error(f"ERROR en calculate_deposit: {str(e)}", exc_info=True)
+            return request.make_response(json.dumps({
+                'success': False,
+                'error': str(e),
+                'deposit_amount': 0
+            }), [('Content-Type', 'application/json')])
