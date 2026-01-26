@@ -289,11 +289,10 @@ class RentalPaymentController(http.Controller):
 
     @http.route('/rental/validate-bin', auth='public', type='http', methods=['POST'], csrf=False)
     def validate_bin(self):
-        """Valida un BIN de tarjeta usando Freebinchecker desde el servidor"""
+        """Valida un BIN de tarjeta usando binlist.net (5 solicitudes/hora) con cache indefinido"""
         try:
             import json
             import requests
-            import time
             
             # Obtener los datos del body JSON
             try:
@@ -309,18 +308,30 @@ class RentalPaymentController(http.Controller):
                 return request.make_response(json.dumps({'error': 'BIN inválido', 'card_type': None}), 
                                           [('Content-Type', 'application/json')])
             
-            # Llamar a Freebinchecker desde el servidor (sin problemas CORS)
+            # PASO 1: Verificar si existe resultado en cache
+            try:
+                cached_result = request.env['ir.config_parameter'].sudo().get_param(
+                    f'bin_validation_cache_{bin_number}', default=None
+                )
+                if cached_result:
+                    _logger.info(f"✅ VALIDATE_BIN: **USANDO CACHE** para BIN {bin_number}")
+                    _logger.info(f"✅ VALIDATE_BIN: Resultado del cache = {cached_result}")
+                    return request.make_response(cached_result, 
+                                              [('Content-Type', 'application/json')])
+            except Exception as e:
+                _logger.debug(f"VALIDATE_BIN: Cache read error (no crítico): {e}")
+            
+            # PASO 2: Llamar a binlist.net (máximo 5 solicitudes por hora)
             try:
                 url = f'https://lookup.binlist.net/{bin_number}'
-                _logger.info(f"VALIDATE_BIN: Llamando a {url}")
+                _logger.info(f"VALIDATE_BIN: Llamando a binlist.net: {url}")
                 
-                # Agregar headers y timeout para evitar problemas
                 headers = {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                     'Accept': 'application/json',
                 }
                 
-                response = requests.get(url, timeout=10, headers=headers)
+                response = requests.get(url, timeout=8, headers=headers)
                 _logger.info(f"VALIDATE_BIN: Response status = {response.status_code}")
                 
                 if response.status_code == 200:
@@ -336,24 +347,43 @@ class RentalPaymentController(http.Controller):
                             'bin': bin_number,
                             'scheme': response_data.get('scheme', 'unknown'),
                         }
-                        _logger.info(f"VALIDATE_BIN: Retornando resultado exitoso: {result}")
-                        return request.make_response(json.dumps(result), 
+                        result_json = json.dumps(result)
+                        
+                        # Cachear resultado indefinidamente (no son datos sensibles, solo BIN + tipo)
+                        try:
+                            request.env['ir.config_parameter'].sudo().set_param(
+                                f'bin_validation_cache_{bin_number}', 
+                                result_json
+                            )
+                            _logger.info(f"✅ VALIDATE_BIN: **RESULTADO GUARDADO EN CACHE PERMANENTE** para BIN {bin_number} = {result_json}")
+                        except Exception as e:
+                            _logger.debug(f"VALIDATE_BIN: Cache write error (no crítico): {e}")
+                        
+                        _logger.info(f"VALIDATE_BIN: Retornando resultado exitoso")
+                        return request.make_response(result_json, 
                                                   [('Content-Type', 'application/json')])
                     else:
                         _logger.warning(f"VALIDATE_BIN: Tipo de tarjeta no válido: '{card_type}'")
                         return request.make_response(json.dumps({'error': 'Tipo de tarjeta no válido', 'card_type': None}), 
                                                   [('Content-Type', 'application/json')])
+                elif response.status_code == 429:
+                    _logger.warning(f"VALIDATE_BIN: Rate limit (429) de binlist.net")
+                    return request.make_response(json.dumps({
+                        'error': 'Límite de solicitudes alcanzado. Intenta de nuevo en unos minutos.',
+                        'card_type': None,
+                    }), [('Content-Type', 'application/json')])
                 else:
-                    _logger.warning(f"VALIDATE_BIN: BIN no encontrado (status {response.status_code})")
+                    _logger.warning(f"VALIDATE_BIN: Status {response.status_code} de binlist.net")
                     return request.make_response(json.dumps({'error': f'BIN no encontrado (status {response.status_code})', 'card_type': None}), 
                                               [('Content-Type', 'application/json')])
+            
             except requests.exceptions.Timeout as e:
-                _logger.error(f"VALIDATE_BIN: Timeout en Freebinchecker: {e}")
+                _logger.warning(f"VALIDATE_BIN: Timeout de binlist.net: {e}")
                 return request.make_response(json.dumps({'error': 'Timeout al validar BIN', 'card_type': None}), 
                                           [('Content-Type', 'application/json')])
             except requests.exceptions.RequestException as e:
-                _logger.error(f"VALIDATE_BIN: Error de requests con Freebinchecker: {e}", exc_info=True)
-                return request.make_response(json.dumps({'error': 'Error al validar BIN', 'card_type': None}), 
+                _logger.warning(f"VALIDATE_BIN: Error de requests: {e}")
+                return request.make_response(json.dumps({'error': 'Error al conectar con el servicio de validación', 'card_type': None}), 
                                           [('Content-Type', 'application/json')])
         
         except Exception as e:
