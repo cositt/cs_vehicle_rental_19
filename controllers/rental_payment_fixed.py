@@ -10,6 +10,53 @@ class RentalPaymentController(http.Controller):
     @http.route('/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def rental_payment(self, **kw):
         try:
+            # VALIDACIÓN DE SEGURIDAD: Verificar que el BIN sea el mismo que fue validado
+            validated_bin = request.session.get('validated_bin')
+            validated_card_type = request.session.get('validated_card_type')
+            card_bin_received = kw.get('card_bin', '')
+            card_type_received = kw.get('card_type', '')
+            
+            _logger.info(f"RENTAL_PAYMENT: Validando tarjeta - BIN validado={validated_bin}, BIN recibido={card_bin_received}")
+            
+            # Si no hay BIN validado en sesión o no coincide, rechazar el pago
+            if not validated_bin or validated_bin != card_bin_received:
+                _logger.warning(f"RENTAL_PAYMENT SEGURIDAD: Intento de pago con BIN diferente o no validado")
+                return """
+                <html>
+                    <head>
+                        <title>Error de Seguridad</title>
+                        <meta charset="UTF-8">
+                        <style>
+                            body { font-family: Arial, sans-serif; padding: 40px; background-color: #f5f5f5; }
+                            .error-container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                            h1 { color: #dc3545; margin-top: 0; }
+                            p { color: #666; line-height: 1.6; }
+                            .error-details { background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 4px; margin: 20px 0; }
+                            a { color: #0c63e4; text-decoration: none; }
+                            a:hover { text-decoration: underline; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="error-container">
+                            <div style="font-size: 60px; margin-bottom: 20px;">⚠️</div>
+                            <h1>Error de Seguridad</h1>
+                            <p>Lo sentimos, no pudimos procesar tu pago por motivos de seguridad.</p>
+                            <div class="error-details">
+                                <strong>Razón:</strong> Debes usar la misma tarjeta que validaste anteriormente.
+                                <br><br>
+                                Por favor, regresa al formulario de reserva y valida nuevamente con la tarjeta que deseas usar para el pago.
+                            </div>
+                            <p><a href="/web/booking-enquiry">← Volver al formulario de reserva</a></p>
+                        </div>
+                    </body>
+                </html>
+                """
+            
+            # Validar que el card_type sea válido
+            if card_type_received not in ['credit', 'debit']:
+                _logger.warning(f"RENTAL_PAYMENT SEGURIDAD: card_type inválido: {card_type_received}")
+                return "Error: Tipo de tarjeta no válido"
+            
             category_id = int(kw.get('category_id', 0))
             selected_price_raw = kw.get('selected_price', '')
             _logger.info(f"RENTAL_PAYMENT DEBUG: selected_price raw = '{selected_price_raw}'")
@@ -316,6 +363,10 @@ class RentalPaymentController(http.Controller):
                 if cached_result:
                     _logger.info(f"✅ VALIDATE_BIN: **USANDO CACHE** para BIN {bin_number}")
                     _logger.info(f"✅ VALIDATE_BIN: Resultado del cache = {cached_result}")
+                    # Guardar BIN validado en sesión cuando se usa cache
+                    request.session['validated_bin'] = bin_number
+                    parsed_result = json.loads(cached_result)
+                    request.session['validated_card_type'] = parsed_result.get('card_type', 'debit')
                     return request.make_response(cached_result, 
                                               [('Content-Type', 'application/json')])
             except Exception as e:
@@ -348,6 +399,11 @@ class RentalPaymentController(http.Controller):
                             'scheme': response_data.get('scheme', 'unknown'),
                         }
                         result_json = json.dumps(result)
+                        
+                        # Guardar BIN validado en sesión para validación posterior
+                        request.session['validated_bin'] = bin_number
+                        request.session['validated_card_type'] = card_type
+                        _logger.info(f"VALIDATE_BIN: BIN guardado en sesión - {bin_number} ({card_type})")
                         
                         # Cachear resultado indefinidamente (no son datos sensibles, solo BIN + tipo)
                         try:
