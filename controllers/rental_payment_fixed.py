@@ -103,7 +103,7 @@ class RentalPaymentController(http.Controller):
             deposit_amount = 0
             if category_id:
                 try:
-                    deposit_rule = request.env['vehicle.deposit.rule'].get_deposit_amount(
+                    deposit_rule = request.env['vehicle.deposit.rule'].sudo().get_deposit_amount(
                         category_id, card_type, total_price
                     )
                     deposit_amount = float(deposit_rule) if deposit_rule else 0
@@ -187,6 +187,21 @@ class RentalPaymentController(http.Controller):
             currency = '978'
             
             domain = request.httprequest.host
+            is_development = 'localhost' in domain or '127.0.0.1' in domain
+            
+            # Para desarrollo, usar localhost. Para producción, usar SUNSETRENT_DOMAIN
+            if is_development:
+                success_url = f'http://{domain}/rental/success'
+                error_url = f'http://{domain}/rental/error'
+                _logger.info(f"RENTAL_PAYMENT: Modo DESARROLLO - URLs locales: success={success_url}")
+            else:
+                # TODO PRODUCCIÓN: Reemplazar con dominio real
+                # success_url = f'https://sunsetrent.com/rental/success'
+                # error_url = f'https://sunsetrent.com/rental/error'
+                success_url = f'https://{domain}/rental/success'
+                error_url = f'https://{domain}/rental/error'
+                _logger.warning(f"RENTAL_PAYMENT: Modo PRODUCCIÓN - Asegúrate de que el dominio sea correcto: {success_url}")
+            
             merchant_data = {
                 'Ds_Merchant_Amount': str(amount_cents),
                 'Ds_Merchant_Currency': currency,
@@ -195,8 +210,8 @@ class RentalPaymentController(http.Controller):
                 'Ds_Merchant_Terminal': terminal,
                 'Ds_Merchant_TransactionType': '0',
                 'Ds_Merchant_MerchantURL': f'https://{domain}/payment/redsys/webhook',
-                'Ds_Merchant_UrlOK': f'https://{domain}/rental/success',
-                'Ds_Merchant_UrlKO': f'https://{domain}/rental/error',
+                'Ds_Merchant_UrlOK': success_url,
+                'Ds_Merchant_UrlKO': error_url,
             }
             
             _logger.info(f"RENTAL_PAYMENT: Merchant data = {merchant_data}")
@@ -282,14 +297,43 @@ class RentalPaymentController(http.Controller):
             _logger.info(f"RENTAL_PAYMENT SUCCESS: Parametros recibidos = {kw}")
             booking_data = request.session.get('booking_data')
             
-            return f"""
+            if booking_data:
+                try:
+                    # Crear lead automáticamente desde los datos de booking
+                    lead_vals = {
+                        'name': f"Reserva: {booking_data.get('customer_name', 'N/A')} ({booking_data.get('start_date', 'N/A')})",
+                        'partner_name': booking_data.get('customer_name', ''),
+                        'email_from': booking_data.get('customer_email', ''),
+                        'phone': booking_data.get('customer_phone', ''),
+                        'description': f"""
+Reserva de vehículo completada:
+- Categoría: {booking_data.get('category_id', 'N/A')}
+- Fechas: {booking_data.get('start_date', 'N/A')} a {booking_data.get('end_date', 'N/A')}
+- Ubicación: {booking_data.get('location', 'N/A')}
+- Precio alquiler: {booking_data.get('total_price', 0)}€
+- Depósito: {booking_data.get('deposit_amount', 0)}€
+- Total pagado: {booking_data.get('total_with_deposit', 0)}€
+- Tipo tarjeta: {booking_data.get('card_type', 'N/A')}
+- DNI: {booking_data.get('customer_dni', 'N/A')}
+                        """,
+                        'type': 'opportunity',
+                    }
+                    
+                    lead = request.env['crm.lead'].sudo().create(lead_vals)
+                    _logger.info(f"RENTAL_PAYMENT SUCCESS: Lead creado exitosamente - ID {lead.id}")
+                    
+                except Exception as e:
+                    _logger.warning(f"RENTAL_PAYMENT SUCCESS: Error creando lead: {e}")
+                    # Continuar incluso si falla la creación del lead
+            
+            success_html = """
             <html>
                 <head>
                     <title>Pago Exitoso</title>
                     <style>
-                        body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
-                        .success {{ color: green; font-size: 24px; }}
-                        .info {{ margin-top: 20px; }}
+                        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                        .success { color: green; font-size: 24px; }
+                        .info { margin-top: 20px; }
                     </style>
                 </head>
                 <body>
@@ -302,6 +346,8 @@ class RentalPaymentController(http.Controller):
                 </body>
             </html>
             """
+            
+            return success_html
         except Exception as e:
             _logger.error(f"ERROR en rental_payment_success: {str(e)}", exc_info=True)
             return f"Error: {str(e)}"
@@ -311,14 +357,14 @@ class RentalPaymentController(http.Controller):
         try:
             _logger.error(f"RENTAL_PAYMENT ERROR: Parametros de error recibidos = {kw}")
             
-            return f"""
+            error_html = """
             <html>
                 <head>
                     <title>Pago Cancelado</title>
                     <style>
-                        body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
-                        .error {{ color: red; font-size: 24px; }}
-                        .info {{ margin-top: 20px; }}
+                        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                        .error { color: red; font-size: 24px; }
+                        .info { margin-top: 20px; }
                     </style>
                 </head>
                 <body>
@@ -330,6 +376,8 @@ class RentalPaymentController(http.Controller):
                 </body>
             </html>
             """
+            
+            return error_html
         except Exception as e:
             _logger.error(f"ERROR en rental_payment_error: {str(e)}", exc_info=True)
             return f"Error: {str(e)}"
