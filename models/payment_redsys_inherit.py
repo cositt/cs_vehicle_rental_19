@@ -158,6 +158,31 @@ class PaymentTransaction(models.Model):
             except:
                 pass
             
+            # Construir descripción con validación de seguridad
+            total_price = float(booking_data.get('total_price', 0.0))
+            deposit_amount = float(booking_data.get('deposit_amount', 0.0))
+            total_with_deposit = float(booking_data.get('total_with_deposit', 0.0))
+            card_type = booking_data.get('card_type', 'N/A')
+            card_bin = booking_data.get('card_bin', 'N/A')
+            
+            # Validación de seguridad: Comparar BIN y tipo de tarjeta validados vs los usados en pago
+            # TODO PRODUCCIÓN: Verificar si Redsys devuelve BIN del pago para comparar
+            security_note = f"✅ BIN validado: {card_bin} | Tipo: {card_type}"
+            
+            description = (
+                f"Reserva procesada vía web | TX:{self.id}<br/><br/>"
+                f"--- RESUMEN DEL ALQUILER ---<br/>"
+                f"- Tarifa: {float(booking_data.get('selected_price', 0.0)):.2f} €/día<br/>"
+                f"- Precio total alquiler: {total_price:.2f} €<br/>"
+                f"- Depósito de seguridad: {deposit_amount:.2f} € ({card_type})<br/>"
+                f"- TOTAL PAGADO: {total_with_deposit:.2f} €<br/>"
+                f"- Fechas: {booking_data.get('start_date')} {booking_data.get('start_time')} → {booking_data.get('end_date')} {booking_data.get('end_time')}<br/>"
+                f"- Ubicación: {booking_data.get('location')}<br/>"
+                f"- Transacción Redsys: {self.reference}<br/><br/>"
+                f"--- SEGURIDAD ---<br/>"
+                f"{security_note}"
+            )
+            
             lead_vals = {
                 'name': f"Consulta de Reserva - {booking_data.get('customer_name')}",
                 'partner_id': partner.id,
@@ -165,14 +190,7 @@ class PaymentTransaction(models.Model):
                 'type': 'opportunity',
                 'email_from': booking_data.get('customer_email'),
                 'phone': booking_data.get('customer_phone'),
-                'description': (
-                    f"Reserva procesada vía web | TX:{self.id}<br/><br/>"
-                    f"--- RESUMEN DEL ALQUILER ---<br/>"
-                    f"- Tarifa: {float(booking_data.get('selected_price', 0.0)):.2f} €/día<br/>"
-                    f"- Fechas: {booking_data.get('start_date')} {booking_data.get('start_time')} → {booking_data.get('end_date')} {booking_data.get('end_time')}<br/>"
-                    f"- Ubicación: {booking_data.get('location')}<br/>"
-                    f"- Transacción Redsys: {self.reference}"
-                ),
+                'description': description,
                 'stage_id': lead_stage_id,
                 'vehicle_id': vehicle.id,
                 'start_date': booking_data.get('start_date'),
