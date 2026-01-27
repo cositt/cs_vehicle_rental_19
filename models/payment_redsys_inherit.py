@@ -296,23 +296,23 @@ class PaymentTransaction(models.Model):
             with open('/tmp/method_execution.log', 'a') as me:
                 me.write(f"[PARTNER_OK] TX:{self.id} - Partner ID={partner.id}\n")
 
-            # 2. Encontrar vehículo disponible
-            vehicle = self._find_available_vehicle(
-                booking_data.get('company_id'),
-                booking_data.get('category_id'),
-                booking_data.get('start_date'),
-                booking_data.get('end_date')
-            )
-
-            if not vehicle:
-                # Si el vehículo se agotó, crear reembolso
+            # 2. Verificar que existen vehículos en la categoría (NO asignar uno específico)
+            category_id = booking_data.get('category_id')
+            company_id = booking_data.get('company_id')
+            
+            available_count = self.env['fleet.vehicle'].sudo().search_count([
+                ('model_id.category_id', '=', int(category_id)),
+                ('status', '=', 'available'),
+                ('company_id', '=', company_id),
+            ])
+            
+            if available_count == 0:
                 _logger.warning(
-                    f"REDSYS: Vehículo no disponible | TX:{self.id} | "
-                    f"Category:{booking_data.get('category_id')}"
+                    f"REDSYS: No hay vehículos disponibles | TX:{self.id} | "
+                    f"Category:{category_id}"
                 )
-                # TODO: Implementar reembolso automático
                 raise ValidationError(
-                    "El vehículo seleccionado ya no está disponible. "
+                    "No hay vehículos disponibles en esta categoría. "
                     "Se procesará un reembolso automático."
                 )
 
@@ -360,13 +360,13 @@ class PaymentTransaction(models.Model):
             lead_vals = {
                 'name': f"Consulta de Reserva - {booking_data.get('customer_name')}",
                 'partner_id': partner.id,
-                'company_id': vehicle.company_id.id,
+                'company_id': company_id,
                 'type': 'opportunity',
                 'email_from': booking_data.get('customer_email'),
                 'phone': booking_data.get('customer_phone'),
                 'description': description,
                 'stage_id': lead_stage_id,
-                'vehicle_id': vehicle.id,
+                'vehicle_id': False,
                 'start_date': booking_data.get('start_date'),
                 'end_date': booking_data.get('end_date'),
                 'selected_category_id': int(booking_data.get('category_id')),
@@ -390,9 +390,9 @@ class PaymentTransaction(models.Model):
                 raise
 
             _logger.info(
-                f"REDSYS: Lead creado exitosamente | TX:{self.id} | "
+                f"REDSYS: Lead creado exitosamente (SIN vehículo asignado) | TX:{self.id} | "
                 f"Lead:{lead.id} | "
-                f"Vehicle:{vehicle.name}"
+                f"Category:{category_id}"
             )
 
             # 7. Crear factura de depósito automáticamente y marcarla como pagada

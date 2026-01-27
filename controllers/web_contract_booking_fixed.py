@@ -1240,7 +1240,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                         <i class="fa fa-map-marker me-2" style="color: {primary_color};"></i>
                                                         <strong>Ubicación de recogida *</strong>
                                                     </label>
-                                                    <select class="form-select form-select-lg" id="location_select" name="location" required onchange="checkLocationAvailability()">
+                                                    <select class="form-select form-select-lg" id="location_select" name="location" required onchange="checkLocationAvailability(); loadAvailableVehicles();">
                                                         <option value="">-- Selecciona una ubicación --</option>
                                                         {''.join([f'<option value="{loc}">{loc}</option>' for loc in available_locations])}
                                                     </select>
@@ -1832,23 +1832,17 @@ class WebsiteContractBookingFixed(http.Controller):
                             }});
                         }}
 
-                        // Interceptar envío del formulario para validar selección de tarifa y vehículo
+                        // Interceptar envío del formulario para validar selección de tarifa
+                        // NOTA: No validamos vehicle_id porque se asigna automáticamente al crear el contrato
                         document.addEventListener('DOMContentLoaded', function() {{
                             const form = document.getElementById('booking_form');
                             if (form) {{
                                 form.addEventListener('submit', function(e) {{
                                     const pricingType = document.getElementById('selected_pricing_type').value;
-                                    const vehicleId = document.getElementById('selected_vehicle_id').value;
 
                                     if (!pricingType) {{
                                         e.preventDefault();
                                         alert('Por favor, selecciona una tarifa (Ofertas Fijas o Tarifas Dinámicas)');
-                                        return false;
-                                    }}
-
-                                    if (!vehicleId) {{
-                                        e.preventDefault();
-                                        alert('Por favor, selecciona un vehículo disponible');
                                         return false;
                                     }}
                                 }});
@@ -1926,8 +1920,8 @@ class WebsiteContractBookingFixed(http.Controller):
                             // Verificar si todos los campos están completos
                             const allFieldsComplete = customerName && customerEmail && customerPhone && customerDni && customerDniExpiry && cardValid && startDate && endDate && startTime && endTime && dniValid;
 
-                            if (allFieldsComplete && pricingType && !vehicleId) {{
-                                // Cargar vehículos disponibles
+                            if (allFieldsComplete && pricingType) {{
+                                // Cargar disponibilidad de categoría (CAMBIO: sin seleccionar vehículo específico)
                                 loadAvailableVehicles();
                             }}
 
@@ -1937,8 +1931,8 @@ class WebsiteContractBookingFixed(http.Controller):
                                 durationValid = validateDateRange();
                             }}
 
-                            // Habilitar botón solo si todo está completo y la duración es válida
-                            if (allFieldsComplete && pricingType && vehicleId && durationValid && dniValid) {{
+                            // Habilitar botón solo si todo está completo y la duración es válida (SIN requerer vehículo específico)
+                            if (allFieldsComplete && pricingType && durationValid && dniValid) {{
                                 submitBtn.disabled = false;
                                 submitBtn.style.opacity = '1';
                                 requirements.innerHTML = '<small class="text-success"><i class="fa fa-check me-1"></i>Todo listo para continuar</small>';
@@ -1947,7 +1941,6 @@ class WebsiteContractBookingFixed(http.Controller):
                                 submitBtn.style.opacity = '0.6';
                                 let message = 'Complete todos los datos';
                                 if (allFieldsComplete && !pricingType) message += ', seleccione una tarifa';
-                                if (allFieldsComplete && pricingType && !vehicleId) message += ', seleccione un vehículo';
                                 if (!durationValid) message += ', ajuste la duración de fechas';
                                 if (!dniValid) message += ', DNI expirado';
                                 requirements.innerHTML = `<small class="text-muted"><i class="fa fa-info-circle me-1"></i>${{message}}</small>`;
@@ -1961,7 +1954,8 @@ class WebsiteContractBookingFixed(http.Controller):
                             const endDate = document.getElementById('end_date').value;
                             const categoryId = document.getElementById('category_id') ? document.getElementById('category_id').value : document.querySelector('[name="category_id"]').value;
 
-                            if (!startDate || !endDate) return;
+                            // No esperar fechas para cargar disponibilidad - mostrar conteos sin importar fechas
+                            if (!location) return;  // Pero sí necesitamos ubicación
 
                             // Mostrar sección de vehículos
                             document.getElementById('available_vehicles_section').style.display = 'block';
@@ -1986,8 +1980,8 @@ class WebsiteContractBookingFixed(http.Controller):
                             .then(data => {{
                                 document.getElementById('vehicles_loading').style.display = 'none';
 
-                                if (data.success && data.vehicles.length > 0) {{
-                                    displayVehicles(data.vehicles);
+                                if (data.success) {{
+                                    displayVehicles(data);
                                 }} else {{
                                     document.getElementById('no_vehicles_message').style.display = 'block';
                                 }}
@@ -1999,68 +1993,37 @@ class WebsiteContractBookingFixed(http.Controller):
                             }});
                         }}
 
-                        // Función para mostrar vehículos
-                        function displayVehicles(vehicles) {{
+                        // Función para mostrar disponibilidad (SOLO DISPONIBLES)
+                        function displayVehicles(data) {{
                             const container = document.getElementById('vehicles_container');
                             container.innerHTML = '';
 
-                            vehicles.forEach(vehicle => {{
-                                // Usar categoría para determinar imagen
-                                const categoryName = vehicle.category_name || vehicle.name;
-                                // Extraer nombre sin matrícula (quitar la última parte)
-                                const nameParts = vehicle.name.split('/');
-                                const vehicleName = nameParts.length > 1 ? nameParts.slice(0, -1).join('/') : vehicle.name;
-
-                                // Detectar si es Pinveco o Sunset
-                                const currentDomain = window.location.hostname;
-                                const isPinveco = currentDomain.includes('pinveco');
-                                const imgDir = isPinveco ? '/vehicle_rental/static/description/img/tipos_pinveco' : '/vehicle_rental/static/description/img/tipos';
-
-                                // Extraer tipo de la categoría (Tipo B -> B)
-                                const typeMatch = categoryName.match(/Tipo\s+([A-Z])/);
-                                let brandImage = '/vehicle_rental/static/description/img/marcas/ford.svg'; // fallback
-
-                                if (typeMatch && typeMatch[1]) {{
-                                    const typeId = typeMatch[1]; // B, A, D, etc.
-                                    brandImage = `${{imgDir}}/tipo${{typeId}}.png`;
-                                }}
-
-                                const vehicleCard = document.createElement('div');
-                                vehicleCard.className = 'col-md-6 col-lg-4 mb-3';
-                                vehicleCard.innerHTML = `
-                                    <div class="card h-100 vehicle-card" style="cursor: pointer;" onclick="selectVehicle(${{vehicle.id}}, '${{vehicle.name}}', '${{vehicle.license_plate}}', event)">
-                                        <div class="card-body text-center">
-                                            <img src="${{brandImage}}" class="card-img-top mb-3" style="height: 120px; object-fit: contain;" alt="${{categoryName}}">
-                                            <h6 class="card-title">${{vehicleName}}</h6>
+                            // Crear UNA sola tarjeta mostrando SOLO los vehículos disponibles
+                            const availabilityCard = document.createElement('div');
+                            availabilityCard.className = 'col-md-8 col-lg-6 mx-auto mb-3';
+                            availabilityCard.innerHTML = `
+                                <div class="card h-100 text-center">
+                                    <div class="card-body">
+                                        <h5 class="card-title mb-4">✓ Disponibilidad de Vehículos</h5>
+                                        <div class="row mb-4">
+                                            <div class="col-12">
+                                                <strong class="display-3" style="color: #28a745;">${{data.available}}</strong>
+                                                <p class="text-muted" style="font-size: 1.2rem;">Vehículos Disponibles</p>
+                                            </div>
                                         </div>
+                                        <hr>
+                                        <p class="text-muted"><i class="fas fa-info-circle"></i> Se asignará un vehículo específico al firmar el contrato</p>
                                     </div>
-                                `;
-                                container.appendChild(vehicleCard);
-                            }});
+                                </div>
+                            `;
+                            container.appendChild(availabilityCard);
                         }}
 
-                        // Función para seleccionar vehículo
+                        // DEPRECATED: selectVehicle() ya no se usa (ahora se reserva por categoría, no por vehículo específico)
+                        // Mantener para compatibilidad con código legacy
                         function selectVehicle(vehicleId, vehicleName, licensePlate, event) {{
-                            // Desmarcar todos los vehículos
-                            document.querySelectorAll('.vehicle-card').forEach(card => {{
-                                card.style.borderColor = '';
-                                card.style.borderWidth = '';
-                            }});
-
-                            // Marcar el seleccionado - encontrar el div padre (vehicle-card)
-                            const selectedCard = event.target.closest('.vehicle-card');
-                            if (selectedCard) {{
-                                selectedCard.style.borderColor = '{primary_color}';
-                                selectedCard.style.borderWidth = '3px';
-                            }}
-
-                            // Guardar selección
-                            document.getElementById('selected_vehicle_id').value = vehicleId;
-
-                            console.log(`Vehículo seleccionado: ${{vehicleName}} (${{licensePlate}}) - ID: ${{vehicleId}}`);
-
-                            // Validar formulario
-                            validateForm();
+                            // Ya no hacer nada - el vehículo se asigna automáticamente al crear el contrato
+                            console.log('selectVehicle() deprecated - reservation by category model');
                         }}
 
                         // Función para calcular días mínimos basado en la duración de la tarifa
@@ -2234,8 +2197,8 @@ class WebsiteContractBookingFixed(http.Controller):
                             }})
                             .then(response => response.json())
                             .then(data => {{
-                                if (data.success && data.vehicles.length > 0) {{
-                                    displayVehicles(data.vehicles);
+                                if (data.success && data.available > 0) {{
+                                    displayVehicles(data);
                                 }} else {{
                                     vehicleContainer.innerHTML = `
                                         <div class="alert alert-warning w-100">
@@ -2306,7 +2269,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             .then(data => {{
                                 console.log('Location availability check:', data);
 
-                                if (data.success && data.count > 0) {{
+                                if (data.success && data.available > 0) {{
                                     // Hay vehículos disponibles - mostrar formulario
                                     bookingFormSection.style.display = 'block';
                                     noVehiclesMessage.style.display = 'none';
@@ -2616,11 +2579,14 @@ class WebsiteContractBookingFixed(http.Controller):
 
     @http.route('/web/get-available-vehicles', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def get_available_vehicles(self, **kw):
-        """Get available vehicles for a category and date range"""
+        """Get availability counts for a category and date range (NOT individual vehicles)"""
         try:
             import json
+            from datetime import datetime
+            import logging
+            _logger = logging.getLogger(__name__)
 
-            category_id = kw.get('category_id')
+            category_id = int(kw.get('category_id', 0))
             start_date = kw.get('start_date')
             end_date = kw.get('end_date')
             location = kw.get('location', '').strip()
@@ -2630,28 +2596,21 @@ class WebsiteContractBookingFixed(http.Controller):
             is_pinveco = 'pinveco' in current_domain.lower()
             company_id = 2 if is_pinveco else 1  # Pinveco=2, Sunset=1
 
-            print(f"DEBUG: Getting available vehicles for category {category_id}, dates {start_date} - {end_date}, location: {location}, company: {company_id}")
+            # Log de parámetros recibidos
+            _logger.warning(f"GET_AVAILABLE_VEHICLES: category_id={category_id}, start_date={start_date}, end_date={end_date}, location='{location}', company_id={company_id}")
 
-            # Buscar vehículos disponibles de la categoría
-            print(f"DEBUG: Searching vehicles with category_id={category_id}, company_id={company_id}")
-
-            # Construir dominio de búsqueda
-            # Buscar por category_id directamente en el vehículo O por model_id.category_id
-            # Y filtrar por compañía y estado
-            domain = [
+            # 1. TOTAL: Buscar todos los vehículos en la categoría con status='available'
+            total_domain = [
                 '|',
-                ('category_id', '=', int(category_id)),
-                ('model_id.category_id', '=', int(category_id)),
+                ('category_id', '=', category_id),
+                ('model_id.category_id', '=', category_id),
                 ('company_id', '=', company_id),
                 ('status', '=', 'available')
             ]
-
-            # Nota: En Odoo, el dominio se interpreta como:
-            # (category_id = X OR model_id.category_id = X) AND company_id = Y AND status = 'available'
-
-            # Filtrar por ubicación si se proporciona y no es "Todas las ubicaciones"
+            
+            _logger.warning(f"GET_AVAILABLE_VEHICLES: Dominio ANTES de location: {total_domain}")
+            
             if location and location != 'Todas las ubicaciones':
-                # Buscar vehículos con la ubicación exacta o variaciones (Málaga/Malaga, Córdoba/Cordoba)
                 location_variations = [location]
                 if location == 'Málaga':
                     location_variations.append('Malaga')
@@ -2661,77 +2620,82 @@ class WebsiteContractBookingFixed(http.Controller):
                     location_variations.append('Cordoba')
                 elif location == 'Cordoba':
                     location_variations.append('Córdoba')
+                _logger.warning(f"GET_AVAILABLE_VEHICLES: Location variations: {location_variations}")
+                total_domain.append(('location', 'in', location_variations))
+            else:
+                _logger.warning(f"GET_AVAILABLE_VEHICLES: NO location filter (empty or 'Todas')")
 
-                domain.append(('location', 'in', location_variations))
-                print(f"DEBUG: Filtering by location: {location_variations}")
-
-            # Primero buscar TODOS los vehículos de la categoría (sin filtro de status) para debug
-            all_vehicles = request.env['fleet.vehicle'].sudo().search([
-                '|',
-                ('category_id', '=', int(category_id)),
-                ('model_id.category_id', '=', int(category_id)),
-                ('company_id', '=', company_id)
-            ])
-            print(f"DEBUG: Found {len(all_vehicles)} total vehicles for category {category_id}")
-            for v in all_vehicles:
-                v_location = getattr(v, 'location', 'N/A')
-                print(f"DEBUG:   - Vehicle ID={v.id}, Name={v.name}, Plate={v.license_plate}, Status={v.status if hasattr(v, 'status') else 'N/A'}, Location={v_location}")
-
-            # Ahora buscar solo los disponibles con el filtro de ubicación
-            vehicles = request.env['fleet.vehicle'].sudo().search(domain)
-            print(f"DEBUG: Found {len(vehicles)} available vehicles matching criteria")
+            _logger.warning(f"GET_AVAILABLE_VEHICLES: Dominio FINAL: {total_domain}")
             
-            # Ahora filtrar por disponibilidad de fechas
+            total_vehicles = request.env['fleet.vehicle'].sudo().search(total_domain)
+            total_count = len(total_vehicles)
+            
+            _logger.warning(f"GET_AVAILABLE_VEHICLES: Resultados TOTAL: {total_count} vehicles")
+            for v in total_vehicles:
+                _logger.warning(f"GET_AVAILABLE_VEHICLES:   - ID: {v.id}, Name: {v.name}, Location: {v.location}")
+
+            # 2. OCCUPIED: Vehículos con contratos activos que se solapan con fechas
+            occupied_vehicles = set()
             if start_date and end_date:
-                from datetime import datetime
                 try:
                     start_dt = datetime.strptime(start_date, '%Y-%m-%d')
                     end_dt = datetime.strptime(end_date, '%Y-%m-%d')
                     
-                    # Filtrar vehículos sin solapamientos
-                    available_vehicles = []
-                    for vehicle in vehicles:
-                        # Buscar contratos que se solapen con las fechas solicitadas
-                        overlapping = request.env['vehicle.contract'].sudo().search([
-                            ('vehicle_id', '=', vehicle.id),
-                            ('status', 'in', ['b_in_progress', 'c_return']),
-                            ('start_date', '<=', end_dt),
-                            ('end_date', '>=', start_dt),
-                        ])
-                        
-                        if not overlapping:
-                            available_vehicles.append(vehicle)
-                            print(f"DEBUG: Vehicle {vehicle.id} is available for dates {start_date} - {end_date}")
-                        else:
-                            print(f"DEBUG: Vehicle {vehicle.id} has conflict - skipping")
+                    # Buscar contratos activos que se solapan
+                    overlapping_contracts = request.env['vehicle.contract'].sudo().search([
+                        ('status', 'in', ['b_in_progress', 'c_return']),
+                        ('start_date', '<=', end_dt),
+                        ('end_date', '>=', start_dt),
+                    ])
                     
-                    vehicles = available_vehicles
+                    # Recopilar IDs únicos de vehículos ocupados
+                    for contract in overlapping_contracts:
+                        if contract.vehicle_id:
+                            occupied_vehicles.add(contract.vehicle_id.id)
+                    
+                    print(f"DEBUG: OCCUPIED vehicles: {len(occupied_vehicles)}")
                 except Exception as e:
-                    print(f"DEBUG: Error filtering by date: {e}")
+                    print(f"DEBUG: Error calculating occupied: {e}")
 
-            vehicles_data = []
-            for vehicle in vehicles:
-                # Obtener categoría
-                category_id = vehicle.category_id.id if vehicle.category_id else (vehicle.model_id.category_id.id if vehicle.model_id and vehicle.model_id.category_id else None)
-                category_name = vehicle.category_id.name if vehicle.category_id else (vehicle.model_id.category_id.name if vehicle.model_id and vehicle.model_id.category_id else 'Sin categoría')
+            # 3. RESERVED: Leads sin vehículo asignado, con type='opportunity', en esas fechas
+            reserved_leads = set()
+            if start_date and end_date:
+                try:
+                    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+                    
+                    # Buscar leads con vehicle_id=False, type='opportunity', categoría y fechas
+                    reserved = request.env['crm.lead'].sudo().search([
+                        ('selected_category_id', '=', category_id),
+                        ('vehicle_id', '=', False),
+                        ('type', '=', 'opportunity'),
+                        ('start_date', '<=', end_dt),
+                        ('end_date', '>=', start_dt),
+                        ('company_id', '=', company_id),
+                    ])
+                    
+                    # Recopilar IDs únicos de leads (aunque sean del mismo cliente)
+                    for lead in reserved:
+                        reserved_leads.add(lead.id)
+                    
+                    print(f"DEBUG: RESERVED leads: {len(reserved_leads)}")
+                except Exception as e:
+                    print(f"DEBUG: Error calculating reserved: {e}")
 
-                vehicles_data.append({
-                    'id': vehicle.id,
-                    'name': vehicle.name,
-                    'license_plate': vehicle.license_plate,
-                    'model_name': vehicle.model_id.name if vehicle.model_id else 'Sin modelo',
-                    'seats': vehicle.seats,
-                    'fuel_type': vehicle.fuel_type,
-                    'transmission': vehicle.transmission,
-                    'category_id': category_id,
-                    'category_name': category_name,
-                    'image': f'/web/image/fleet.vehicle/{vehicle.id}/image_128' if hasattr(vehicle, 'image_128') else self._get_image_path('default')
-                })
+            # 4. AVAILABLE = TOTAL - OCCUPIED - RESERVED
+            occupied_count = len(occupied_vehicles)
+            reserved_count = len(reserved_leads)
+            available_count = max(0, total_count - occupied_count - reserved_count)
+
+            print(f"DEBUG: AVAILABILITY SUMMARY - Total: {total_count}, Occupied: {occupied_count}, Reserved: {reserved_count}, Available: {available_count}")
 
             result = {
                 'success': True,
-                'vehicles': vehicles_data,
-                'count': len(vehicles_data)
+                'total': total_count,
+                'occupied': occupied_count,
+                'reserved': reserved_count,
+                'available': available_count,
+                'message': f'Disponibles: {available_count} vehículos' if available_count > 0 else 'No hay vehículos disponibles'
             }
 
             response = request.make_response(
@@ -2741,7 +2705,9 @@ class WebsiteContractBookingFixed(http.Controller):
             return response
 
         except Exception as e:
-            print(f"DEBUG: Error getting available vehicles: {e}")
+            print(f"DEBUG: Error getting availability: {e}")
+            import traceback
+            traceback.print_exc()
             result = {
                 'success': False,
                 'message': f'Error: {str(e)}'
