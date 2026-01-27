@@ -100,7 +100,7 @@ class PaymentTransaction(models.Model):
     
     def _create_and_pay_deposit_invoice(self, lead, partner, deposit_amount):
         """
-        Crear automáticamente una factura de depósito y marcarla como pagada.
+        Crear automáticamente una factura de depósito y marcarla como pagada usando register_payment().
         Se ejecuta cuando el pago de Redsys se completa.
         """
         try:
@@ -141,22 +141,9 @@ class PaymentTransaction(models.Model):
             }
             
             deposit_invoice = self.env['account.move'].sudo().create(invoice_vals)
-            deposit_invoice.payment_tx_id = self.id
             _logger.info(f"REDSYS: Factura de depósito creada - Invoice ID:{deposit_invoice.id}")
             
-            # Crear el pago y reconciliar
-            self._create_payment_and_reconcile_invoice(deposit_invoice)
-            
-            return deposit_invoice
-            
-        except Exception as e:
-            _logger.error(f"REDSYS: Error creando factura de depósito: {str(e)}", exc_info=True)
-            return None
-    
-    def _create_payment_and_reconcile_invoice(self, invoice):
-        """Crear pago y reconciliar la factura con el pago"""
-        try:
-            # Buscar el diario de banco para Redsys
+            # Obtener el diario de banco para Redsys
             bank_journal = self.env['account.journal'].sudo().search([
                 ('type', '=', 'bank'),
                 ('name', 'ilike', 'redsys')
@@ -167,32 +154,47 @@ class PaymentTransaction(models.Model):
                     ('type', '=', 'bank')
                 ], limit=1)
             
-            if not bank_journal:
-                _logger.warning(f"REDSYS: No bank journal found para pago de depósito")
-                return None
+            if bank_journal:
+                # Crear el pago usando el método oficial de Odoo
+                payment_vals = {
+                    'payment_type': 'inbound',
+                    'partner_type': 'customer',
+                    'partner_id': partner.id,
+                    'amount': deposit_amount,
+                    'currency_id': deposit_invoice.currency_id.id,
+                    'journal_id': bank_journal.id,
+                    'company_id': deposit_invoice.company_id.id,
+                    'payment_method_id': self.env.ref('account.account_payment_method_manual_in').id,
+                    'ref': f"Pago Redsys TX:{self.reference}",
+                    'communication': f"Depósito {deposit_invoice.name}",
+                }
+                
+                payment = self.env['account.payment'].sudo().create(payment_vals)
+                payment.action_post()
+                _logger.info(f"REDSYS: Payment creado y posted - Payment ID:{payment.id}")
+                
+                # Usar register_payment() - método oficial de Odoo para marcar factura como pagada
+                try:
+                    deposit_invoice.register_payment(payment.move_id)
+                    _logger.info(f"REDSYS: Factura de depósito reconciliada exitosamente usando register_payment()")
+                except Exception as e:
+                    _logger.warning(f"REDSYS: register_payment() falló, intentando reconciliación manual: {e}")
+                    # Fallback a reconciliación manual
+                    self._reconcile_payment_manual(payment, deposit_invoice)
+            else:
+                _logger.warning(f"REDSYS: No bank journal found, factura de depósito quedará sin pago")
             
-            # Crear el pago
-            payment_vals = {
-                'payment_type': 'inbound',
-                'partner_type': 'customer',
-                'partner_id': invoice.partner_id.id,
-                'amount': invoice.amount_total,
-                'currency_id': invoice.currency_id.id,
-                'journal_id': bank_journal.id,
-                'company_id': invoice.company_id.id,
-                'payment_method_id': self.env.ref('account.account_payment_method_manual_in').id,
-                'ref': f"Pago Redsys TX:{self.reference}",
-                'communication': f"Depósito {invoice.name}",
-            }
+            return deposit_invoice
             
-            payment = self.env['account.payment'].sudo().create(payment_vals)
-            _logger.info(f"REDSYS: Payment creado para depósito - Payment ID:{payment.id}")
-            
-            # Marcar como enviado (posted)
-            payment.action_post()
-            _logger.info(f"REDSYS: Payment posted")
-            
-            # Reconciliar el pago con la factura
+        except Exception as e:
+            _logger.error(f"REDSYS: Error creando factura de depósito: {str(e)}", exc_info=True)
+            return None
+    
+    def _reconcile_payment_manual(self, payment, invoice):
+        """
+        Reconciliación manual como fallback si register_payment() falla.
+        """
+        try:
             payment_line = payment.move_id.line_ids.filtered(
                 lambda x: x.account_id.internal_type == 'receivable'
             )
@@ -202,13 +204,11 @@ class PaymentTransaction(models.Model):
             
             if payment_line and invoice_line:
                 (payment_line + invoice_line).reconcile()
-                _logger.info(f"REDSYS: Factura de depósito reconciliada exitosamente")
-            
-            return payment
-            
+                _logger.info(f"REDSYS: Reconciliación manual completada")
+            else:
+                _logger.warning(f"REDSYS: No se encontraron líneas receivable para reconciliación manual")
         except Exception as e:
-            _logger.error(f"REDSYS: Error creando pago para depósito: {str(e)}", exc_info=True)
-            return None
+            _logger.error(f"REDSYS: Error en reconciliación manual: {str(e)}", exc_info=True)
     
     def _create_payment_for_invoice(self, invoice, amount, payment_method_name='Redsys'):
         """

@@ -1141,7 +1141,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                             <div class="row">
                                             {''.join([f'''
                                             <div class="col-lg-4 col-md-6 mb-4">
-                                                <div class="card h-100 {'border-warning' if offer.get('popular') else ''} offer-card" style="{'border-color: {primary_color} !important; border-width: 2px !important;' if offer.get('popular') else ''} cursor: pointer;" onclick="selectFixedOffer('{offer.get('duration', '')}', '{offer.get('km', '')}', {offer.get('price', 0)})">
+                                                <div class="card h-100 {'border-warning' if offer.get('popular') else ''} offer-card" style="{'border-color: {primary_color} !important; border-width: 2px !important;' if offer.get('popular') else ''} cursor: pointer;" onclick="selectFixedOffer('{offer.get('duration', '')}', '{offer.get('km', '')}', {offer.get('price', 0)}, event)">
                                                     <div class="card-body text-center d-flex flex-column justify-content-center" style="min-height: 100%; padding: 2rem 1.5rem;">
                                                         {'<div class="badge mb-3" style="background-color: {primary_color}; color: white;">Más Popular</div>' if offer.get('popular') else '<div class="mb-3"></div>'}
                                                         <div class="form-check d-flex justify-content-center mb-3">
@@ -1551,12 +1551,17 @@ class WebsiteContractBookingFixed(http.Controller):
                             const totalDisplay = document.getElementById('total_display');
                             const selectedPrice = document.getElementById('selected_price');
                             const categoryIdInput = document.querySelector('input[name="category_id"]');
+                            const minDurationDaysInput = document.getElementById('min_duration_days');
                             
                             const cardType = cardTypeInput ? cardTypeInput.value : '';
-                            const rentalPrice = parseFloat(selectedPrice ? selectedPrice.value : 0);
+                            const pricePerDay = parseFloat(selectedPrice ? selectedPrice.value : 0);
+                            const minDays = parseInt(minDurationDaysInput ? minDurationDaysInput.value : 1);
                             const categoryId = categoryIdInput ? parseInt(categoryIdInput.value) : 0;
                             
-                            console.log('[DEBUG updateDepositDisplay] cardType=' + cardType + ', rentalPrice=' + rentalPrice + ', categoryId=' + categoryId);
+                            // IMPORTANTE: Calcular el total multiplying price × minimum days
+                            const totalRentalPrice = pricePerDay * minDays;
+                            
+                            console.log('[DEBUG updateDepositDisplay] cardType=' + cardType + ', pricePerDay=' + pricePerDay + ', minDays=' + minDays + ', totalRentalPrice=' + totalRentalPrice + ', categoryId=' + categoryId);
                             
                             if (!depositDisplay || !totalDisplay) {{
                                 return;
@@ -1571,8 +1576,8 @@ class WebsiteContractBookingFixed(http.Controller):
                             }}
                             
                             // Si no hay precio seleccionado
-                            if (rentalPrice <= 0) {{
-                                console.log('[DEBUG] rentalPrice <= 0');
+                            if (totalRentalPrice <= 0) {{
+                                console.log('[DEBUG] totalRentalPrice <= 0');
                                 depositDisplay.textContent = 'Selecciona una tarifa para calcular el depósito';
                                 totalDisplay.textContent = 'EUR 0.00';
                                 return;
@@ -1588,16 +1593,16 @@ class WebsiteContractBookingFixed(http.Controller):
                             // Mostrar estado "calculando..."
                             depositDisplay.innerHTML = '<div style="font-size: 14px;"><i class="fa fa-spinner fa-spin me-2"></i>Calculando depósito...</div>';
                             
-                            console.log('[DEBUG] Enviando solicitud con: category_id=' + categoryId + ', card_type=' + cardType + ', total_price=' + rentalPrice);
+                            console.log('[DEBUG] Enviando solicitud con: category_id=' + categoryId + ', card_type=' + cardType + ', total_price=' + totalRentalPrice);
                             
-                            // Llamar al endpoint para calcular depósito
+                            // Llamar al endpoint para calcular depósito - ENVIANDO EL TOTAL (no solo el precio por día)
                             fetch('/rental/calculate-deposit', {{
                                 method: 'POST',
                                 headers: {{'Content-Type': 'application/json'}},
                                 body: JSON.stringify({{
                                     category_id: categoryId,
                                     card_type: cardType,
-                                    total_price: rentalPrice
+                                    total_price: totalRentalPrice
                                 }})
                             }})
                                 .then(response => {{
@@ -1615,7 +1620,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                         let typeLabel = cardType === 'credit' ? 'Crédito' : 'Débito';
                                         
                                         depositDisplay.innerHTML = '<div style="font-size: 14px;"><div><i class="fa fa-money me-2"></i><strong>Tipo:</strong> ' + typeLabel + '</div><div class="mt-2"><i class="fa fa-shield me-2"></i><strong>Monto:</strong> ' + depositAmount.toFixed(2) + ' EUR</div></div>';
-                                        totalDisplay.innerHTML = '<strong style="color: #e67e22; font-size: 20px;">' + totalWithDeposit.toFixed(2) + ' EUR</strong><br><small style="color: #999;">' + rentalPrice.toFixed(2) + ' EUR (alquiler) + ' + depositAmount.toFixed(2) + ' EUR (depósito)</small>';
+                                        totalDisplay.innerHTML = '<strong style="color: #e67e22; font-size: 20px;">' + totalWithDeposit.toFixed(2) + ' EUR</strong><br><small style="color: #999;">' + totalRentalPrice.toFixed(2) + ' EUR (alquiler ' + minDays + ' día' + (minDays > 1 ? 's' : '') + ') + ' + depositAmount.toFixed(2) + ' EUR (depósito)</small>';
                                     }} else {{
                                         console.error('[ERROR] Error del servidor: ' + data.error);
                                         depositDisplay.innerHTML = '<div style="font-size: 14px; color: #dc3545;"><i class="fa fa-exclamation-triangle me-2"></i>' + (data.error || 'Error desconocido') + '</div>';
@@ -1632,6 +1637,11 @@ class WebsiteContractBookingFixed(http.Controller):
                         // Función para actualizar las opciones de kilometraje según la duración
                         function updateKmOptions() {{
 
+                            // Obtener duración del select
+                            const durationSelect = document.getElementById('duration_select');
+                            const kmSelect = document.getElementById('km_select');
+                            const duration = durationSelect ? durationSelect.value : '';
+
                             if (!duration) {{
                                 kmSelect.disabled = true;
                                 kmSelect.innerHTML = '<option value="">Primero selecciona la duración</option>';
@@ -1643,13 +1653,16 @@ class WebsiteContractBookingFixed(http.Controller):
                             kmSelect.innerHTML = '<option value="">Cargando opciones...</option>';
 
                             // Obtener opciones válidas de kilometraje
-                            const formData = new FormData();
-                            formData.append('category_id', {category_id});
-                            formData.append('duration', duration);
+                            const categoryIdInput = document.querySelector('input[name="category_id"]');
+                            const categoryId = categoryIdInput ? parseInt(categoryIdInput.value) : 0;
 
                             fetch('/web/get-valid-km-options', {{
                                 method: 'POST',
-                                body: formData
+                                headers: {{'Content-Type': 'application/json'}},
+                                body: JSON.stringify({{
+                                    category_id: categoryId,
+                                    duration: duration
+                                }})
                             }})
                             .then(response => response.json())
                             .then(data => {{
@@ -1679,7 +1692,7 @@ class WebsiteContractBookingFixed(http.Controller):
                         }}
 
                         // Función para seleccionar ofertas fijas
-                        function selectFixedOffer(duration, km, price) {{
+                        function selectFixedOffer(duration, km, price, event) {{
                             // Desmarcar todos los radio buttons
                             const radioButtons = document.querySelectorAll('input[name="fixed_offer"]');
                             radioButtons.forEach(radio => {{
@@ -1699,10 +1712,12 @@ class WebsiteContractBookingFixed(http.Controller):
                                 card.style.borderWidth = '';
                             }});
 
-                            // Resaltar la tarjeta seleccionada
-                            const selectedCard = event.currentTarget;
-                            selectedCard.style.borderColor = '{primary_color}';
-                            selectedCard.style.borderWidth = '3px';
+                            // Resaltar la tarjeta seleccionada - encontrar el div padre (offer-card)
+                            const selectedCard = event.target.closest('.offer-card');
+                            if (selectedCard) {{
+                                selectedCard.style.borderColor = '{primary_color}';
+                                selectedCard.style.borderWidth = '3px';
+                            }}
 
                             console.log(`Oferta fija seleccionada: ${{duration}} - ${{km}} - €${{price}}`);
 
@@ -1715,6 +1730,8 @@ class WebsiteContractBookingFixed(http.Controller):
                             document.getElementById('selected_pricing_type').value = 'fixed';
                             document.getElementById('selected_duration').value = duration;
                             document.getElementById('selected_km').value = km;
+                            // IMPORTANTE: El precio almacenado es por día, pero para el depósito necesitamos el total
+                            // Por ahora, almacenamos el precio unitario. El total se calcula en updateDepositDisplay()
                             document.getElementById('selected_price').value = price;
                             document.getElementById('min_duration_days').value = minDays;
                             document.getElementById('max_duration_days').value = maxDays || '';
@@ -2011,7 +2028,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                 const vehicleCard = document.createElement('div');
                                 vehicleCard.className = 'col-md-6 col-lg-4 mb-3';
                                 vehicleCard.innerHTML = `
-                                    <div class="card h-100 vehicle-card" style="cursor: pointer;" onclick="selectVehicle(${{vehicle.id}}, '${{vehicle.name}}', '${{vehicle.license_plate}}')">
+                                    <div class="card h-100 vehicle-card" style="cursor: pointer;" onclick="selectVehicle(${{vehicle.id}}, '${{vehicle.name}}', '${{vehicle.license_plate}}', event)">
                                         <div class="card-body text-center">
                                             <img src="${{brandImage}}" class="card-img-top mb-3" style="height: 120px; object-fit: contain;" alt="${{categoryName}}">
                                             <h6 class="card-title">${{vehicleName}}</h6>
@@ -2023,16 +2040,19 @@ class WebsiteContractBookingFixed(http.Controller):
                         }}
 
                         // Función para seleccionar vehículo
-                        function selectVehicle(vehicleId, vehicleName, licensePlate) {{
+                        function selectVehicle(vehicleId, vehicleName, licensePlate, event) {{
                             // Desmarcar todos los vehículos
                             document.querySelectorAll('.vehicle-card').forEach(card => {{
                                 card.style.borderColor = '';
                                 card.style.borderWidth = '';
                             }});
 
-                            // Marcar el seleccionado
-                            event.currentTarget.style.borderColor = '{primary_color}';
-                            event.currentTarget.style.borderWidth = '3px';
+                            // Marcar el seleccionado - encontrar el div padre (vehicle-card)
+                            const selectedCard = event.target.closest('.vehicle-card');
+                            if (selectedCard) {{
+                                selectedCard.style.borderColor = '{primary_color}';
+                                selectedCard.style.borderWidth = '3px';
+                            }}
 
                             // Guardar selección
                             document.getElementById('selected_vehicle_id').value = vehicleId;
@@ -2545,8 +2565,16 @@ class WebsiteContractBookingFixed(http.Controller):
         try:
             import json
 
-            category_id = kw.get('category_id')
-            duration = kw.get('duration')
+            # Soportar tanto JSON como FormData
+            try:
+                # Intentar parsear como JSON
+                body_data = json.loads(request.httprequest.data.decode('utf-8'))
+                category_id = body_data.get('category_id')
+                duration = body_data.get('duration')
+            except:
+                # Fallback a form data
+                category_id = kw.get('category_id')
+                duration = kw.get('duration')
 
             print(f"DEBUG: Getting valid km options for category {category_id}, duration {duration}")
 
