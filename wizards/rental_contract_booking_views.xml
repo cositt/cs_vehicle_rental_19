@@ -44,7 +44,7 @@
                         <page name="fleet_vehicles" string="Vehículos Disponibles"
                               invisible="start_date == False or end_date == False or selected_category_id == False">
                             <field name="fleet_vehicle_ids" readonly="1"
-                                   context="{'customer_id': customer_id, 'start_date': start_date, 'end_date': end_date, 'calculated_price': calculated_price, 'duration_range': duration_range, 'km_range': km_range, 'pricing_type': pricing_type, 'company_id': company_id, 'active_id': id, 'active_model': 'rental.contract.booking'}">
+                                   context="{'customer_id': customer_id, 'start_date': start_date, 'end_date': end_date, 'company_id': company_id, 'wizard_id': id}">
                                 <list editable="bottom">
                                     <field name="name"/>
                                     <field name="model_id"/>

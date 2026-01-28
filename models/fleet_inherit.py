@@ -88,17 +88,19 @@ class FleetVehicle(models.Model):
         context = self._context
         customer = self.env['res.partner'].browse(context.get('customer_id'))
         
-        # Attempt to get calculated_price from context
-        calculated_price = context.get('calculated_price', 0.0)
+        # Get wizard_id from context to retrieve all pricing data
+        wizard_id = context.get('wizard_id')
+        calculated_price = 0.0
+        pricing_type = 'standard'
         
-        # If calculated_price is not available in context, try to get it from wizard
-        if not calculated_price and context.get('active_id') and context.get('active_model') == 'rental.contract.booking':
+        if wizard_id:
             try:
-                wizard = self.env['rental.contract.booking'].browse(context.get('active_id'))
-                if wizard and wizard.calculated_price:
+                wizard = self.env['rental.contract.booking'].browse(wizard_id)
+                if wizard and wizard.exists():
                     calculated_price = wizard.calculated_price
+                    pricing_type = wizard.pricing_type
             except Exception:
-                pass  # If wizard not found, use the value from context (default 0.0)
+                pass  # If wizard not found, use defaults
         
         data = {
             'vehicle_id': self.id,
@@ -117,7 +119,7 @@ class FleetVehicle(models.Model):
             'company_id': context.get('company_id'),
             'rent': calculated_price,
             'rent_type': 'days',
-            'pricing_type': context.get('pricing_type'),
+            'pricing_type': pricing_type,
         }
         vehicle_contract = self.env['vehicle.contract'].create(data)
         return {
