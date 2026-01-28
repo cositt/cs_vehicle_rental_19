@@ -339,6 +339,14 @@ class PaymentTransaction(models.Model):
             card_type = booking_data.get('card_type', 'N/A')
             card_bin = booking_data.get('card_bin', 'N/A')
             
+            # Obtener nombre de la categoría de vehículo
+            try:
+                category_id = int(booking_data.get('category_id'))
+                category = self.env['fleet.vehicle.model.category'].sudo().browse(category_id)
+                category_name = category.name if category.exists() else f"Categoría {category_id}"
+            except:
+                category_name = "Categoría desconocida"
+            
             # Validación de seguridad: Comparar BIN y tipo de tarjeta validados vs los usados en pago
             # TODO PRODUCCIÓN: Verificar si Redsys devuelve BIN del pago para comparar
             security_note = f"✅ BIN validado: {card_bin} | Tipo: {card_type}"
@@ -346,6 +354,7 @@ class PaymentTransaction(models.Model):
             description = (
                 f"Reserva procesada vía web | TX:{self.id}<br/><br/>"
                 f"--- RESUMEN DEL ALQUILER ---<br/>"
+                f"- Tipo de vehículo: {category_name}<br/>"
                 f"- Tarifa: {float(booking_data.get('selected_price', 0.0)):.2f} €/día<br/>"
                 f"- Precio total alquiler: {total_price:.2f} €<br/>"
                 f"- Depósito de seguridad: {deposit_amount:.2f} € ({card_type})<br/>"
