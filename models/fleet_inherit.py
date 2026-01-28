@@ -101,6 +101,10 @@ class FleetVehicle(models.Model):
             'customer_email': customer.email,
             'start_date': context.get('start_date'),
             'end_date': context.get('end_date'),
+            'company_id': context.get('company_id'),
+            'rent': context.get('calculated_price', 0.0),
+            'rent_type': 'days',
+            'pricing_type': context.get('pricing_type'),
         }
         vehicle_contract = self.env['vehicle.contract'].create(data)
         return {

@@ -43,8 +43,8 @@
                     <notebook>
                         <page name="fleet_vehicles" string="Vehículos Disponibles"
                               invisible="start_date == False or end_date == False or selected_category_id == False">
-                            <field name="fleet_vehicle_ids" 
-                                   context="{'customer_id': customer_id, 'start_date': start_date, 'end_date': end_date}">
+                            <field name="fleet_vehicle_ids" readonly="1"
+                                   context="{'customer_id': customer_id, 'start_date': start_date, 'end_date': end_date, 'calculated_price': calculated_price, 'duration_range': duration_range, 'km_range': km_range, 'pricing_type': pricing_type, 'company_id': company_id}">
                                 <list editable="bottom">
                                     <field name="name"/>
                                     <field name="model_id"/>
@@ -53,14 +53,13 @@
                                     <field name="transmission"/>
                                     <field name="fuel_type"/>
                                     <field name="category_id"/>
+                                    <button string="Reservar" name="action_create_book_contract" type="object"
+                                            class="btn btn-outline-info"/>
                                 </list>
                             </field>
                         </page>
                     </notebook>
                     <footer>
-                        <button string="Crear Contrato" name="action_create_contract" type="object"
-                                class="btn btn-primary" 
-                                invisible="not fleet_vehicle_ids"/>
                         <button string="Cancelar" special="cancel"/>
                     </footer>
                 </form>
