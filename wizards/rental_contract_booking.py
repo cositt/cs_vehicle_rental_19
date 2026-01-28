@@ -24,7 +24,8 @@ class RentalContractBooking(models.TransientModel):
     calculated_price = fields.Float(string="Price (€/day)", compute='_compute_price', store=False)
     
     fleet_vehicle_ids = fields.Many2many('fleet.vehicle', string="Vehicle")
-    selected_vehicle_id = fields.Many2one('fleet.vehicle', string="Selected Vehicle")
+    # Almacenar el precio calculado en un campo normal para poder pasarlo por contexto
+    stored_calculated_price = fields.Float(string="Stored Price", default=0.0)
 
     def _get_duration_options(self):
         """Get unique duration ranges from vehicle.pricing.rule"""
@@ -146,16 +147,14 @@ class RentalContractBooking(models.TransientModel):
             available_vehicles = self.env['fleet.vehicle'].search(domain)
             self.fleet_vehicle_ids = [(6, 0, available_vehicles.ids)]
 
-    def action_create_contract_from_wizard(self):
-        """Create vehicle contract from wizard with all pricing data"""
+    def action_create_contract_with_vehicle(self, vehicle_id):
+        """Create vehicle contract with specific vehicle from list button"""
         self.ensure_one()
         
-        # Validate that a vehicle is selected
-        if not self.selected_vehicle_id:
+        vehicle = self.env['fleet.vehicle'].browse(vehicle_id)
+        if not vehicle or not vehicle.exists():
             from odoo.exceptions import UserError
-            raise UserError("Por favor, selecciona un vehículo antes de crear el contrato.")
-        
-        vehicle = self.selected_vehicle_id
+            raise UserError("El vehículo no existe.")
         
         # Create contract with wizard data including calculated price
         contract_data = {
