@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
+import logging
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 from dateutil.relativedelta import relativedelta
 from ..utils import _display_rental_notification
+
+_logger = logging.getLogger(__name__)
 
 
 class FleetVehicle(models.Model):
@@ -87,6 +90,9 @@ class FleetVehicle(models.Model):
         """Action create book contract"""
         context = self._context
         customer = self.env['res.partner'].browse(context.get('customer_id'))
+        calculated_price = context.get('calculated_price', 0.0)
+        _logger.info(f"action_create_book_contract - calculated_price from context: {calculated_price}")
+        
         data = {
             'vehicle_id': self.id,
             'driver_id': self.driver_id.id,
@@ -102,10 +108,11 @@ class FleetVehicle(models.Model):
             'start_date': context.get('start_date'),
             'end_date': context.get('end_date'),
             'company_id': context.get('company_id'),
-            'rent': context.get('calculated_price', 0.0),
+            'rent': calculated_price,
             'rent_type': 'days',
             'pricing_type': context.get('pricing_type'),
         }
+        _logger.info(f"action_create_book_contract - data: {data}")
         vehicle_contract = self.env['vehicle.contract'].create(data)
         return {
             'type': 'ir.actions.act_window',
