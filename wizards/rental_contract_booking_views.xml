@@ -20,22 +20,6 @@
                         </group>
                     </group>
                     
-                    <group colspan="4" string="Filtros de Disponibilidad" id="availability_filters">
-                        <!-- Los campos para categoría y búsqueda se cargarán dinámicamente vía JavaScript -->
-                        <div id="category-selector" style="display:none;">
-                            <label>Tipo de Vehículo:</label>
-                            <select id="selected_category_id" style="width: 100%; padding: 8px;">
-                                <option value="">Seleccionar categoría...</option>
-                            </select>
-                        </div>
-                        <div id="search-box" style="display:none; margin-top: 10px;">
-                            <label>Buscar por marca o modelo:</label>
-                            <input type="text" id="search_vehicle" placeholder="Buscar..." style="width: 100%; padding: 8px; margin-top: 5px;"/>
-                        </div>
-                        <div id="availability-info" style="margin-top: 10px; padding: 10px; background-color: #f0f0f0; border-radius: 4px;">
-                            <p id="available-count">Disponibles: -</p>
-                        </div>
-                    </group>
                     
                     <notebook>
                         <page name="fleet_vehicles" string="Vehículos de Flota"
