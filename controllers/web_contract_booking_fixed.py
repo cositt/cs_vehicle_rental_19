@@ -2228,6 +2228,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             const bookingFormSection = document.getElementById('booking_form_section');
                             const noVehiclesMessage = document.getElementById('no_vehicles_location_message');
                             const bookingLocationInput = document.getElementById('booking_location');
+                            const categoryId = document.getElementById('category_id') ? document.getElementById('category_id').value : document.querySelector('[name="category_id"]').value;
 
                             // Ocultar formulario y mensaje inicialmente
                             bookingFormSection.style.display = 'none';
@@ -2244,7 +2245,7 @@ class WebsiteContractBookingFixed(http.Controller):
 
                             // Verificar disponibilidad llamando al endpoint
                             const formData = new FormData();
-                            formData.append('category_id', {category_id});
+                            formData.append('category_id', categoryId);
                             formData.append('location', location);
                             // No necesitamos fechas para verificar disponibilidad inicial
                             formData.append('start_date', '');
