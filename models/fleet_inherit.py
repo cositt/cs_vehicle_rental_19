@@ -90,8 +90,21 @@ class FleetVehicle(models.Model):
         """Action create book contract"""
         context = self._context
         customer = self.env['res.partner'].browse(context.get('customer_id'))
+        
+        # Attempt to get calculated_price from context
         calculated_price = context.get('calculated_price', 0.0)
-        _logger.info(f"action_create_book_contract - calculated_price from context: {calculated_price}")
+        
+        # If calculated_price is not available in context, try to calculate it from wizard
+        if not calculated_price and context.get('active_id') and context.get('active_model') == 'rental.contract.booking':
+            try:
+                wizard = self.env['rental.contract.booking'].browse(context.get('active_id'))
+                if wizard and wizard.calculated_price:
+                    calculated_price = wizard.calculated_price
+                    _logger.info(f"Got calculated_price from wizard: {calculated_price}")
+            except Exception as e:
+                _logger.warning(f"Could not get wizard: {e}")
+        
+        _logger.info(f"action_create_book_contract - calculated_price: {calculated_price}, context: {context}")
         
         data = {
             'vehicle_id': self.id,
@@ -112,7 +125,6 @@ class FleetVehicle(models.Model):
             'rent_type': 'days',
             'pricing_type': context.get('pricing_type'),
         }
-        _logger.info(f"action_create_book_contract - data: {data}")
         vehicle_contract = self.env['vehicle.contract'].create(data)
         return {
             'type': 'ir.actions.act_window',
