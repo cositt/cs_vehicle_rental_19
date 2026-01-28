@@ -4,6 +4,7 @@
 from . import vehicle_availability
 from . import web_contract_booking_test
 from . import web_contract_booking_fixed
+from . import contract_booking_wizard
 from . import sunset_home_controller
 from . import sunset_contact_controller
 from . import sunset_contact_test

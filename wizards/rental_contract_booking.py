@@ -2,6 +2,7 @@
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 from odoo import fields, api, models
+from datetime import datetime
 
 
 class RentalContractBooking(models.TransientModel):
@@ -10,9 +11,9 @@ class RentalContractBooking(models.TransientModel):
     _description = "Rental Contract Booking"
 
     customer_id = fields.Many2one("res.partner")
+    company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
     start_date = fields.Datetime(string="Pick-up Date")
     end_date = fields.Datetime(string="Drop-off Date")
-    company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
     fleet_vehicle_ids = fields.Many2many('fleet.vehicle', string="Vehicle")
 
     @api.onchange('start_date', 'end_date')
