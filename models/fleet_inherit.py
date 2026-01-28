@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
-import logging
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 from dateutil.relativedelta import relativedelta
 from ..utils import _display_rental_notification
-
-_logger = logging.getLogger(__name__)
 
 
 class FleetVehicle(models.Model):
@@ -94,17 +91,14 @@ class FleetVehicle(models.Model):
         # Attempt to get calculated_price from context
         calculated_price = context.get('calculated_price', 0.0)
         
-        # If calculated_price is not available in context, try to calculate it from wizard
+        # If calculated_price is not available in context, try to get it from wizard
         if not calculated_price and context.get('active_id') and context.get('active_model') == 'rental.contract.booking':
             try:
                 wizard = self.env['rental.contract.booking'].browse(context.get('active_id'))
                 if wizard and wizard.calculated_price:
                     calculated_price = wizard.calculated_price
-                    _logger.info(f"Got calculated_price from wizard: {calculated_price}")
-            except Exception as e:
-                _logger.warning(f"Could not get wizard: {e}")
-        
-        _logger.info(f"action_create_book_contract - calculated_price: {calculated_price}, context: {context}")
+            except Exception:
+                pass  # If wizard not found, use the value from context (default 0.0)
         
         data = {
             'vehicle_id': self.id,
