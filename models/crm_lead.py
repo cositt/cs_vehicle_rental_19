@@ -62,6 +62,22 @@ class BookingEnquiryLead(models.Model):
                 lead.probability = 100
         return True
     
+    def action_set_won_rainbowman(self):
+        """Override para manejar el error de date_closed=NULL en Odoo 19
+        
+        Odoo 19 tiene un bug donde intenta calcular (date_closed - create_date)
+        pero date_closed es NULL/False cuando se marca como ganado.
+        
+        Solución: establecer date_closed ANTES de llamar al método padre
+        """
+        for lead in self:
+            # Si date_closed no está establecido (es NULL/False), establecerlo ahora
+            if not lead.date_closed:
+                lead.date_closed = fields.Datetime.now()
+        
+        # Ahora llamar al método padre que ya tiene date_closed válido
+        return super(BookingEnquiryLead, self).action_set_won_rainbowman()
+    
     def _find_or_create_partner_from_lead(self, lead):
         """Find existing partner or create new one from lead data"""
         Partner = self.env['res.partner']
