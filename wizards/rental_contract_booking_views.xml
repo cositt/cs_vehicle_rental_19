@@ -20,7 +20,6 @@
                         </group>
                     </group>
                     
-                    
                     <notebook>
                         <page name="fleet_vehicles" string="Vehículos de Flota"
                               invisible="start_date == False or end_date == False">

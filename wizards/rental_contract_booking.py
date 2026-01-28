@@ -20,13 +20,29 @@ class RentalContractBooking(models.TransientModel):
     def _onchange_available_vehicle(self):
         """Onchange available vehicles"""
         if self.start_date and self.end_date:
-            rental_contracts = self.env['vehicle.contract'].search(
-                [('start_date', '<=', self.end_date),
-                 ('end_date', '>=', self.start_date),
-                 ('status', '=', 'b_in_progress'),
-                 ('vehicle_id.status', '=', 'available')])
-            booked_vehicle_ids = rental_contracts.mapped('vehicle_id').ids
+            # 1. Buscar contratos ocupados (b_in_progress, c_return) en esas fechas
+            occupied_contracts = self.env['vehicle.contract'].search([
+                ('start_date', '<=', self.end_date),
+                ('end_date', '>=', self.start_date),
+                ('status', 'in', ['b_in_progress', 'c_return']),
+                ('vehicle_id.company_id', '=', self.company_id.id),
+            ])
+            occupied_vehicle_ids = occupied_contracts.mapped('vehicle_id').ids
+            
+            # 2. Buscar contratos reservados (a_draft con vehicle_id) en esas fechas
+            reserved_contracts = self.env['vehicle.contract'].search([
+                ('start_date', '<=', self.end_date),
+                ('end_date', '>=', self.start_date),
+                ('status', '=', 'a_draft'),
+                ('vehicle_id', '!=', False),
+                ('vehicle_id.company_id', '=', self.company_id.id),
+            ])
+            reserved_vehicle_ids = reserved_contracts.mapped('vehicle_id').ids
+            
+            # 3. Filtrar vehículos disponibles
             available_vehicles = self.env['fleet.vehicle'].search([
-                ('id', 'not in', booked_vehicle_ids),
-                ('status', '=', 'available')])
+                ('status', '=', 'available'),
+                ('company_id', '=', self.company_id.id),
+                ('id', 'not in', occupied_vehicle_ids + reserved_vehicle_ids),
+            ])
             self.fleet_vehicle_ids = [(6, 0, available_vehicles.ids)]
