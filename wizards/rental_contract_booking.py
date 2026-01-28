@@ -22,7 +22,6 @@ class RentalContractBooking(models.TransientModel):
     km_range = fields.Selection(string="Km Range", selection='_get_km_options')
     pricing_type = fields.Selection(string="Pricing Type", selection='_get_pricing_type_options', default='standard')
     calculated_price = fields.Float(string="Price (€/day)", compute='_compute_price', store=False)
-    calculated_end_date = fields.Datetime(string="End Date", compute='_compute_end_date', store=False)
     
     fleet_vehicle_ids = fields.Many2many('fleet.vehicle', string="Vehicle")
 
@@ -44,38 +43,37 @@ class RentalContractBooking(models.TransientModel):
         types = list(set(pricing_rules.mapped('pricing_type')))
         return [(t, t) for t in sorted(types)]
 
-    def _parse_duration_days(self, duration_str):
-        """Parse duration string (e.g., '3-5d', '1-2d', '4h') to get minimum days"""
+    def _parse_duration_range(self, duration_str):
+        """Parse duration string (e.g., '3-5d', '1-2d', '4h') to get min and max days"""
         if not duration_str:
-            return 0
+            return 0, 0
         
         if 'h' in duration_str.lower():
-            # For hours, return 1 day minimum
-            return 1
+            # For hours, return 1 day min/max
+            return 1, 1
         elif 'd' in duration_str.lower():
-            # Extract first number from format like "3-5d"
+            # Extract min and max from format like "3-5d"
             try:
-                days = int(duration_str.split('-')[0])
-                return days
+                parts = duration_str.replace('d', '').split('-')
+                min_days = int(parts[0])
+                max_days = int(parts[1]) if len(parts) > 1 else min_days
+                return min_days, max_days
             except:
-                return 0
-        return 0
+                return 0, 0
+        return 0, 0
 
-    @api.depends('start_date', 'duration_range')
-    def _compute_end_date(self):
-        """Calculate end_date based on start_date and duration"""
+    @api.onchange('start_date', 'duration_range')
+    def _onchange_set_end_date(self):
+        """Auto-fill end_date based on duration_range minimum"""
         from datetime import timedelta
-        for record in self:
-            if not record.start_date or not record.duration_range:
-                record.calculated_end_date = False
-                continue
-            
-            days = record._parse_duration_days(record.duration_range)
-            if days > 0:
-                end_dt = record.start_date + timedelta(days=days)
-                record.calculated_end_date = end_dt
-            else:
-                record.calculated_end_date = False
+        if not self.start_date or not self.duration_range:
+            return
+        
+        min_days, max_days = self._parse_duration_range(self.duration_range)
+        if min_days > 0:
+            # Set end_date to start_date + min_days
+            end_dt = self.start_date + timedelta(days=min_days)
+            self.end_date = end_dt
 
     @api.depends('selected_category_id', 'duration_range', 'km_range', 'pricing_type')
     def _compute_price(self):
