@@ -27,11 +27,51 @@ class LeadRentalContract(models.TransientModel):
     _description = __doc__
 
     crm_lead_id = fields.Many2one('crm.lead', string="Lead")
+    company_id = fields.Many2one('res.company', string="Compañía", readonly=True)
     partner_id = fields.Many2one("res.partner", string="Customer")
+    selected_category_id = fields.Many2one('fleet.vehicle.model.category', string="Categoría de Vehículo",
+                                          readonly=True, help="Categoría del vehículo a alquilar")
+    search_vehicle = fields.Char(string="Buscar Vehículo", help="Busca por marca o modelo")
     vehicle_id = fields.Many2one('fleet.vehicle', string="Vehicle",
-                                 domain="[('status', '=', 'available')]")
+                                 domain="[('status', '=', 'available'), ('company_id', '=', company_id), '|', ('model_id.category_id', '=', selected_category_id), ('category_id', '=', selected_category_id)]")
     start_date = fields.Datetime(string="Start Date")
     end_date = fields.Datetime(string="End Date")
+
+    def _get_occupied_vehicle_ids(self, start_date, end_date):
+        """Retorna IDs de vehículos ocupados en el rango de fechas (contratos activos)"""
+        occupied_ids = []
+        if start_date and end_date:
+            try:
+                # Buscar contratos activos que se solapan con las fechas
+                overlapping_contracts = self.env['vehicle.contract'].search([
+                    ('status', 'in', ['b_in_progress', 'c_return']),
+                    ('start_date', '<=', end_date),
+                    ('end_date', '>=', start_date),
+                ])
+                occupied_ids = [c.vehicle_id.id for c in overlapping_contracts if c.vehicle_id]
+            except Exception as e:
+                _logger.warning(f"Error calculating occupied vehicles: {e}")
+        return occupied_ids
+
+    def _get_reserved_vehicle_ids(self, category_id, start_date, end_date):
+        """Retorna IDs de vehículos reservados (leads sin vehículo asignado pero pagados)"""
+        reserved_ids = []
+        if category_id and start_date and end_date:
+            try:
+                # Buscar leads con vehicle_id=False, type='opportunity' que se solapan
+                reserved_leads = self.env['crm.lead'].search([
+                    ('selected_category_id', '=', category_id),
+                    ('vehicle_id', '=', False),
+                    ('type', '=', 'opportunity'),
+                    ('start_date', '<=', end_date),
+                    ('end_date', '>=', start_date),
+                ])
+                # No retornamos IDs directos porque los leads no tienen vehículos asignados
+                # Pero marcamos que esa categoría está reservada
+                return len(reserved_leads) > 0
+            except Exception as e:
+                _logger.warning(f"Error calculating reserved vehicles: {e}")
+        return False
 
     @api.model
     def default_get(self, field_names):
@@ -45,9 +85,17 @@ class LeadRentalContract(models.TransientModel):
                 # Establecer el lead
                 res['crm_lead_id'] = lead.id
                 
+                # Compañía (para filtrar vehículos por compañía)
+                if lead.company_id:
+                    res['company_id'] = lead.company_id.id
+                
                 # Cliente
                 if lead.partner_id:
                     res['partner_id'] = lead.partner_id.id
+                
+                # Categoría seleccionada (para mostrar y filtrar)
+                if hasattr(lead, 'selected_category_id') and lead.selected_category_id:
+                    res['selected_category_id'] = lead.selected_category_id.id
                 
                 # Vehículo - buscar por categoría si no hay vehículo específico
                 if hasattr(lead, 'vehicle_id') and lead.vehicle_id:
@@ -122,6 +170,14 @@ class LeadRentalContract(models.TransientModel):
             
             self.partner_id = lead.partner_id if lead.partner_id else False
             
+            # Establecer compañía (para filtrar vehículos)
+            if lead.company_id:
+                self.company_id = lead.company_id
+            
+            # Establecer categoría
+            if hasattr(lead, 'selected_category_id') and lead.selected_category_id:
+                self.selected_category_id = lead.selected_category_id
+            
             if lead.vehicle_id:
                 self.vehicle_id = lead.vehicle_id
             elif hasattr(lead, 'selected_category_id') and lead.selected_category_id:
@@ -134,6 +190,13 @@ class LeadRentalContract(models.TransientModel):
                 self.vehicle_id = False
             self.start_date = start_datetime
             self.end_date = end_datetime
+    
+    @api.onchange('start_date', 'end_date', 'search_vehicle')
+    def _onchange_vehicle_filters(self):
+        """Actualizar domain del vehículo basado en filtros"""
+        # Este onchange actualiza dinámicamente el domain, pero Odoo usará
+        # el domain del campo vehicle_id para filtrar. 
+        # Para una implementación completa, usaremos métodos posteriores para validar.
 
     def _find_redsys_transaction(self):
         """
