@@ -20,8 +20,9 @@ class RentalContractBooking(models.TransientModel):
     search_vehicle = fields.Char(string="Search Vehicle")
     duration_range = fields.Selection(string="Duration", selection='_get_duration_options')
     km_range = fields.Selection(string="Km Range", selection='_get_km_options')
-    pricing_type = fields.Selection(string="Pricing Type", selection='_get_pricing_type_options')
+    pricing_type = fields.Selection(string="Pricing Type", selection='_get_pricing_type_options', default='standard')
     calculated_price = fields.Float(string="Price (€/day)", compute='_compute_price', store=False)
+    calculated_end_date = fields.Datetime(string="End Date", compute='_compute_end_date', store=False)
     
     fleet_vehicle_ids = fields.Many2many('fleet.vehicle', string="Vehicle")
 
@@ -42,6 +43,39 @@ class RentalContractBooking(models.TransientModel):
         pricing_rules = self.env['vehicle.pricing.rule'].search([('active', '=', True)])
         types = list(set(pricing_rules.mapped('pricing_type')))
         return [(t, t) for t in sorted(types)]
+
+    def _parse_duration_days(self, duration_str):
+        """Parse duration string (e.g., '3-5d', '1-2d', '4h') to get minimum days"""
+        if not duration_str:
+            return 0
+        
+        if 'h' in duration_str.lower():
+            # For hours, return 1 day minimum
+            return 1
+        elif 'd' in duration_str.lower():
+            # Extract first number from format like "3-5d"
+            try:
+                days = int(duration_str.split('-')[0])
+                return days
+            except:
+                return 0
+        return 0
+
+    @api.depends('start_date', 'duration_range')
+    def _compute_end_date(self):
+        """Calculate end_date based on start_date and duration"""
+        from datetime import timedelta
+        for record in self:
+            if not record.start_date or not record.duration_range:
+                record.calculated_end_date = False
+                continue
+            
+            days = record._parse_duration_days(record.duration_range)
+            if days > 0:
+                end_dt = record.start_date + timedelta(days=days)
+                record.calculated_end_date = end_dt
+            else:
+                record.calculated_end_date = False
 
     @api.depends('selected_category_id', 'duration_range', 'km_range', 'pricing_type')
     def _compute_price(self):

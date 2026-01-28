@@ -11,6 +11,7 @@
                             <field name="customer_id" required="1"
                                    options="{'no_create': True, 'no_create_edit': True}"/>
                             <field name="start_date" required="1"/>
+                            <field name="calculated_end_date" readonly="1" string="Fecha Final Calculada"/>
                         </group>
                         <group>
                             <field name="company_id" required="1"
