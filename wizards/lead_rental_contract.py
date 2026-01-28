@@ -27,13 +27,12 @@ class LeadRentalContract(models.TransientModel):
     _description = __doc__
 
     crm_lead_id = fields.Many2one('crm.lead', string="Lead")
-    company_id = fields.Many2one('res.company', string="Compañía", readonly=True)
     partner_id = fields.Many2one("res.partner", string="Customer")
     selected_category_id = fields.Many2one('fleet.vehicle.model.category', string="Categoría de Vehículo",
                                           readonly=True, help="Categoría del vehículo a alquilar")
     search_vehicle = fields.Char(string="Buscar Vehículo", help="Busca por marca o modelo")
     vehicle_id = fields.Many2one('fleet.vehicle', string="Vehicle",
-                                 domain="[('status', '=', 'available'), ('company_id', '=', company_id), '|', ('model_id.category_id', '=', selected_category_id), ('category_id', '=', selected_category_id)]")
+                                 domain="[('status', '=', 'available'), ('company_id', '=', crm_lead_id.company_id.id), '|', ('model_id.category_id', '=', selected_category_id), ('category_id', '=', selected_category_id)]")
     start_date = fields.Datetime(string="Start Date")
     end_date = fields.Datetime(string="End Date")
 
@@ -84,10 +83,6 @@ class LeadRentalContract(models.TransientModel):
             if lead.exists():
                 # Establecer el lead
                 res['crm_lead_id'] = lead.id
-                
-                # Compañía (para filtrar vehículos por compañía)
-                if lead.company_id:
-                    res['company_id'] = lead.company_id.id
                 
                 # Cliente
                 if lead.partner_id:
@@ -169,10 +164,6 @@ class LeadRentalContract(models.TransientModel):
                 end_datetime = datetime.combine(lead.end_date, end_time_obj)
             
             self.partner_id = lead.partner_id if lead.partner_id else False
-            
-            # Establecer compañía (para filtrar vehículos)
-            if lead.company_id:
-                self.company_id = lead.company_id
             
             # Establecer categoría
             if hasattr(lead, 'selected_category_id') and lead.selected_category_id:
