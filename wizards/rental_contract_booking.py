@@ -40,7 +40,7 @@ class RentalContractBooking(models.TransientModel):
     def _get_pricing_type_options(self):
         """Get unique pricing types from vehicle.pricing.rule"""
         pricing_rules = self.env['vehicle.pricing.rule'].search([('active', '=', True)])
-        types = list(set(pricing_rules.mapped('tipo')))
+        types = list(set(pricing_rules.mapped('pricing_type')))
         return [(t, t) for t in sorted(types)]
 
     @api.depends('selected_category_id', 'duration_range', 'km_range', 'pricing_type')
@@ -55,7 +55,7 @@ class RentalContractBooking(models.TransientModel):
                 ('vehicle_category_id', '=', record.selected_category_id.id),
                 ('duration_range', '=', record.duration_range),
                 ('km_range', '=', record.km_range),
-                ('tipo', '=', record.pricing_type),
+                ('pricing_type', '=', record.pricing_type),
                 ('active', '=', True),
             ], limit=1)
             
