@@ -20,12 +20,22 @@
                         </group>
                     </group>
                     
+                    <group>
+                        <group>
+                            <field name="selected_category_id" required="1" string="Tipo de Vehículo"/>
+                        </group>
+                        <group>
+                            <field name="search_vehicle" placeholder="Buscar por marca o modelo"/>
+                        </group>
+                    </group>
+                    
                     <notebook>
-                        <page name="fleet_vehicles" string="Vehículos de Flota"
-                              invisible="start_date == False or end_date == False">
+                        <page name="fleet_vehicles" string="Vehículos Disponibles"
+                              invisible="start_date == False or end_date == False or selected_category_id == False">
                             <field name="fleet_vehicle_ids" readonly="1"
                                    context="{'customer_id': customer_id, 'start_date': start_date, 'end_date': end_date}">
                                 <list editable="bottom">
+                                    <field name="name"/>
                                     <field name="model_id"/>
                                     <field name="license_plate"/>
                                     <field name="model_year"/>
