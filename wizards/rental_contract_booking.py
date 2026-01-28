@@ -24,6 +24,7 @@ class RentalContractBooking(models.TransientModel):
     calculated_price = fields.Float(string="Price (€/day)", compute='_compute_price', store=False)
     
     fleet_vehicle_ids = fields.Many2many('fleet.vehicle', string="Vehicle")
+    selected_vehicle_id = fields.Many2one('fleet.vehicle', string="Selected Vehicle")
 
     def _get_duration_options(self):
         """Get unique duration ranges from vehicle.pricing.rule"""
@@ -144,3 +145,46 @@ class RentalContractBooking(models.TransientModel):
         else:
             available_vehicles = self.env['fleet.vehicle'].search(domain)
             self.fleet_vehicle_ids = [(6, 0, available_vehicles.ids)]
+
+    def action_create_contract_from_wizard(self):
+        """Create vehicle contract from wizard with all pricing data"""
+        self.ensure_one()
+        
+        # Validate that a vehicle is selected
+        if not self.selected_vehicle_id:
+            from odoo.exceptions import UserError
+            raise UserError("Por favor, selecciona un vehículo antes de crear el contrato.")
+        
+        vehicle = self.selected_vehicle_id
+        
+        # Create contract with wizard data including calculated price
+        contract_data = {
+            'vehicle_id': vehicle.id,
+            'driver_id': vehicle.driver_id.id if vehicle.driver_id else False,
+            'last_odometer': vehicle.odometer,
+            'odometer_unit': vehicle.odometer_unit,
+            'model_year': vehicle.model_year,
+            'transmission': vehicle.transmission,
+            'fuel_type': vehicle.fuel_type,
+            'license_plate': vehicle.license_plate,
+            'customer_id': self.customer_id.id,
+            'customer_phone': self.customer_id.phone,
+            'customer_email': self.customer_id.email,
+            'start_date': self.start_date,
+            'end_date': self.end_date,
+            'company_id': self.company_id.id,
+            'rent': self.calculated_price,  # Pass the calculated price directly
+            'rent_type': 'days',
+            'pricing_type': self.pricing_type,
+        }
+        
+        vehicle_contract = self.env['vehicle.contract'].create(contract_data)
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Vehicle Contract',
+            'res_model': 'vehicle.contract',
+            'res_id': vehicle_contract.id,
+            'view_mode': 'form',
+            'target': 'current'
+        }
