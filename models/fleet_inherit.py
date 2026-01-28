@@ -84,14 +84,22 @@ class FleetVehicle(models.Model):
         }
 
     def action_create_book_contract(self):
-        """Action create book contract"""
+        """Action create book contract from wizard list"""
         context = self._context
         customer = self.env['res.partner'].browse(context.get('customer_id'))
         
-        # Get wizard_id from context to retrieve all pricing data
-        wizard_id = context.get('wizard_id')
+        # Try to get wizard from active_id (when called from within a wizard)
+        wizard_id = None
         calculated_price = 0.0
         pricing_type = 'standard'
+        
+        # First, try active_id (passed automatically by Odoo when button is in a Many2many field)
+        if context.get('active_model') == 'rental.contract.booking':
+            wizard_id = context.get('active_id')
+        
+        # Second, try explicit wizard_id
+        if not wizard_id:
+            wizard_id = context.get('wizard_id')
         
         if wizard_id:
             try:
@@ -99,6 +107,7 @@ class FleetVehicle(models.Model):
                 if wizard and wizard.exists():
                     calculated_price = wizard.calculated_price
                     pricing_type = wizard.pricing_type
+                    customer = wizard.customer_id or customer
             except Exception:
                 pass  # If wizard not found, use defaults
         

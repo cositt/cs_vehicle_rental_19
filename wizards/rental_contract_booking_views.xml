@@ -52,8 +52,8 @@
                                     <field name="transmission"/>
                                     <field name="fuel_type"/>
                                     <field name="category_id"/>
-                                    <button string="Reservar" name="action_create_contract_with_vehicle" type="object"
-                                            class="btn btn-outline-info" context="{'vehicle_id': id}"/>
+                                    <button string="Reservar" name="action_create_book_contract" type="object"
+                                            class="btn btn-outline-info"/>
                                 </list>
                             </field>
                         </page>
