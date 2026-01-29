@@ -84,73 +84,24 @@ class FleetVehicle(models.Model):
         }
 
     def action_create_book_contract(self):
-        """Action create book contract from wizard list"""
+        """Action create book contract from wizard"""
         context = self._context
-        customer = self.env['res.partner'].browse(context.get('customer_id'))
         
-        # Try to get wizard from active_id (when called from within a wizard)
+        # Try to get wizard - check all possible sources
         wizard_id = None
-        calculated_price = 0.0
-        pricing_type = 'standard'
+        wizard_model = None
         
-        # First, try active_id (passed automatically by Odoo when button is in a Many2many field)
-        if context.get('active_model') == 'rental.contract.booking':
-            wizard_id = context.get('active_id')
-        
-        # Second, try explicit wizard_id
-        if not wizard_id:
+        # Priority 1: Explicit wizard_id in context (from button in Many2many with parent.id)
+        if context.get('wizard_id') and context.get('wizard_model') == 'rental.contract.booking':
             wizard_id = context.get('wizard_id')
+            wizard_model = context.get('wizard_model')
         
-        if wizard_id:
-            try:
-                wizard = self.env['rental.contract.booking'].browse(wizard_id)
-                if wizard and wizard.exists():
-                    calculated_price = wizard.calculated_price
-                    pricing_type = wizard.pricing_type
-                    customer = wizard.customer_id or customer
-            except Exception:
-                pass  # If wizard not found, use defaults
+        # Priority 2: active_id (passed automatically by Odoo)
+        elif context.get('active_model') == 'rental.contract.booking':
+            wizard_id = context.get('active_id')
+            wizard_model = context.get('active_model')
         
-        data = {
-            'vehicle_id': self.id,
-            'driver_id': self.driver_id.id,
-            'last_odometer': self.odometer,
-            'odometer_unit': self.odometer_unit,
-            'model_year': self.model_year,
-            'transmission': self.transmission,
-            'fuel_type': self.fuel_type,
-            'license_plate': self.license_plate,
-            'customer_id': customer.id,
-            'customer_phone': customer.phone,
-            'customer_email': customer.email,
-            'start_date': context.get('start_date'),
-            'end_date': context.get('end_date'),
-            'company_id': context.get('company_id'),
-            'rent': calculated_price,
-            'rent_type': 'days',
-            'pricing_type': pricing_type,
-        }
-        vehicle_contract = self.env['vehicle.contract'].create(data)
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Vehicle Contract'),
-            'res_model': 'vehicle.contract',
-            'res_id': vehicle_contract.id,
-            'view_mode': 'form',
-            'target': 'current'
-        }
-
-    def action_create_book_contract_from_wizard(self):
-        """Create contract from wizard - handles Many2many context"""
-        # When called from Many2many, active_model and active_id contain the wizard info
-        context = self._context
-        
-        # Get wizard from active context (parent record when in Many2many)
-        wizard_id = context.get('active_id')
-        wizard_model = context.get('active_model')
-        
-        if wizard_model != 'rental.contract.booking' or not wizard_id:
-            # Fallback: try to find wizard another way or return error
+        if not wizard_id or wizard_model != 'rental.contract.booking':
             from odoo.exceptions import UserError
             raise UserError("No se pudo obtener los datos del wizard.")
         
@@ -159,7 +110,7 @@ class FleetVehicle(models.Model):
             from odoo.exceptions import UserError
             raise UserError("El wizard no existe.")
         
-        # Now create the contract with wizard data
+        # Create the contract with wizard data
         data = {
             'vehicle_id': self.id,
             'driver_id': self.driver_id.id,

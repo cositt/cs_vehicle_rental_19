@@ -52,8 +52,8 @@
                                     <field name="transmission"/>
                                     <field name="fuel_type"/>
                                     <field name="category_id"/>
-                                    <button string="Reservar" name="action_create_book_contract_from_wizard" type="object"
-                                            class="btn btn-outline-info"/>
+                                    <button string="Reservar" name="action_create_book_contract" type="object"
+                                            class="btn btn-outline-info" context="{'wizard_model': 'rental.contract.booking', 'wizard_id': parent.id}"/>
                                 </list>
                             </field>
                         </page>
