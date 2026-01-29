@@ -2,7 +2,7 @@
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 from odoo import models, fields, api, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 from dateutil.relativedelta import relativedelta
 from ..utils import _display_rental_notification
 
@@ -129,6 +129,55 @@ class FleetVehicle(models.Model):
             'rent': calculated_price,
             'rent_type': 'days',
             'pricing_type': pricing_type,
+        }
+        vehicle_contract = self.env['vehicle.contract'].create(data)
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Vehicle Contract'),
+            'res_model': 'vehicle.contract',
+            'res_id': vehicle_contract.id,
+            'view_mode': 'form',
+            'target': 'current'
+        }
+
+    def action_create_book_contract_from_wizard(self):
+        """Create contract from wizard - handles Many2many context"""
+        # When called from Many2many, active_model and active_id contain the wizard info
+        context = self._context
+        
+        # Get wizard from active context (parent record when in Many2many)
+        wizard_id = context.get('active_id')
+        wizard_model = context.get('active_model')
+        
+        if wizard_model != 'rental.contract.booking' or not wizard_id:
+            # Fallback: try to find wizard another way or return error
+            from odoo.exceptions import UserError
+            raise UserError("No se pudo obtener los datos del wizard.")
+        
+        wizard = self.env['rental.contract.booking'].browse(wizard_id)
+        if not wizard or not wizard.exists():
+            from odoo.exceptions import UserError
+            raise UserError("El wizard no existe.")
+        
+        # Now create the contract with wizard data
+        data = {
+            'vehicle_id': self.id,
+            'driver_id': self.driver_id.id,
+            'last_odometer': self.odometer,
+            'odometer_unit': self.odometer_unit,
+            'model_year': self.model_year,
+            'transmission': self.transmission,
+            'fuel_type': self.fuel_type,
+            'license_plate': self.license_plate,
+            'customer_id': wizard.customer_id.id,
+            'customer_phone': wizard.customer_id.phone,
+            'customer_email': wizard.customer_id.email,
+            'start_date': wizard.start_date,
+            'end_date': wizard.end_date,
+            'company_id': wizard.company_id.id,
+            'rent': wizard.calculated_price,
+            'rent_type': 'days',
+            'pricing_type': wizard.pricing_type,
         }
         vehicle_contract = self.env['vehicle.contract'].create(data)
         return {

@@ -149,3 +149,45 @@ class RentalContractBooking(models.TransientModel):
         else:
             available_vehicles = self.env['fleet.vehicle'].search(domain)
             self.fleet_vehicle_ids = [(6, 0, available_vehicles.ids)]
+
+    def action_create_contract_for_vehicle(self, vehicle_id):
+        """Create contract from wizard - called by button in list"""
+        self.ensure_one()
+        
+        # Get the vehicle
+        vehicle = self.env['fleet.vehicle'].browse(vehicle_id)
+        if not vehicle or not vehicle.exists():
+            from odoo.exceptions import UserError
+            raise UserError("El vehículo no existe.")
+        
+        # Create contract with all wizard data including calculated_price
+        contract_data = {
+            'vehicle_id': vehicle.id,
+            'driver_id': vehicle.driver_id.id if vehicle.driver_id else False,
+            'last_odometer': vehicle.odometer,
+            'odometer_unit': vehicle.odometer_unit,
+            'model_year': vehicle.model_year,
+            'transmission': vehicle.transmission,
+            'fuel_type': vehicle.fuel_type,
+            'license_plate': vehicle.license_plate,
+            'customer_id': self.customer_id.id,
+            'customer_phone': self.customer_id.phone,
+            'customer_email': self.customer_id.email,
+            'start_date': self.start_date,
+            'end_date': self.end_date,
+            'company_id': self.company_id.id,
+            'rent': self.calculated_price,  # This is the computed value
+            'rent_type': 'days',
+            'pricing_type': self.pricing_type,
+        }
+        
+        contract = self.env['vehicle.contract'].create(contract_data)
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Vehicle Contract',
+            'res_model': 'vehicle.contract',
+            'res_id': contract.id,
+            'view_mode': 'form',
+            'target': 'current'
+        }

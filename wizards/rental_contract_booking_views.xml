@@ -52,8 +52,8 @@
                                     <field name="transmission"/>
                                     <field name="fuel_type"/>
                                     <field name="category_id"/>
-                                    <button string="Reservar" name="action_create_book_contract" type="object"
-                                            class="btn btn-outline-info" context="{'customer_id': parent.customer_id, 'start_date': parent.start_date, 'end_date': parent.end_date, 'company_id': parent.company_id, 'calculated_price': parent.stored_calculated_price, 'pricing_type': parent.pricing_type}"/>
+                                    <button string="Reservar" name="action_create_book_contract_from_wizard" type="object"
+                                            class="btn btn-outline-info"/>
                                 </list>
                             </field>
                         </page>
