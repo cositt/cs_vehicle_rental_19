@@ -405,6 +405,13 @@ class VehicleContract(models.Model):
             if record.reference_no == _('New'):
                 record.reference_no = self.env['ir.sequence'].next_by_code('vehicle.contract') or _(
                     'New')
+            
+            # Actualizar ubicación del vehículo basado en drop_off_city
+            # Si se especifica una ubicación de devolución, el vehículo se reubica allí
+            # para que futuros alquileres se hagan desde la ubicación de destino
+            if record.drop_off_city and record.vehicle_id:
+                record.vehicle_id.location = record.drop_off_city
+        
         return records
 
     @api.constrains('start_date', 'end_date', 'rent_type')
