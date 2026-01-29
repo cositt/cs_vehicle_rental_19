@@ -83,6 +83,7 @@ class RentalContractBooking(models.TransientModel):
         for record in self:
             if not record.selected_category_id or not record.duration_range or not record.km_range or not record.pricing_type:
                 record.calculated_price = 0.0
+                record.stored_calculated_price = 0.0
                 continue
             
             pricing_rule = self.env['vehicle.pricing.rule'].search([
@@ -95,8 +96,10 @@ class RentalContractBooking(models.TransientModel):
             
             if pricing_rule:
                 record.calculated_price = pricing_rule.price_per_unit
+                record.stored_calculated_price = pricing_rule.price_per_unit
             else:
                 record.calculated_price = 0.0
+                record.stored_calculated_price = 0.0
 
     @api.onchange('selected_category_id', 'start_date', 'end_date', 'search_vehicle', 'company_id', 'duration_range', 'km_range', 'pricing_type')
     def _onchange_available_vehicle(self):
