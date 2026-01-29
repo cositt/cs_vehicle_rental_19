@@ -706,32 +706,43 @@ class VehicleContract(models.Model):
     def onchange_vehicle_rent_details(self):
         """Onchange vehicle renta details"""
         for rec in self:
+            # Si el rent ya tiene un valor válido (ej: viene de tarifas del wizard), no lo sobrescribas
+            # Solo sobrescribe si el rent es 0 o no tiene valor
+            should_set_rent = not rec.rent or rec.rent == 0.0
+            
             if rec.rent_type == 'days':
-                rec.rent = rec.vehicle_id.rent_day
+                if should_set_rent and rec.vehicle_id.rent_day:
+                    rec.rent = rec.vehicle_id.rent_day
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_day
             elif rec.rent_type == 'week':
-                rec.rent = rec.vehicle_id.rent_week
+                if should_set_rent and rec.vehicle_id.rent_week:
+                    rec.rent = rec.vehicle_id.rent_week
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_week
             elif rec.rent_type == 'month':
-                rec.rent = rec.vehicle_id.rent_month
+                if should_set_rent and rec.vehicle_id.rent_month:
+                    rec.rent = rec.vehicle_id.rent_month
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_month
             elif rec.rent_type == 'hour':
-                rec.rent = rec.vehicle_id.rent_hour
+                if should_set_rent and rec.vehicle_id.rent_hour:
+                    rec.rent = rec.vehicle_id.rent_hour
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_hour
             elif rec.rent_type == 'year':
-                rec.rent = rec.vehicle_id.rent_year
+                if should_set_rent and rec.vehicle_id.rent_year:
+                    rec.rent = rec.vehicle_id.rent_year
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_year
             elif rec.rent_type == 'km':
-                rec.rent = rec.vehicle_id.rent_km
+                if should_set_rent and rec.vehicle_id.rent_km:
+                    rec.rent = rec.vehicle_id.rent_km
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_km
             elif rec.rent_type == 'mi':
-                rec.rent = rec.vehicle_id.rent_mi
+                if should_set_rent and rec.vehicle_id.rent_mi:
+                    rec.rent = rec.vehicle_id.rent_mi
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_mi
 
