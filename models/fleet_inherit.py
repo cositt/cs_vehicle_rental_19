@@ -142,8 +142,14 @@ class FleetVehicle(models.Model):
 
     def action_create_book_contract_from_wizard(self):
         """Create contract from wizard - handles Many2many context"""
+        import sys
+        print(f"\n=== DEBUG action_create_book_contract_from_wizard ===", file=sys.stderr)
+        
         # When called from Many2many, active_model and active_id contain the wizard info
         context = self._context
+        
+        print(f"Context active_model: {context.get('active_model')}", file=sys.stderr)
+        print(f"Context active_id: {context.get('active_id')}", file=sys.stderr)
         
         # Get wizard from active context (parent record when in Many2many)
         wizard_id = context.get('active_id')
@@ -151,13 +157,23 @@ class FleetVehicle(models.Model):
         
         if wizard_model != 'rental.contract.booking' or not wizard_id:
             # Fallback: try to find wizard another way or return error
+            print(f"ERROR: No wizard found. Model: {wizard_model}, ID: {wizard_id}", file=sys.stderr)
             from odoo.exceptions import UserError
             raise UserError("No se pudo obtener los datos del wizard.")
         
         wizard = self.env['rental.contract.booking'].browse(wizard_id)
         if not wizard or not wizard.exists():
+            print(f"ERROR: Wizard doesn't exist", file=sys.stderr)
             from odoo.exceptions import UserError
             raise UserError("El wizard no existe.")
+        
+        print(f"Wizard found! ID: {wizard_id}", file=sys.stderr)
+        print(f"Wizard calculated_price: {wizard.calculated_price}", file=sys.stderr)
+        print(f"Wizard pricing_type: {wizard.pricing_type}", file=sys.stderr)
+        print(f"Wizard customer: {wizard.customer_id.name if wizard.customer_id else 'None'}", file=sys.stderr)
+        print(f"Wizard start_date: {wizard.start_date}", file=sys.stderr)
+        print(f"Wizard end_date: {wizard.end_date}", file=sys.stderr)
+        print(f"Wizard company: {wizard.company_id.name if wizard.company_id else 'None'}", file=sys.stderr)
         
         # Now create the contract with wizard data
         data = {
@@ -179,6 +195,10 @@ class FleetVehicle(models.Model):
             'rent_type': 'days',
             'pricing_type': wizard.pricing_type,
         }
+        
+        print(f"Data to create contract: rent={data['rent']}, pricing_type={data['pricing_type']}", file=sys.stderr)
+        print(f"=== END DEBUG ===\n", file=sys.stderr)
+        
         vehicle_contract = self.env['vehicle.contract'].create(data)
         return {
             'type': 'ir.actions.act_window',
