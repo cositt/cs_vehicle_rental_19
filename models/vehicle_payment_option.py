@@ -78,16 +78,25 @@ class VehiclePaymentOption(models.Model):
             # ═══════════════════════════════════════════
             # LÍNEA 3: DEPÓSITO DE SEGURIDAD (NUEVO)
             # ═══════════════════════════════════════════
-            if contract.if_any_deposit and contract.deposit > 0:
+            # Usar calculated_deposit si use_deposit_from_rule=True, sino usar deposit manual
+            deposit_amount = 0
+            if contract.use_deposit_from_rule and contract.calculated_deposit > 0:
+                # Depósito automático desde regla
+                deposit_amount = contract.calculated_deposit
+            elif not contract.use_deposit_from_rule and contract.if_any_deposit and contract.deposit > 0:
+                # Depósito manual ingresado por usuario
+                deposit_amount = contract.deposit
+            
+            if deposit_amount > 0:
                 deposit_line = {
                     'product_id': self.env.ref('vehicle_rental.vehicle_rent_deposit').id,
                     'name': f"Depósito de Seguridad - {contract.reference_no}",
                     'quantity': 1,
-                    'price_unit': contract.deposit,
+                    'price_unit': deposit_amount,
                     'tax_ids': tax,
                 }
                 invoice_lines.append((0, 0, deposit_line))
-                _logger.info(f"CUOTA: Depósito {contract.deposit}€ agregado a cuota {rec.name}")
+                _logger.info(f"CUOTA: Depósito {deposit_amount}€ agregado a cuota {rec.name} (automático: {contract.use_deposit_from_rule})")
             
             # ═══════════════════════════════════════════
             # LÍNEA 4: KM EXTRA (FLEXIRENT) (NUEVO)
