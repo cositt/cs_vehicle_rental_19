@@ -766,34 +766,44 @@ class VehicleContract(models.Model):
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_mi
 
-    @api.onchange('vehicle_id', 'deposit_card_type', 'total_vehicle_rent', 'use_deposit_from_rule')
-    def _onchange_auto_deposit(self):
+    def _sync_deposit_from_calculated(self):
         """
-        Sincroniza automáticamente el campo "deposit" con el depósito calculado.
-        
-        Lógica:
-        - Si use_deposit_from_rule=True y hay depósito calculado:
-          → deposit = calculated_deposit
-          → if_any_deposit = True
-        
-        - Si use_deposit_from_rule=False:
-          → deposit puede ser manual
-          → if_any_deposit depende del usuario
-        
-        - Si no hay depósito calculado:
-          → if_any_deposit = False
+        Sincroniza el campo 'deposit' con 'calculated_deposit' cuando use_deposit_from_rule=True.
+        Este método se llama EXPLÍCITAMENTE después de guardar para asegurar sincronización.
         """
         for record in self:
             if record.use_deposit_from_rule and record.calculated_deposit > 0:
                 # Usar depósito automático
-                record.if_any_deposit = True
-                record.deposit = record.calculated_deposit
+                if record.deposit != record.calculated_deposit or not record.if_any_deposit:
+                    record.write({
+                        'if_any_deposit': True,
+                        'deposit': record.calculated_deposit
+                    })
             elif not record.use_deposit_from_rule:
                 # Permitir manual - no cambiar nada automáticamente
                 pass
             else:
                 # Sin depósito disponible
-                record.if_any_deposit = False
+                if record.if_any_deposit:
+                    record.write({'if_any_deposit': False})
+    
+    def write(self, vals):
+        """Override write para sincronizar depósito después de cambios"""
+        result = super().write(vals)
+        
+        # Después de escribir, sincronizar depósito si es necesario
+        # Esto se ejecuta después de que los campos computed se hayan actualizado
+        if any(field in vals for field in ['vehicle_id', 'deposit_card_type', 'use_deposit_from_rule']):
+            self._sync_deposit_from_calculated()
+        
+        return result
+    
+    def create(self, vals_list):
+        """Override create para sincronizar depósito después de crear"""
+        records = super().create(vals_list)
+        # Sincronizar depósito en los registros nuevos
+        records._sync_deposit_from_calculated()
+        return records
 
     @api.depends('extra_service_ids.amount', 'extra_service_ids.product_qty')
     def _compute_total_extra_service_charge(self):
