@@ -766,6 +766,35 @@ class VehicleContract(models.Model):
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_mi
 
+    @api.onchange('vehicle_id', 'deposit_card_type', 'total_vehicle_rent', 'use_deposit_from_rule')
+    def _onchange_auto_deposit(self):
+        """
+        Sincroniza automáticamente el campo "deposit" con el depósito calculado.
+        
+        Lógica:
+        - Si use_deposit_from_rule=True y hay depósito calculado:
+          → deposit = calculated_deposit
+          → if_any_deposit = True
+        
+        - Si use_deposit_from_rule=False:
+          → deposit puede ser manual
+          → if_any_deposit depende del usuario
+        
+        - Si no hay depósito calculado:
+          → if_any_deposit = False
+        """
+        for record in self:
+            if record.use_deposit_from_rule and record.calculated_deposit > 0:
+                # Usar depósito automático
+                record.if_any_deposit = True
+                record.deposit = record.calculated_deposit
+            elif not record.use_deposit_from_rule:
+                # Permitir manual - no cambiar nada automáticamente
+                pass
+            else:
+                # Sin depósito disponible
+                record.if_any_deposit = False
+
     @api.depends('extra_service_ids.amount', 'extra_service_ids.product_qty')
     def _compute_total_extra_service_charge(self):
         """Total extra service charge"""
