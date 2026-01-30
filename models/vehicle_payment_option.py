@@ -157,7 +157,9 @@ class VehiclePaymentOption(models.Model):
             'vehicle_contract_id': self.vehicle_contract_id.id
         }
         invoice_id = self.env['account.move'].sudo().create(data)
-        self.invoice_id = invoice_id
+        
+        # Guardar la referencia a la factura en la cuota
+        self.write({'invoice_id': invoice_id.id})
         
         return {
             'type': 'ir.actions.act_window',
