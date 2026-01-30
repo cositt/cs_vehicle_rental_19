@@ -159,7 +159,14 @@ class VehiclePaymentOption(models.Model):
         invoice_id = self.env['account.move'].sudo().create(data)
         
         # Guardar la referencia a la factura en la cuota
-        self.write({'invoice_id': invoice_id.id})
+        # IMPORTANTE: También actualizar payment_amount con el total de la factura
+        # para que se refleje correctamente (alquiler + seguro + depósito + extras)
+        self.write({
+            'invoice_id': invoice_id.id,
+            'payment_amount': invoice_id.amount_total  # ← Actualizar con el total de la factura
+        })
+        
+        _logger.info(f"CUOTA: Factura creada {invoice_id.name} - Total: {invoice_id.amount_total}€")
         
         return {
             'type': 'ir.actions.act_window',
