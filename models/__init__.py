@@ -26,4 +26,7 @@ from . import vehicle_substitution
 from . import vehicle_pricing_rule
 from . import vehicle_insurance_pricing
 from . import vehicle_contract_pricing
+from . import vehicle_deposit_rule
 
+from . import payment_redsys_inherit
+from . import payment_redsys_webhook_fix

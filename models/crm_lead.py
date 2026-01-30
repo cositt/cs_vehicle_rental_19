@@ -25,6 +25,10 @@ class BookingEnquiryLead(models.Model):
     contract_id = fields.Many2one('vehicle.contract', string="Contract")
     customer_dni = fields.Char(string="DNI/NIE", help="Documento Nacional de Identidad o NIE del cliente")
     customer_dni_expiry_date = fields.Date(string="Fecha de Expiración del DNI", help="Fecha de expiración del documento de identidad")
+    location = fields.Char(string="Ubicación de Recogida", help="Ubicación donde el cliente recogerá el vehículo")
+    start_time = fields.Char(string="Hora de Inicio", help="Hora de recogida del vehículo")
+    end_time = fields.Char(string="Hora de Fin", help="Hora de devolución del vehículo")
+    selected_price = fields.Float(string="Precio de Reserva", help="Precio pagado en la web por la reserva")
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -57,6 +61,36 @@ class BookingEnquiryLead(models.Model):
                 lead.type = 'opportunity'
                 lead.probability = 100
         return True
+    
+    def action_set_won_rainbowman(self):
+        """Override para manejar el error de date_closed=NULL en Odoo 19
+        
+        Odoo 19 tiene un bug donde intenta calcular (date_closed - create_date)
+        pero date_closed es NULL/False cuando se marca como ganado.
+        
+        Solución: establecer date_closed Y cambiar a stage "Ganado" ANTES de llamar al método padre
+        """
+        # Obtener el stage "Ganado" (Won)
+        won_stage = self.env['crm.stage'].search([('name', '=', 'Won')], limit=1) or \
+                   self.env['crm.stage'].search([('name', 'ilike', '%Won%')], limit=1) or \
+                   self.env['crm.stage'].search([('name', 'ilike', '%ganado%')], limit=1)
+        
+        # Cambiar a "Ganado" y establecer date_closed
+        for lead in self:
+            vals = {'probability': 100}
+            
+            # Establecer date_closed
+            if not lead.date_closed:
+                vals['date_closed'] = fields.Datetime.now()
+            
+            # Cambiar stage a Won
+            if won_stage:
+                vals['stage_id'] = won_stage.id
+            
+            lead.write(vals)
+        
+        # Ahora llamar al método padre que ya tiene date_closed y stage válidos
+        return super(BookingEnquiryLead, self).action_set_won_rainbowman()
     
     def _find_or_create_partner_from_lead(self, lead):
         """Find existing partner or create new one from lead data"""
@@ -176,3 +210,44 @@ class BookingEnquiryLead(models.Model):
                 }
             else:
                 raise UserError(_('No hay contrato asociado a este lead.'))
+
+    @api.depends('partner_id', 'email_from', 'phone', 'email_domain_criterion', 'company_id')
+    def _compute_potential_lead_duplicates(self):
+        """Override to filter duplicates by company_id - avoid cross-company permission errors"""
+        SEARCH_RESULT_LIMIT = 21
+
+        for lead in self:
+            lead_id = lead._origin.id
+            company_id = lead.company_id.id if lead.company_id else False
+            
+            # Domain base: mismo company_id y diferente lead
+            common_lead_domain = [
+                ('id', '!=', lead_id),
+                ('company_id', '=', company_id),
+            ]
+
+            duplicate_lead_ids = self.env['crm.lead']
+
+            # Check email domain duplicates
+            if lead.email_domain_criterion:
+                duplicate_lead_ids |= self.env['crm.lead'].sudo().with_context(active_test=False).search(
+                    common_lead_domain + [('email_domain_criterion', '=', lead.email_domain_criterion)],
+                    limit=SEARCH_RESULT_LIMIT
+                )
+            
+            # Check same commercial partner duplicates  
+            if lead.partner_id and lead.partner_id.commercial_partner_id:
+                duplicate_lead_ids |= lead.with_context(active_test=False).search(
+                    common_lead_domain + [('partner_id', 'child_of', lead.partner_id.commercial_partner_id.ids)],
+                    limit=SEARCH_RESULT_LIMIT
+                )
+            
+            # Check phone duplicates
+            if lead.phone_sanitized:
+                duplicate_lead_ids |= self.env['crm.lead'].sudo().with_context(active_test=False).search(
+                    common_lead_domain + [('phone_sanitized', '=', lead.phone_sanitized)],
+                    limit=SEARCH_RESULT_LIMIT
+                )
+
+            lead.duplicate_lead_ids = duplicate_lead_ids + lead
+            lead.duplicate_lead_count = len(duplicate_lead_ids)

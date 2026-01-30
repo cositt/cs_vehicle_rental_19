@@ -119,6 +119,42 @@ class VehicleContractPricing(models.Model):
     )
     
     # ============================================
+    # DEPÓSITO DINÁMICO (BASADO EN REGLAS)
+    # ============================================
+    
+    deposit_card_type = fields.Selection(
+        [
+            ('debit', 'Tarjeta de Débito'),
+            ('credit', 'Tarjeta de Crédito'),
+        ],
+        string='Tipo de Tarjeta para Depósito',
+        default='debit',
+        help='Determina qué regla de depósito se aplica según el tipo de tarjeta'
+    )
+    
+    deposit_rule_id = fields.Many2one(
+        'vehicle.deposit.rule',
+        string='Regla de Depósito Aplicada',
+        compute='_compute_deposit_rule',
+        store=True,
+        help='La regla de depósito que se está utilizando actualmente'
+    )
+    
+    calculated_deposit = fields.Monetary(
+        string='Depósito Calculado (Automático)',
+        compute='_compute_calculated_deposit',
+        store=True,
+        currency_field='currency_id',
+        help='Depósito calculado automáticamente según la categoría del vehículo, tipo de tarjeta y precio del alquiler'
+    )
+    
+    use_deposit_from_rule = fields.Boolean(
+        string='Usar Depósito de Regla',
+        default=True,
+        help='Si está marcado, usa el depósito calculado de la regla. Si no, permite ingresar un depósito manual.'
+    )
+    
+    # ============================================
     # KM EXTRA (PARA FLEXIRENT)
     # ============================================
     
@@ -225,8 +261,9 @@ class VehicleContractPricing(models.Model):
             if pricing_rule:
                 record.calculated_rent = pricing_rule.price_per_unit
                 
-                # SIEMPRE actualizar el campo rent, pero solo rent_type si no está definido
-                record.rent = pricing_rule.price_per_unit
+                # Solo actualizar rent si no tiene valor o es 0 (no sobrescribir valor del wizard)
+                if not record.rent or record.rent == 0:
+                    record.rent = pricing_rule.price_per_unit
                 if not record.rent_type or record.rent_type == False:
                     record.rent_type = 'days'
                 
@@ -456,7 +493,8 @@ class VehicleContractPricing(models.Model):
     def _check_discount_reason_required(self):
         """Si el precio fue modificado manualmente, requiere motivo"""
         for record in self:
-            if record.price_manually_modified and not record.discount_reason:
+            # No exigir motivo si viene de reserva web (tiene crm_lead_id)
+            if record.price_manually_modified and not record.discount_reason and not record.crm_lead_id:
                 raise ValidationError(
                     _('Debes indicar el motivo de la modificación de precio en el campo "Motivo del Descuento".')
                 )
@@ -635,10 +673,15 @@ class VehicleContractPricing(models.Model):
                 invoice_lines.append((0, 0, extra_line))
         
         # Crear la factura
+        # Obtener journal de ventas de la compañía
+        sale_journal = self._get_sale_journal()
+        
         invoice_vals = {
             'partner_id': self.customer_id.id,
             'move_type': 'out_invoice',
+            'journal_id': sale_journal.id,
             'invoice_date': fields.Date.today(),
+            'invoice_date_due': fields.Date.today(),  # Fecha vencimiento = hoy (ya pagado)
             'invoice_origin': self.reference_no,
             'invoice_line_ids': invoice_lines,
             'narration': f"Factura automática generada desde contrato {self.reference_no}",
@@ -658,4 +701,59 @@ class VehicleContractPricing(models.Model):
             'view_mode': 'form',
             'target': 'current',
         }
+    
+    # ============================================
+    # MÉTODOS DE CÁLCULO DE DEPÓSITO DINÁMICO
+    # ============================================
+    
+    @api.depends('vehicle_id', 'vehicle_id.category_id', 'deposit_card_type')
+    def _compute_deposit_rule(self):
+        """
+        Busca la regla de depósito aplicable para este contrato.
+        
+        Criterios:
+        - Categoría del vehículo
+        - Tipo de tarjeta (débito/crédito)
+        - Fecha válida (hoy)
+        """
+        for record in self:
+            if (record.vehicle_id and 
+                record.vehicle_id.category_id and 
+                record.deposit_card_type):
+                
+                # Buscar regla usando el método que ya existe en vehicle.deposit.rule
+                rule = self.env['vehicle.deposit.rule'].find_deposit_rule(
+                    record.vehicle_id.category_id.id,
+                    record.deposit_card_type,
+                    fields.Date.today()
+                )
+                record.deposit_rule_id = rule.id if rule else False
+            else:
+                record.deposit_rule_id = False
+    
+    @api.depends(
+        'deposit_rule_id',
+        'total_vehicle_rent',
+        'use_deposit_from_rule'
+    )
+    def _compute_calculated_deposit(self):
+        """
+        Calcula el depósito usando la regla encontrada.
+        
+        Fórmula:
+        - Si hay regla: deposit = regla.calculate_deposit(total_vehicle_rent)
+        - Si no hay regla: deposit = 0
+        """
+        for record in self:
+            if (record.use_deposit_from_rule and 
+                record.deposit_rule_id and 
+                record.total_vehicle_rent > 0):
+                
+                # Usar el método calculate_deposit() que ya existe en vehicle.deposit.rule
+                calculated = record.deposit_rule_id.calculate_deposit(
+                    record.total_vehicle_rent
+                )
+                record.calculated_deposit = calculated
+            else:
+                record.calculated_deposit = 0
 

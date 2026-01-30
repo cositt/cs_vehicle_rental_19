@@ -1141,7 +1141,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                             <div class="row">
                                             {''.join([f'''
                                             <div class="col-lg-4 col-md-6 mb-4">
-                                                <div class="card h-100 {'border-warning' if offer.get('popular') else ''} offer-card" style="{'border-color: {primary_color} !important; border-width: 2px !important;' if offer.get('popular') else ''} cursor: pointer;" onclick="selectFixedOffer('{offer.get('duration', '')}', '{offer.get('km', '')}', {offer.get('price', 0)})">
+                                                <div class="card h-100 {'border-warning' if offer.get('popular') else ''} offer-card" style="{'border-color: {primary_color} !important; border-width: 2px !important;' if offer.get('popular') else ''} cursor: pointer;" onclick="selectFixedOffer('{offer.get('duration', '')}', '{offer.get('km', '')}', {offer.get('price', 0)}, event)">
                                                     <div class="card-body text-center d-flex flex-column justify-content-center" style="min-height: 100%; padding: 2rem 1.5rem;">
                                                         {'<div class="badge mb-3" style="background-color: {primary_color}; color: white;">Más Popular</div>' if offer.get('popular') else '<div class="mb-3"></div>'}
                                                         <div class="form-check d-flex justify-content-center mb-3">
@@ -1240,7 +1240,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                         <i class="fa fa-map-marker me-2" style="color: {primary_color};"></i>
                                                         <strong>Ubicación de recogida *</strong>
                                                     </label>
-                                                    <select class="form-select form-select-lg" id="location_select" name="location" required onchange="checkLocationAvailability()">
+                                                    <select class="form-select form-select-lg" id="location_select" name="location" required onchange="checkLocationAvailability(); loadAvailableVehicles();">
                                                         <option value="">-- Selecciona una ubicación --</option>
                                                         {''.join([f'<option value="{loc}">{loc}</option>' for loc in available_locations])}
                                                     </select>
@@ -1284,6 +1284,8 @@ class WebsiteContractBookingFixed(http.Controller):
                                                     <input type="hidden" name="selected_vehicle_id" id="selected_vehicle_id" value=""/>
                                                     <input type="hidden" name="min_duration_days" id="min_duration_days" value=""/>
                                                     <input type="hidden" name="max_duration_days" id="max_duration_days" value=""/>
+                                                    <input type="hidden" name="card_type" id="card_type_hidden" value="debit"/>
+                                                    <input type="hidden" name="card_bin" id="card_bin_hidden" value=""/>
 
                                                     <h5 class="mb-3">Datos de contacto</h5>
                                                     <div class="row">
@@ -1314,6 +1316,46 @@ class WebsiteContractBookingFixed(http.Controller):
                                                         <div class="col-md-6 mb-3">
                                                             <label for="customer_dni_expiry_date" class="form-label">Fecha de Expiración del DNI (Mes/Año) <span class="text-danger">*</span></label>
                                                             <input type="month" class="form-control" id="customer_dni_expiry_date" name="customer_dni_expiry_date" required/>
+                                                        </div>
+                                                    </div>
+
+                                                    <hr class="my-4">
+                                                    <h5 class="mb-3">Información de Pago</h5>
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="card_number" class="form-label">Número de Tarjeta <span class="text-danger">*</span></label>
+                                                            <input type="text" class="form-control" id="card_number" name="card_number" placeholder="Ej: 4548 8100 0000 0003" inputmode="numeric" maxlength="19" required/>
+                                                            <input type="hidden" id="card_bin" name="card_bin"/>
+                                                            <small class="text-muted d-block mt-1">Se detectará automáticamente el tipo de tarjeta</small>
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <label class="form-label">Tipo de Tarjeta Detectado</label>
+                                                            <div class="alert alert-light border mb-0 d-flex align-items-center" style="height: 38px;">
+                                                                <i id="card_type_icon" class="fa fa-credit-card me-2" style="font-size: 18px; color: #0c63e4;"></i>
+                                                                <span id="card_type_display" class="fw-bold" style="color: #333;">Ingresa el número de tarjeta</span>
+                                                            </div>
+                                                            <input type="hidden" id="card_type" name="card_type" value="credit"/>
+                                                            <input type="hidden" name="card_type_hidden" id="card_type_hidden" value="credit"/>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Sección de Depósito Dinámico -->
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-3">
+                                                            <div class="alert alert-info mb-0" style="border-left: 4px solid #0c63e4;">
+                                                                <strong><i class="fa fa-shield me-2"></i>Depósito de Seguridad</strong>
+                                                                <div id="deposit_display" class="mt-2" style="font-size: 14px; color: #666;">
+                                                                    Selecciona tipo de tarjeta para calcular depósito
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <div class="alert alert-warning mb-0" style="border-left: 4px solid #ff9800;">
+                                                                <strong><i class="fa fa-euro me-2"></i>Total a Pagar</strong>
+                                                                <div id="total_display" class="mt-2" style="font-size: 18px; font-weight: bold; color: #e67e22;">
+                                                                    0EUR
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
 
@@ -1405,10 +1447,200 @@ class WebsiteContractBookingFixed(http.Controller):
                             togglePricingSections();
                         }});
 
+                        // Event listeners para validación de tarjeta y cálculo de depósito
+                        function initCardValidation() {{
+                            const cardNumberInput = document.getElementById('card_number');
+                            const cardBinInput = document.getElementById('card_bin');
+                            const cardTypeInput = document.getElementById('card_type');
+                            const cardTypeDisplay = document.getElementById('card_type_display');
+                            const cardTypeIcon = document.getElementById('card_type_icon');
+
+                            if (!cardNumberInput) {{
+                                return;
+                            }}
+
+                            // Validar BIN cuando el usuario ingrese 6+ dígitos CON DEBOUNCE
+                            let binValidationTimeout = null;
+                            let lastBinValidated = null;
+                            
+                            cardNumberInput.addEventListener('input', function() {{
+                                let cardNumber = this.value.replace(/\D/g, '');
+                                
+                                if (cardNumber.length >= 6) {{
+                                    const bin = cardNumber.substring(0, 6);
+                                    cardBinInput.value = bin;
+                                    
+                                    if (binValidationTimeout) {{
+                                        clearTimeout(binValidationTimeout);
+                                    }}
+                                    
+                                    cardTypeDisplay.textContent = '✏️ Escribiendo...';
+                                    cardTypeIcon.className = 'fa fa-pencil me-2';
+                                    cardTypeIcon.style.color = '#6c757d';
+                                    
+                                    binValidationTimeout = setTimeout(function() {{
+                                        if (bin !== lastBinValidated) {{
+                                            lastBinValidated = bin;
+                                            
+                                            cardTypeDisplay.textContent = '⏳ Validando...';
+                                            cardTypeIcon.className = 'fa fa-hourglass-half me-2';
+                                            cardTypeIcon.style.color = '#6c757d';
+                                            
+                                            fetch('/rental/validate-bin', {{
+                                                method: 'POST',
+                                                headers: {{'Content-Type': 'application/json'}},
+                                                body: JSON.stringify({{bin: bin}})
+                                            }})
+                                                .then(response => response.json())
+                                                .then(data => {{
+                                                    if (data.success && data.card_type) {{
+                                                        const detectedType = data.card_type.toLowerCase();
+                                                        if (detectedType === 'credit' || detectedType === 'debit') {{
+                                                            cardTypeInput.value = detectedType;
+                                                            document.getElementById('card_type_hidden').value = detectedType;
+                                                            
+                                                            if (detectedType === 'credit') {{
+                                                                cardTypeDisplay.textContent = '💳 Tarjeta de Crédito';
+                                                                cardTypeIcon.className = 'fa fa-credit-card me-2';
+                                                                cardTypeIcon.style.color = '#0c63e4';
+                                                            }} else {{
+                                                                cardTypeDisplay.textContent = '🏦 Tarjeta de Débito';
+                                                                cardTypeIcon.className = 'fa fa-university me-2';
+                                                                cardTypeIcon.style.color = '#28a745';
+                                                            }}
+                                                            
+                                                            // Si ya hay una tarifa seleccionada, recalcular el depósito
+                                                            const selectedPrice = document.getElementById('selected_price');
+                                                            if (selectedPrice && selectedPrice.value) {{
+                                                                updateDepositDisplay();
+                                                            }}
+                                                        }}
+                                                    }} else {{
+                                                        cardTypeDisplay.textContent = '❌ ' + (data.error || 'Error');
+                                                        cardTypeIcon.className = 'fa fa-times-circle me-2';
+                                                        cardTypeIcon.style.color = '#dc3545';
+                                                    }}
+                                                }})
+                                                .catch(error => {{
+                                                    cardTypeDisplay.textContent = '⚠️ Error';
+                                                    cardTypeIcon.className = 'fa fa-exclamation-triangle me-2';
+                                                    cardTypeIcon.style.color = '#dc3545';
+                                                }});
+                                        }}
+                                    }}, 2000);
+                                }} else {{
+                                    cardTypeDisplay.textContent = 'Ingresa el número de tarjeta';
+                                    cardTypeIcon.className = 'fa fa-credit-card me-2';
+                                    cardTypeIcon.style.color = '#0c63e4';
+                                    lastBinValidated = null;
+                                }}
+                            }});
+                        }}
+
+                        // Ejecutar cuando el DOM esté listo
+                        if (document.readyState === 'loading') {{
+                            document.addEventListener('DOMContentLoaded', initCardValidation);
+                        }} else {{
+                            initCardValidation();
+                        }}
+
+                        // Función para actualizar el depósito dinámico
+                        function updateDepositDisplay() {{
+                            const cardTypeInput = document.getElementById('card_type');
+                            const depositDisplay = document.getElementById('deposit_display');
+                            const totalDisplay = document.getElementById('total_display');
+                            const selectedPrice = document.getElementById('selected_price');
+                            const categoryIdInput = document.querySelector('input[name="category_id"]');
+                            const minDurationDaysInput = document.getElementById('min_duration_days');
+                            
+                            const cardType = cardTypeInput ? cardTypeInput.value : '';
+                            const pricePerDay = parseFloat(selectedPrice ? selectedPrice.value : 0);
+                            const minDays = parseInt(minDurationDaysInput ? minDurationDaysInput.value : 1);
+                            const categoryId = categoryIdInput ? parseInt(categoryIdInput.value) : 0;
+                            
+                            // IMPORTANTE: Calcular el total multiplying price × minimum days
+                            const totalRentalPrice = pricePerDay * minDays;
+                            
+                            console.log('[DEBUG updateDepositDisplay] cardType=' + cardType + ', pricePerDay=' + pricePerDay + ', minDays=' + minDays + ', totalRentalPrice=' + totalRentalPrice + ', categoryId=' + categoryId);
+                            
+                            if (!depositDisplay || !totalDisplay) {{
+                                return;
+                            }}
+                            
+                            // Si no hay tipo de tarjeta, no calcular depósito
+                            if (!cardType) {{
+                                console.log('[DEBUG] Sin cardType - no se calcula depósito');
+                                depositDisplay.textContent = 'Primero debes validar el tipo de tarjeta';
+                                totalDisplay.textContent = 'EUR 0.00';
+                                return;
+                            }}
+                            
+                            // Si no hay precio seleccionado
+                            if (totalRentalPrice <= 0) {{
+                                console.log('[DEBUG] totalRentalPrice <= 0');
+                                depositDisplay.textContent = 'Selecciona una tarifa para calcular el depósito';
+                                totalDisplay.textContent = 'EUR 0.00';
+                                return;
+                            }}
+                            
+                            // Validar que categoryId sea válido
+                            if (!categoryId) {{
+                                console.warn('[DEBUG] categoryId es 0 - NO se calculará depósito');
+                                depositDisplay.innerHTML = '<div style="font-size: 14px; color: #999;">Selecciona una categoría</div>';
+                                return;
+                            }}
+                            
+                            // Mostrar estado "calculando..."
+                            depositDisplay.innerHTML = '<div style="font-size: 14px;"><i class="fa fa-spinner fa-spin me-2"></i>Calculando depósito...</div>';
+                            
+                            console.log('[DEBUG] Enviando solicitud con: category_id=' + categoryId + ', card_type=' + cardType + ', total_price=' + totalRentalPrice);
+                            
+                            // Llamar al endpoint para calcular depósito - ENVIANDO EL TOTAL (no solo el precio por día)
+                            fetch('/rental/calculate-deposit', {{
+                                method: 'POST',
+                                headers: {{'Content-Type': 'application/json'}},
+                                body: JSON.stringify({{
+                                    category_id: categoryId,
+                                    card_type: cardType,
+                                    total_price: totalRentalPrice
+                                }})
+                            }})
+                                .then(response => {{
+                                    console.log('[DEBUG] Response status=' + response.status);
+                                    if (!response.ok) {{
+                                        throw new Error('HTTP ' + response.status);
+                                    }}
+                                    return response.json();
+                                }})
+                                .then(data => {{
+                                    console.log('[DEBUG] Response data=' + JSON.stringify(data));
+                                    if (data.success) {{
+                                        const depositAmount = data.deposit_amount || 0;
+                                        const totalWithDeposit = data.total_with_deposit || 0;
+                                        let typeLabel = cardType === 'credit' ? 'Crédito' : 'Débito';
+                                        
+                                        depositDisplay.innerHTML = '<div style="font-size: 14px;"><div><i class="fa fa-money me-2"></i><strong>Tipo:</strong> ' + typeLabel + '</div><div class="mt-2"><i class="fa fa-shield me-2"></i><strong>Monto:</strong> ' + depositAmount.toFixed(2) + ' EUR</div></div>';
+                                        totalDisplay.innerHTML = '<strong style="color: #e67e22; font-size: 20px;">' + totalWithDeposit.toFixed(2) + ' EUR</strong><br><small style="color: #999;">' + totalRentalPrice.toFixed(2) + ' EUR (alquiler ' + minDays + ' día' + (minDays > 1 ? 's' : '') + ') + ' + depositAmount.toFixed(2) + ' EUR (depósito)</small>';
+                                    }} else {{
+                                        console.error('[ERROR] Error del servidor: ' + data.error);
+                                        depositDisplay.innerHTML = '<div style="font-size: 14px; color: #dc3545;"><i class="fa fa-exclamation-triangle me-2"></i>' + (data.error || 'Error desconocido') + '</div>';
+                                        totalDisplay.textContent = 'Error';
+                                    }}
+                                }})
+                                .catch(error => {{
+                                    console.error('[ERROR CRÍTICO] ' + error.message);
+                                    depositDisplay.innerHTML = '<div style="font-size: 14px; color: #dc3545;"><i class="fa fa-exclamation-triangle me-2"></i>Error: ' + error.message + '</div>';
+                                    totalDisplay.textContent = 'Error';
+                                }});
+                        }}
+
                         // Función para actualizar las opciones de kilometraje según la duración
                         function updateKmOptions() {{
-                            const duration = document.getElementById('duration_select').value;
+
+                            // Obtener duración del select
+                            const durationSelect = document.getElementById('duration_select');
                             const kmSelect = document.getElementById('km_select');
+                            const duration = durationSelect ? durationSelect.value : '';
 
                             if (!duration) {{
                                 kmSelect.disabled = true;
@@ -1421,13 +1653,16 @@ class WebsiteContractBookingFixed(http.Controller):
                             kmSelect.innerHTML = '<option value="">Cargando opciones...</option>';
 
                             // Obtener opciones válidas de kilometraje
-                            const formData = new FormData();
-                            formData.append('category_id', {category_id});
-                            formData.append('duration', duration);
+                            const categoryIdInput = document.querySelector('input[name="category_id"]');
+                            const categoryId = categoryIdInput ? parseInt(categoryIdInput.value) : 0;
 
                             fetch('/web/get-valid-km-options', {{
                                 method: 'POST',
-                                body: formData
+                                headers: {{'Content-Type': 'application/json'}},
+                                body: JSON.stringify({{
+                                    category_id: categoryId,
+                                    duration: duration
+                                }})
                             }})
                             .then(response => response.json())
                             .then(data => {{
@@ -1457,7 +1692,7 @@ class WebsiteContractBookingFixed(http.Controller):
                         }}
 
                         // Función para seleccionar ofertas fijas
-                        function selectFixedOffer(duration, km, price) {{
+                        function selectFixedOffer(duration, km, price, event) {{
                             // Desmarcar todos los radio buttons
                             const radioButtons = document.querySelectorAll('input[name="fixed_offer"]');
                             radioButtons.forEach(radio => {{
@@ -1477,10 +1712,12 @@ class WebsiteContractBookingFixed(http.Controller):
                                 card.style.borderWidth = '';
                             }});
 
-                            // Resaltar la tarjeta seleccionada
-                            const selectedCard = event.currentTarget;
-                            selectedCard.style.borderColor = '{primary_color}';
-                            selectedCard.style.borderWidth = '3px';
+                            // Resaltar la tarjeta seleccionada - encontrar el div padre (offer-card)
+                            const selectedCard = event.target.closest('.offer-card');
+                            if (selectedCard) {{
+                                selectedCard.style.borderColor = '{primary_color}';
+                                selectedCard.style.borderWidth = '3px';
+                            }}
 
                             console.log(`Oferta fija seleccionada: ${{duration}} - ${{km}} - €${{price}}`);
 
@@ -1493,6 +1730,8 @@ class WebsiteContractBookingFixed(http.Controller):
                             document.getElementById('selected_pricing_type').value = 'fixed';
                             document.getElementById('selected_duration').value = duration;
                             document.getElementById('selected_km').value = km;
+                            // IMPORTANTE: El precio almacenado es por día, pero para el depósito necesitamos el total
+                            // Por ahora, almacenamos el precio unitario. El total se calcula en updateDepositDisplay()
                             document.getElementById('selected_price').value = price;
                             document.getElementById('min_duration_days').value = minDays;
                             document.getElementById('max_duration_days').value = maxDays || '';
@@ -1502,6 +1741,12 @@ class WebsiteContractBookingFixed(http.Controller):
 
                             // Actualizar fecha de fin si ya hay fecha de inicio
                             updateEndDate();
+                            
+                            // Calcular y mostrar depósito SOLO si hay tarjeta validada
+                            const cardTypeValue = document.getElementById('card_type')?.value;
+                            if (cardTypeValue) {{
+                                updateDepositDisplay();
+                            }}
 
                             // Validar formulario
                             validateForm();
@@ -1564,6 +1809,12 @@ class WebsiteContractBookingFixed(http.Controller):
 
                                     // Actualizar fecha de fin si ya hay fecha de inicio
                                     updateEndDate();
+                                    
+                                    // Calcular y mostrar depósito SOLO si hay tarjeta validada
+                                    const cardTypeValue = document.getElementById('card_type')?.value;
+                                    if (cardTypeValue) {{
+                                        updateDepositDisplay();
+                                    }}
 
                                     // Validar formulario
                                     validateForm();
@@ -1581,23 +1832,17 @@ class WebsiteContractBookingFixed(http.Controller):
                             }});
                         }}
 
-                        // Interceptar envío del formulario para validar selección de tarifa y vehículo
+                        // Interceptar envío del formulario para validar selección de tarifa
+                        // NOTA: No validamos vehicle_id porque se asigna automáticamente al crear el contrato
                         document.addEventListener('DOMContentLoaded', function() {{
                             const form = document.getElementById('booking_form');
                             if (form) {{
                                 form.addEventListener('submit', function(e) {{
                                     const pricingType = document.getElementById('selected_pricing_type').value;
-                                    const vehicleId = document.getElementById('selected_vehicle_id').value;
 
                                     if (!pricingType) {{
                                         e.preventDefault();
                                         alert('Por favor, selecciona una tarifa (Ofertas Fijas o Tarifas Dinámicas)');
-                                        return false;
-                                    }}
-
-                                    if (!vehicleId) {{
-                                        e.preventDefault();
-                                        alert('Por favor, selecciona un vehículo disponible');
                                         return false;
                                     }}
                                 }});
@@ -1607,7 +1852,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             validateForm();
 
                             // Añadir listeners para validación en tiempo real
-                            const inputs = ['customer_name', 'customer_email', 'customer_phone', 'customer_dni', 'customer_dni_expiry_date', 'start_date', 'end_date', 'start_time', 'end_time'];
+                            const inputs = ['customer_name', 'customer_email', 'customer_phone', 'customer_dni', 'customer_dni_expiry_date', 'card_number', 'start_date', 'end_date', 'start_time', 'end_time'];
                             inputs.forEach(inputId => {{
                                 const input = document.getElementById(inputId);
                                 if (input) {{
@@ -1626,10 +1871,19 @@ class WebsiteContractBookingFixed(http.Controller):
                             const customerPhone = document.getElementById('customer_phone').value;
                             const customerDni = document.getElementById('customer_dni').value;
                             const customerDniExpiry = document.getElementById('customer_dni_expiry_date').value;
+                            const cardType = document.getElementById('card_type').value;
+                            const cardNumber = document.getElementById('card_number').value;
+                            const cardBin = document.getElementById('card_bin').value;
                             const startDate = document.getElementById('start_date').value;
                             const endDate = document.getElementById('end_date').value;
                             const startTime = document.getElementById('start_time').value;
                             const endTime = document.getElementById('end_time').value;
+
+                            // Sincronizar valores de tarjeta a hidden inputs
+                            document.getElementById('card_type_hidden').value = cardType;
+                            if (cardBin) {{
+                                document.getElementById('card_bin_hidden').value = cardBin;
+                            }}
 
                             const submitBtn = document.getElementById('submit_btn');
                             const requirements = document.getElementById('submit_requirements');
@@ -1660,11 +1914,14 @@ class WebsiteContractBookingFixed(http.Controller):
                                 }}
                             }}
 
-                            // Verificar si todos los campos están completos
-                            const allFieldsComplete = customerName && customerEmail && customerPhone && customerDni && customerDniExpiry && startDate && endDate && startTime && endTime && dniValid;
+                            // Validar que la tarjeta esté completa (tipo + número con al menos 6 dígitos)
+                            const cardValid = cardType && cardNumber && cardBin.length >= 6;
 
-                            if (allFieldsComplete && pricingType && !vehicleId) {{
-                                // Cargar vehículos disponibles
+                            // Verificar si todos los campos están completos
+                            const allFieldsComplete = customerName && customerEmail && customerPhone && customerDni && customerDniExpiry && cardValid && startDate && endDate && startTime && endTime && dniValid;
+
+                            if (allFieldsComplete && pricingType) {{
+                                // Cargar disponibilidad de categoría (CAMBIO: sin seleccionar vehículo específico)
                                 loadAvailableVehicles();
                             }}
 
@@ -1674,8 +1931,8 @@ class WebsiteContractBookingFixed(http.Controller):
                                 durationValid = validateDateRange();
                             }}
 
-                            // Habilitar botón solo si todo está completo y la duración es válida
-                            if (allFieldsComplete && pricingType && vehicleId && durationValid && dniValid) {{
+                            // Habilitar botón solo si todo está completo y la duración es válida (SIN requerer vehículo específico)
+                            if (allFieldsComplete && pricingType && durationValid && dniValid) {{
                                 submitBtn.disabled = false;
                                 submitBtn.style.opacity = '1';
                                 requirements.innerHTML = '<small class="text-success"><i class="fa fa-check me-1"></i>Todo listo para continuar</small>';
@@ -1684,7 +1941,6 @@ class WebsiteContractBookingFixed(http.Controller):
                                 submitBtn.style.opacity = '0.6';
                                 let message = 'Complete todos los datos';
                                 if (allFieldsComplete && !pricingType) message += ', seleccione una tarifa';
-                                if (allFieldsComplete && pricingType && !vehicleId) message += ', seleccione un vehículo';
                                 if (!durationValid) message += ', ajuste la duración de fechas';
                                 if (!dniValid) message += ', DNI expirado';
                                 requirements.innerHTML = `<small class="text-muted"><i class="fa fa-info-circle me-1"></i>${{message}}</small>`;
@@ -1696,9 +1952,10 @@ class WebsiteContractBookingFixed(http.Controller):
                             const startDate = document.getElementById('start_date').value;
                             const location = document.getElementById('location_select') ? document.getElementById('location_select').value : '';
                             const endDate = document.getElementById('end_date').value;
-                            const categoryId = {category_id};
+                            const categoryId = document.getElementById('category_id') ? document.getElementById('category_id').value : document.querySelector('[name="category_id"]').value;
 
-                            if (!startDate || !endDate) return;
+                            // No esperar fechas para cargar disponibilidad - mostrar conteos sin importar fechas
+                            if (!location) return;  // Pero sí necesitamos ubicación
 
                             // Mostrar sección de vehículos
                             document.getElementById('available_vehicles_section').style.display = 'block';
@@ -1723,8 +1980,8 @@ class WebsiteContractBookingFixed(http.Controller):
                             .then(data => {{
                                 document.getElementById('vehicles_loading').style.display = 'none';
 
-                                if (data.success && data.vehicles.length > 0) {{
-                                    displayVehicles(data.vehicles);
+                                if (data.success) {{
+                                    displayVehicles(data);
                                 }} else {{
                                     document.getElementById('no_vehicles_message').style.display = 'block';
                                 }}
@@ -1736,65 +1993,37 @@ class WebsiteContractBookingFixed(http.Controller):
                             }});
                         }}
 
-                        // Función para mostrar vehículos
-                        function displayVehicles(vehicles) {{
+                        // Función para mostrar disponibilidad (SOLO DISPONIBLES)
+                        function displayVehicles(data) {{
                             const container = document.getElementById('vehicles_container');
                             container.innerHTML = '';
 
-                            vehicles.forEach(vehicle => {{
-                                // Usar categoría para determinar imagen
-                                const categoryName = vehicle.category_name || vehicle.name;
-                                // Extraer nombre sin matrícula (quitar la última parte)
-                                const nameParts = vehicle.name.split('/');
-                                const vehicleName = nameParts.length > 1 ? nameParts.slice(0, -1).join('/') : vehicle.name;
-
-                                // Detectar si es Pinveco o Sunset
-                                const currentDomain = window.location.hostname;
-                                const isPinveco = currentDomain.includes('pinveco');
-                                const imgDir = isPinveco ? '/vehicle_rental/static/description/img/tipos_pinveco' : '/vehicle_rental/static/description/img/tipos';
-
-                                // Extraer tipo de la categoría (Tipo B -> B)
-                                const typeMatch = categoryName.match(/Tipo\s+([A-Z])/);
-                                let brandImage = '/vehicle_rental/static/description/img/marcas/ford.svg'; // fallback
-
-                                if (typeMatch && typeMatch[1]) {{
-                                    const typeId = typeMatch[1]; // B, A, D, etc.
-                                    brandImage = `${{imgDir}}/tipo${{typeId}}.png`;
-                                }}
-
-                                const vehicleCard = document.createElement('div');
-                                vehicleCard.className = 'col-md-6 col-lg-4 mb-3';
-                                vehicleCard.innerHTML = `
-                                    <div class="card h-100 vehicle-card" style="cursor: pointer;" onclick="selectVehicle(${{vehicle.id}}, '${{vehicle.name}}', '${{vehicle.license_plate}}')">
-                                        <div class="card-body text-center">
-                                            <img src="${{brandImage}}" class="card-img-top mb-3" style="height: 120px; object-fit: contain;" alt="${{categoryName}}">
-                                            <h6 class="card-title">${{vehicleName}}</h6>
+                            // Crear UNA sola tarjeta mostrando SOLO los vehículos disponibles
+                            const availabilityCard = document.createElement('div');
+                            availabilityCard.className = 'col-md-8 col-lg-6 mx-auto mb-3';
+                            availabilityCard.innerHTML = `
+                                <div class="card h-100 text-center">
+                                    <div class="card-body">
+                                        <h5 class="card-title mb-4">✓ Disponibilidad de Vehículos</h5>
+                                        <div class="row mb-4">
+                                            <div class="col-12">
+                                                <strong class="display-3" style="color: #28a745;">${{data.available}}</strong>
+                                                <p class="text-muted" style="font-size: 1.2rem;">Vehículos Disponibles</p>
+                                            </div>
                                         </div>
+                                        <hr>
+                                        <p class="text-muted"><i class="fas fa-info-circle"></i> Se asignará un vehículo específico al firmar el contrato</p>
                                     </div>
-                                `;
-                                container.appendChild(vehicleCard);
-                            }});
+                                </div>
+                            `;
+                            container.appendChild(availabilityCard);
                         }}
 
-                        // Función para seleccionar vehículo
-                        function selectVehicle(vehicleId, vehicleName, licensePlate) {{
-                            // Desmarcar todos los vehículos
-                            document.querySelectorAll('.vehicle-card').forEach(card => {{
-                                card.style.borderColor = '';
-                                card.style.borderWidth = '';
-                            }});
-
-                            // Marcar el seleccionado
-                            event.currentTarget.style.borderColor = '{primary_color}';
-                            event.currentTarget.style.borderWidth = '3px';
-
-                            // Guardar selección
-                            document.getElementById('selected_vehicle_id').value = vehicleId;
-
-                            console.log(`Vehículo seleccionado: ${{vehicleName}} (${{licensePlate}}) - ID: ${{vehicleId}}`);
-
-                            // Validar formulario
-                            validateForm();
+                        // DEPRECATED: selectVehicle() ya no se usa (ahora se reserva por categoría, no por vehículo específico)
+                        // Mantener para compatibilidad con código legacy
+                        function selectVehicle(vehicleId, vehicleName, licensePlate, event) {{
+                            // Ya no hacer nada - el vehículo se asigna automáticamente al crear el contrato
+                            console.log('selectVehicle() deprecated - reservation by category model');
                         }}
 
                         // Función para calcular días mínimos basado en la duración de la tarifa
@@ -1877,6 +2106,7 @@ class WebsiteContractBookingFixed(http.Controller):
 
                         // Función para validar el rango de fechas
                         function validateDateRange(showAlerts = true) {{
+                            console.log('validateDateRange called with showAlerts:', showAlerts);
                             const startDate = document.getElementById('start_date').value;
                             const endDate = document.getElementById('end_date').value;
                             const minDays = parseInt(document.getElementById('min_duration_days').value);
@@ -1924,8 +2154,71 @@ class WebsiteContractBookingFixed(http.Controller):
                                     document.getElementById('end_date').value = newEnd.toISOString().split('T')[0];
                                     return false;
                                 }}
+                                
+                                // NUEVO: Recargar vehículos disponibles cuando las fechas son válidas
+                                if (showAlerts) {{
+                                    reloadAvailableVehicles(startDate, endDate);
+                                }}
                             }}
                             return true;
+                        }}
+                        
+                        // NUEVA FUNCIÓN: Recargar vehículos disponibles para fechas específicas
+                        function reloadAvailableVehicles(startDate, endDate) {{
+                            console.log('reloadAvailableVehicles called with:', startDate, endDate);
+                            const categoryId = document.getElementById('category_id') ? document.getElementById('category_id').value : document.querySelector('[name="category_id"]').value;
+                            const location = document.getElementById('location_select').value;
+                            const vehicleContainer = document.getElementById('vehicles_container');
+                            
+                            if (!categoryId || !startDate || !endDate) {{
+                                return;
+                            }}
+                            
+                            // Mostrar indicador de carga
+                            vehicleContainer.innerHTML = `
+                                <div class="text-center w-100 p-4">
+                                    <div class="spinner-border text-warning mb-3" role="status">
+                                        <span class="visually-hidden">Verificando disponibilidad...</span>
+                                    </div>
+                                    <p>Verificando vehículos disponibles para estas fechas...</p>
+                                </div>
+                            `;
+                            
+                            // Hacer llamada al endpoint con fechas
+                            const formData = new FormData();
+                            formData.append('category_id', categoryId);
+                            formData.append('location', location);
+                            formData.append('start_date', startDate);
+                            formData.append('end_date', endDate);
+                            
+                            fetch('/web/get-available-vehicles', {{
+                                method: 'POST',
+                                body: formData
+                            }})
+                            .then(response => response.json())
+                            .then(data => {{
+                                if (data.success && data.available > 0) {{
+                                    displayVehicles(data);
+                                }} else {{
+                                    vehicleContainer.innerHTML = `
+                                        <div class="alert alert-warning w-100">
+                                            <i class="fa fa-exclamation-circle"></i>
+                                            <strong>Sin vehículos disponibles</strong>
+                                            <p class="mb-0">No hay vehículos disponibles para las fechas seleccionadas (${{startDate}} a ${{endDate}}). Por favor, elige otras fechas.</p>
+                                        </div>
+                                    `;
+                                }}
+                            }})
+                            .catch(error => {{
+                                console.error('Error reloading vehicles:', error);
+                                vehicleContainer.innerHTML = `
+                                    <div class="alert alert-danger w-100">
+                                        <i class="fa fa-exclamation-triangle"></i>
+                                        <strong>Error al verificar disponibilidad</strong>
+                                        <p class="mb-0">Hubo un problema al verificar los vehículos. Intenta nuevamente.</p>
+                                    </div>
+                                `;
+                            }});
                         }}
 
                         // Función para verificar disponibilidad de vehículos en la ubicación seleccionada
@@ -1935,6 +2228,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             const bookingFormSection = document.getElementById('booking_form_section');
                             const noVehiclesMessage = document.getElementById('no_vehicles_location_message');
                             const bookingLocationInput = document.getElementById('booking_location');
+                            const categoryId = document.getElementById('category_id') ? document.getElementById('category_id').value : document.querySelector('[name="category_id"]').value;
 
                             // Ocultar formulario y mensaje inicialmente
                             bookingFormSection.style.display = 'none';
@@ -1951,7 +2245,7 @@ class WebsiteContractBookingFixed(http.Controller):
 
                             // Verificar disponibilidad llamando al endpoint
                             const formData = new FormData();
-                            formData.append('category_id', {category_id});
+                            formData.append('category_id', categoryId);
                             formData.append('location', location);
                             // No necesitamos fechas para verificar disponibilidad inicial
                             formData.append('start_date', '');
@@ -1976,7 +2270,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             .then(data => {{
                                 console.log('Location availability check:', data);
 
-                                if (data.success && data.count > 0) {{
+                                if (data.success && data.available > 0) {{
                                     // Hay vehículos disponibles - mostrar formulario
                                     bookingFormSection.style.display = 'block';
                                     noVehiclesMessage.style.display = 'none';
@@ -2235,8 +2529,16 @@ class WebsiteContractBookingFixed(http.Controller):
         try:
             import json
 
-            category_id = kw.get('category_id')
-            duration = kw.get('duration')
+            # Soportar tanto JSON como FormData
+            try:
+                # Intentar parsear como JSON
+                body_data = json.loads(request.httprequest.data.decode('utf-8'))
+                category_id = body_data.get('category_id')
+                duration = body_data.get('duration')
+            except:
+                # Fallback a form data
+                category_id = kw.get('category_id')
+                duration = kw.get('duration')
 
             print(f"DEBUG: Getting valid km options for category {category_id}, duration {duration}")
 
@@ -2278,11 +2580,14 @@ class WebsiteContractBookingFixed(http.Controller):
 
     @http.route('/web/get-available-vehicles', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def get_available_vehicles(self, **kw):
-        """Get available vehicles for a category and date range"""
+        """Get availability counts for a category and date range (NOT individual vehicles)"""
         try:
             import json
+            from datetime import datetime
+            import logging
+            _logger = logging.getLogger(__name__)
 
-            category_id = kw.get('category_id')
+            category_id = int(kw.get('category_id', 0))
             start_date = kw.get('start_date')
             end_date = kw.get('end_date')
             location = kw.get('location', '').strip()
@@ -2292,28 +2597,21 @@ class WebsiteContractBookingFixed(http.Controller):
             is_pinveco = 'pinveco' in current_domain.lower()
             company_id = 2 if is_pinveco else 1  # Pinveco=2, Sunset=1
 
-            print(f"DEBUG: Getting available vehicles for category {category_id}, dates {start_date} - {end_date}, location: {location}, company: {company_id}")
+            # Log de parámetros recibidos
+            _logger.warning(f"GET_AVAILABLE_VEHICLES: category_id={category_id}, start_date={start_date}, end_date={end_date}, location='{location}', company_id={company_id}")
 
-            # Buscar vehículos disponibles de la categoría
-            print(f"DEBUG: Searching vehicles with category_id={category_id}, company_id={company_id}")
-
-            # Construir dominio de búsqueda
-            # Buscar por category_id directamente en el vehículo O por model_id.category_id
-            # Y filtrar por compañía y estado
-            domain = [
+            # 1. TOTAL: Buscar todos los vehículos en la categoría con status='available'
+            total_domain = [
                 '|',
-                ('category_id', '=', int(category_id)),
-                ('model_id.category_id', '=', int(category_id)),
+                ('category_id', '=', category_id),
+                ('model_id.category_id', '=', category_id),
                 ('company_id', '=', company_id),
                 ('status', '=', 'available')
             ]
-
-            # Nota: En Odoo, el dominio se interpreta como:
-            # (category_id = X OR model_id.category_id = X) AND company_id = Y AND status = 'available'
-
-            # Filtrar por ubicación si se proporciona y no es "Todas las ubicaciones"
+            
+            _logger.warning(f"GET_AVAILABLE_VEHICLES: Dominio ANTES de location: {total_domain}")
+            
             if location and location != 'Todas las ubicaciones':
-                # Buscar vehículos con la ubicación exacta o variaciones (Málaga/Malaga, Córdoba/Cordoba)
                 location_variations = [location]
                 if location == 'Málaga':
                     location_variations.append('Malaga')
@@ -2323,49 +2621,82 @@ class WebsiteContractBookingFixed(http.Controller):
                     location_variations.append('Cordoba')
                 elif location == 'Cordoba':
                     location_variations.append('Córdoba')
+                _logger.warning(f"GET_AVAILABLE_VEHICLES: Location variations: {location_variations}")
+                total_domain.append(('location', 'in', location_variations))
+            else:
+                _logger.warning(f"GET_AVAILABLE_VEHICLES: NO location filter (empty or 'Todas')")
 
-                domain.append(('location', 'in', location_variations))
-                print(f"DEBUG: Filtering by location: {location_variations}")
+            _logger.warning(f"GET_AVAILABLE_VEHICLES: Dominio FINAL: {total_domain}")
+            
+            total_vehicles = request.env['fleet.vehicle'].sudo().search(total_domain)
+            total_count = len(total_vehicles)
+            
+            _logger.warning(f"GET_AVAILABLE_VEHICLES: Resultados TOTAL: {total_count} vehicles")
+            for v in total_vehicles:
+                _logger.warning(f"GET_AVAILABLE_VEHICLES:   - ID: {v.id}, Name: {v.name}, Location: {v.location}")
 
-            # Primero buscar TODOS los vehículos de la categoría (sin filtro de status) para debug
-            all_vehicles = request.env['fleet.vehicle'].sudo().search([
-                '|',
-                ('category_id', '=', int(category_id)),
-                ('model_id.category_id', '=', int(category_id)),
-                ('company_id', '=', company_id)
-            ])
-            print(f"DEBUG: Found {len(all_vehicles)} total vehicles for category {category_id}")
-            for v in all_vehicles:
-                v_location = getattr(v, 'location', 'N/A')
-                print(f"DEBUG:   - Vehicle ID={v.id}, Name={v.name}, Plate={v.license_plate}, Status={v.status if hasattr(v, 'status') else 'N/A'}, Location={v_location}")
+            # 2. OCCUPIED: Vehículos con contratos activos que se solapan con fechas
+            occupied_vehicles = set()
+            if start_date and end_date:
+                try:
+                    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+                    
+                    # Buscar contratos activos que se solapan
+                    overlapping_contracts = request.env['vehicle.contract'].sudo().search([
+                        ('status', 'in', ['b_in_progress', 'c_return']),
+                        ('start_date', '<=', end_dt),
+                        ('end_date', '>=', start_dt),
+                    ])
+                    
+                    # Recopilar IDs únicos de vehículos ocupados
+                    for contract in overlapping_contracts:
+                        if contract.vehicle_id:
+                            occupied_vehicles.add(contract.vehicle_id.id)
+                    
+                    print(f"DEBUG: OCCUPIED vehicles: {len(occupied_vehicles)}")
+                except Exception as e:
+                    print(f"DEBUG: Error calculating occupied: {e}")
 
-            # Ahora buscar solo los disponibles con el filtro de ubicación
-            vehicles = request.env['fleet.vehicle'].sudo().search(domain)
-            print(f"DEBUG: Found {len(vehicles)} available vehicles matching criteria")
+            # 3. RESERVED: Leads sin vehículo asignado, con type='opportunity', en esas fechas
+            reserved_leads = set()
+            if start_date and end_date:
+                try:
+                    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+                    
+                    # Buscar leads con vehicle_id=False, type='opportunity', categoría y fechas
+                    reserved = request.env['crm.lead'].sudo().search([
+                        ('selected_category_id', '=', category_id),
+                        ('vehicle_id', '=', False),
+                        ('type', '=', 'opportunity'),
+                        ('start_date', '<=', end_dt),
+                        ('end_date', '>=', start_dt),
+                        ('company_id', '=', company_id),
+                    ])
+                    
+                    # Recopilar IDs únicos de leads (aunque sean del mismo cliente)
+                    for lead in reserved:
+                        reserved_leads.add(lead.id)
+                    
+                    print(f"DEBUG: RESERVED leads: {len(reserved_leads)}")
+                except Exception as e:
+                    print(f"DEBUG: Error calculating reserved: {e}")
 
-            vehicles_data = []
-            for vehicle in vehicles:
-                # Obtener categoría
-                category_id = vehicle.category_id.id if vehicle.category_id else (vehicle.model_id.category_id.id if vehicle.model_id and vehicle.model_id.category_id else None)
-                category_name = vehicle.category_id.name if vehicle.category_id else (vehicle.model_id.category_id.name if vehicle.model_id and vehicle.model_id.category_id else 'Sin categoría')
+            # 4. AVAILABLE = TOTAL - OCCUPIED - RESERVED
+            occupied_count = len(occupied_vehicles)
+            reserved_count = len(reserved_leads)
+            available_count = max(0, total_count - occupied_count - reserved_count)
 
-                vehicles_data.append({
-                    'id': vehicle.id,
-                    'name': vehicle.name,
-                    'license_plate': vehicle.license_plate,
-                    'model_name': vehicle.model_id.name if vehicle.model_id else 'Sin modelo',
-                    'seats': vehicle.seats,
-                    'fuel_type': vehicle.fuel_type,
-                    'transmission': vehicle.transmission,
-                    'category_id': category_id,
-                    'category_name': category_name,
-                    'image': f'/web/image/fleet.vehicle/{vehicle.id}/image_128' if hasattr(vehicle, 'image_128') else self._get_image_path('default')
-                })
+            print(f"DEBUG: AVAILABILITY SUMMARY - Total: {total_count}, Occupied: {occupied_count}, Reserved: {reserved_count}, Available: {available_count}")
 
             result = {
                 'success': True,
-                'vehicles': vehicles_data,
-                'count': len(vehicles_data)
+                'total': total_count,
+                'occupied': occupied_count,
+                'reserved': reserved_count,
+                'available': available_count,
+                'message': f'Disponibles: {available_count} vehículos' if available_count > 0 else 'No hay vehículos disponibles'
             }
 
             response = request.make_response(
@@ -2375,7 +2706,9 @@ class WebsiteContractBookingFixed(http.Controller):
             return response
 
         except Exception as e:
-            print(f"DEBUG: Error getting available vehicles: {e}")
+            print(f"DEBUG: Error getting availability: {e}")
+            import traceback
+            traceback.print_exc()
             result = {
                 'success': False,
                 'message': f'Error: {str(e)}'
@@ -2528,27 +2861,14 @@ class WebsiteContractBookingFixed(http.Controller):
 
             print(f"DEBUG: Test DIRECT SQL for {customer_name}")
 
-            # Usar SQL directo para insertar
-            import psycopg2
-            from odoo import sql_db
-
-            # Obtener conexión directa
-            db = sql_db.db_connect('odoo-dev')
-            with db.cursor() as cr:
-                cr.execute("""
-                    INSERT INTO crm_lead (name, contact_name, email_from, type, create_date, write_date, create_uid, write_uid)
-                    VALUES (%s, %s, %s, %s, NOW(), NOW(), 1, 1)
-                    RETURNING id
-                """, (f'Test DIRECT SQL - {customer_name}', customer_name, customer_email, 'lead'))
-
-                lead_id = cr.fetchone()[0]
-                print(f"DEBUG: Test DIRECT SQL creado con ID {lead_id}")
-
-                # Commit directo
-                cr.commit()
-                print(f"DEBUG: Test DIRECT SQL commit exitoso")
-
-                return f"Test DIRECT SQL creado con ID: {lead_id}"
+            # [DISABLED] Usar SQL directo para insertar - CAUSABA MEMORY LEAK
+            # Código comentado para evitar conexiones no cerradas a PostgreSQL
+            # import psycopg2
+            # from odoo import sql_db
+            # db = sql_db.db_connect('odoo-dev')
+            # with db.cursor() as cr: ...
+            # [END DISABLED BLOCK]
+            return "Test DIRECT SQL DISABLED - Memory leak fix"
 
         except Exception as e:
             print(f"DEBUG: Error en test DIRECT SQL: {e}")
@@ -2764,7 +3084,7 @@ class WebsiteContractBookingFixed(http.Controller):
     #         payment_tx = request.env['payment.transaction'].sudo().create({
     #             'provider_id': providers.id,
     #             'payment_method_id': payment_methods.id,
-    #             'amount': selected_price,
+    #             'amount': total_price,
     #             'currency_id': request.env.company.currency_id.id,
     #             'partner_id': request.env.user.partner_id.id,
     #             'reference': order_number,
@@ -2791,207 +3111,6 @@ class WebsiteContractBookingFixed(http.Controller):
     @http.route('/rental/payment/test', auth='public', website=False, type='http', methods=['POST'], csrf=False)
     def test_rental_payment(self):
         return "TEST RENTAL PAYMENT OK"
-
-    @http.route('/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
-    def rental_payment(self, **kw):
-        """Create payment transaction for vehicle rental"""
-        import logging
-        import json
-        import base64
-        import hmac
-        import hashlib
-        from werkzeug.wrappers import Response
-        import time as time_mod
-        
-        _logger = logging.getLogger(__name__)
-        
-        try:
-            _logger.error(f"RENTAL_PAYMENT_INPUT: {kw}")
-            # Extraer parámetros
-            category_id = int(kw.get('category_id', 0))
-            selected_price_str = kw.get('selected_price', '').strip()
-            selected_price = float(selected_price_str) if selected_price_str else 0
-            
-            # Recalcular a 135 EUR si está vacío
-            if selected_price <= 0:
-                selected_price = 135.00
-            customer_email = kw.get('customer_email', '').strip()
-            customer_name = kw.get('customer_name', 'Guest').strip()
-            customer_phone = kw.get('customer_phone', '').strip()
-            
-            start_date = kw.get('start_date', '')
-            end_date = kw.get('end_date', '')
-            start_time = kw.get('start_time', '')
-            end_time = kw.get('end_time', '')
-            
-            # Validar campos requeridos
-            if not category_id or not customer_email:
-                return Response(
-                    json.dumps({"error": "Missing required fields"}),
-                    status=400,
-                    mimetype='application/json'
-                )
-            
-            # Guardar datos en sesión
-            request.session['booking_data'] = {
-                'category_id': category_id,
-                'selected_price': selected_price,
-                'customer_email': customer_email,
-                'customer_name': customer_name,
-                'customer_phone': customer_phone,
-                'start_date': start_date,
-                'end_date': end_date,
-                'start_time': start_time,
-                'end_time': end_time,
-            }
-            
-            # Obtener/crear partner
-            partner = request.env['res.partner'].sudo().search([('email', '=', customer_email)], limit=1)
-            if not partner:
-                partner = request.env['res.partner'].sudo().create({
-                    'name': customer_name,
-                    'email': customer_email,
-                    'phone': customer_phone,
-                    'customer_rank': 1,
-                })
-            else:
-                partner.sudo().write({
-                    'phone': customer_phone or partner.phone,
-                    'name': customer_name or partner.name,
-                })
-            
-            order_number = str(int(time_mod.time()))
-            
-            # Buscar provider Redsys
-            provider = request.env['payment.provider'].sudo().search([('code', '=', 'redsys')], limit=1)
-            if not provider:
-                provider = request.env['payment.provider'].sudo().search([], limit=1)
-            
-            if not provider:
-                return Response(
-                    json.dumps({"error": "No payment provider found"}),
-                    status=500,
-                    mimetype='application/json'
-                )
-            
-            # Buscar o crear payment.method
-            payment_method = request.env['payment.method'].sudo().search([
-                ('provider_ids', 'in', [provider.id]),
-                ('name', '=', 'Credit Card')
-            ], limit=1)
-            
-            if not payment_method:
-                payment_method = request.env['payment.method'].sudo().create({
-                    'name': 'Credit Card',
-                    'code': 'card',
-                    'provider_ids': [(4, provider.id)],
-                })
-            
-            # Crear payment.transaction
-            tx = request.env['payment.transaction'].sudo().create({
-                'provider_id': provider.id,
-                'payment_method_id': payment_method.id,
-                'amount': selected_price,
-                'currency_id': request.env.company.currency_id.id,
-                'partner_id': partner.id,
-                'reference': order_number,
-            })
-            
-            _logger.info(f"Created payment.transaction: {tx.id}")
-
-            # ⭐ CORRECCIÓN OPCIÓN 3: Limpiar referencia de transacción
-            # Odoo calcula tx.reference con prefijo ORD, pero Redsys requiere solo 12 dígitos numéricos
-            clean_reference = order_number.zfill(12)  # "001767976393"
-            tx.sudo().write({'reference': clean_reference})
-            _logger.info(f"Fixed payment.transaction reference to: {clean_reference}")
-            
-            # Generar formulario Redsys usando HMAC-SHA256_V1
-            merchant_code = '369056973'
-            terminal = '1'
-            secret_key = 'sq7HjrUOBfKmC576ILgskD5srU870gJ7'
-            
-            amount_cents = int(tx.amount * 100)  # Usar importe de la transacción
-            currency = '978'  # EUR
-            
-            merchant_data = {
-                'Ds_Merchant_Amount': str(amount_cents),
-                'Ds_Merchant_Currency': str(currency),
-                'Ds_Merchant_Order': clean_reference,
-                'Ds_Merchant_MerchantCode': merchant_code,
-                'Ds_Merchant_Terminal': terminal,
-                'Ds_Merchant_TransactionType': '0',
-                'Ds_Merchant_MerchantURL': f'https://sunsetrent.es/payment/webhook/{tx.id}',
-                'Ds_Merchant_UrlOK': f'https://sunsetrent.es/rental/success',
-                'Ds_Merchant_UrlKO': f'https://sunsetrent.es/rental/error',
-            }
-            
-            # Codificar merchant_data en base64
-            merchant_json = json.dumps(merchant_data, separators=(",", ":"))
-            merchant_params = base64.b64encode(merchant_json.encode()).decode()
-            
-
-
-            # Generar firma HMAC-SHA256 (especificación Redsys)
-            # La clave secreta se decodifica desde base64
-            # Firma = Base64(HMAC-SHA256(merchant_params_b64, base64_decode(secret_key)))
-            try:
-                # Derivar clave usando 3DES-CBC según especificación Redsys
-                derived_key = self._derive_key_3des_cbc(secret_key, clean_reference)
-                
-                # Calcular HMAC-SHA256 con la clave derivada
-                signature = hmac.new(
-                    derived_key,
-                    merchant_params.encode(),
-                    hashlib.sha256
-                ).digest()
-                signature_b64 = base64.b64encode(signature).decode()
-                _logger.info(f"Signature generated (3DES-CBC): {signature_b64[:20]}...")
-            except Exception as e:
-                _logger.error(f"Error generating signature: {e}", exc_info=True)
-                signature_b64 = ''
-
-            
-            # Generar formulario HTML para Redsys
-            redsys_url = 'https://sis-t.redsys.es:25443/sis/realizarPago'
-            
-            from html import escape
-            html_form = f'''<!DOCTYPE html>
-<html>
-            # DEBUG: Loguear los parámetros exactos que se envían
-            _logger.warning(f"DEBUG_REDSYS_PARAMS: MerchantCode={merchant_code}, Terminal={terminal}, Order={clean_reference}, Amount={amount_cents}")
-            _logger.warning(f"DEBUG_MERCHANT_JSON: {merchant_json}")
-            _logger.warning(f"DEBUG_MERCHANT_PARAMS_B64: {merchant_params[:100]}...")
-            _logger.warning(f"DEBUG_SIGNATURE: {signature_b64[:50]}...")
-<head>
-    <title>Procesando pago...</title>
-</head>
-<body onload="document.redsysForm.submit();">
-    <form name="redsysForm" action="{redsys_url}" method="POST">
-        <input type="hidden" name="Ds_SignatureVersion" value="HMAC_SHA256_V1"/>
-        <input type="hidden" name="Ds_MerchantParameters" value="{merchant_params}"/>
-        <input type="hidden" name="Ds_Signature" value="{signature_b64}"/>
-        <noscript>
-            <p>Por favor haz clic en el botón para continuar:</p>
-            <input type="submit" value="Continuar"/>
-        </noscript>
-    </form>
-</body>
-</html>'''
-            
-            _logger.warning(f'REDSYS_FORM_HTML: {html_form}')
-            _logger.warning(f'REDSYS_PARAMS: merchant_params={merchant_params}')
-            _logger.warning(f'REDSYS_SIG: signature_b64={signature_b64}')
-            # Devolver HTML como página completa
-            return html_form
-            
-        except Exception as e:
-            _logger.error(f"RENTAL PAYMENT ERROR: {str(e)}", exc_info=True)
-            return Response(
-                json.dumps({"error": str(e)}),
-                status=500,
-                mimetype='application/json'
-            )
-
 
     @http.route('/rental/payment-test', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def rental_payment_test(self, **kw):
@@ -3040,7 +3159,7 @@ class WebsiteContractBookingFixed(http.Controller):
             'Ds_Merchant_MerchantCode': merchant_code,
             'Ds_Merchant_Terminal': terminal,
             'Ds_Merchant_TransactionType': '0',
-            'Ds_Merchant_MerchantURL': f'https://sunsetrent.es/payment/webhook/{tx_id}',
+            'Ds_Merchant_MerchantURL': f'https://sunsetrent.es/payment/redsys/webhook',
             'Ds_Merchant_UrlOK': f'https://sunsetrent.es/rental/success',
             'Ds_Merchant_UrlKO': f'https://sunsetrent.es/rental/error',
         }
@@ -3106,6 +3225,48 @@ class WebsiteContractBookingFixed(http.Controller):
     @http.route('/rental/success', auth='public', website=True, type='http', methods=['GET', 'POST'], csrf=False)
     def rental_payment_success(self, **kw):
         """Payment success page after Redsys redirect"""
+        import logging
+        _logger = logging.getLogger(__name__)
+        
+        try:
+            _logger.warning(f"RENTAL_PAYMENT SUCCESS: Endpoint llamado con parámetros: {kw}")
+            
+            # Buscar la transacción de pago más reciente SIN booking creado
+            payment_tx = request.env['payment.transaction'].sudo().search([
+                ('provider_code', '=', 'redsys'),
+                ('booking_created', '=', False),
+            ], limit=1, order='create_date desc')
+            
+            _logger.warning(f"RENTAL_PAYMENT SUCCESS: Payment TX encontrada: {payment_tx}")
+            
+            if payment_tx:
+                _logger.info(f"RENTAL_PAYMENT SUCCESS: Transacción encontrada TX:{payment_tx.id}")
+                
+                # Marcar como done si aún no lo está
+                if payment_tx.state != 'done':
+                    payment_tx.write({'state': 'done'})
+                    _logger.info(f"RENTAL_PAYMENT SUCCESS: Transacción marcada como done TX:{payment_tx.id}")
+                
+                # Obtener booking_data
+                booking_data = request.session.get('booking_data')
+                _logger.info(f"RENTAL_PAYMENT SUCCESS: Booking data: {booking_data}")
+                
+                # Llamar directamente a _create_lead_from_payment sin pasar por _apply_updates
+                try:
+                    if booking_data:
+                        payment_tx._create_lead_from_payment(booking_data)
+                        payment_tx.booking_created = True
+                        _logger.info(f"RENTAL_PAYMENT SUCCESS: Lead creado exitosamente TX:{payment_tx.id}")
+                    else:
+                        _logger.warning("RENTAL_PAYMENT SUCCESS: No hay booking_data para crear lead")
+                except Exception as e:
+                    _logger.error(f"RENTAL_PAYMENT SUCCESS: Error en _create_lead_from_payment: {str(e)}", exc_info=True)
+            else:
+                _logger.warning("RENTAL_PAYMENT SUCCESS: No se encontró transacción de pago")
+                
+        except Exception as e:
+            _logger.error(f"ERROR en rental_payment_success: {str(e)}", exc_info=True)
+        
         return """
         <!DOCTYPE html>
         <html>

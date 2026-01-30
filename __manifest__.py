@@ -47,6 +47,7 @@
         'wizards/substitution_damage_painter_wizard_views.xml',
         'wizards/sale_order_to_vehicle_contract_views.xml',
         # Views
+        'views/vehicle_deposit_rule_views.xml',
         'views/assets.xml',
         'views/fleet_inherit_views.xml',
         'views/fleet_vehicle_model_views.xml',
@@ -106,7 +107,9 @@
         'views/templates/debug_fleet_page.xml',
         'views/redsys_payment_form.xml',
         'views/redsys_checkout.xml',
-        # Menus
+        # Access rules (después de que se carguen las vistas del deposito)
+        'data/vehicle_deposit_rule_access.xml',
+        # Menus (debe estar al final para que se carguen DESPUÉS de todas las vistas y actions)
         'views/menus.xml',
     ],
     'assets': {
@@ -133,6 +136,7 @@
         ],
         'web.assets_frontend': [
             'vehicle_rental/static/src/css/fleet_grid.css',
+            'vehicle_rental/static/src/js/card_validation.js',
         ],
     },
     'images': ['static/description/cover.gif'],

@@ -405,7 +405,27 @@ class VehicleContract(models.Model):
             if record.reference_no == _('New'):
                 record.reference_no = self.env['ir.sequence'].next_by_code('vehicle.contract') or _(
                     'New')
+            
+            # Actualizar ubicación del vehículo basado en drop_off_city
+            # Si se especifica una ubicación de devolución, el vehículo se reubica allí
+            # para que futuros alquileres se hagan desde la ubicación de destino
+            if record.drop_off_city and record.vehicle_id:
+                record.vehicle_id.location = record.drop_off_city
+        
         return records
+
+    def write(self, vals):
+        """Update vehicle location when drop_off_city is modified"""
+        result = super().write(vals)
+        
+        # Si se modifica drop_off_city, actualizar ubicación del vehículo
+        # Esto permite cambiar la ubicación del vehículo al editar un contrato existente
+        if 'drop_off_city' in vals:
+            for record in self:
+                if record.drop_off_city and record.vehicle_id:
+                    record.vehicle_id.location = record.drop_off_city
+        
+        return result
 
     @api.constrains('start_date', 'end_date', 'rent_type')
     def _check_date_rent_type(self):
@@ -522,6 +542,40 @@ class VehicleContract(models.Model):
         """Return to cancel"""
         self.status = 'd_cancel'
 
+
+    def _get_sale_journal(self):
+        """
+        Obtener diario de ventas con estrategia de fallback.
+        Busca en múltiples niveles antes de fallar.
+        """
+        self.ensure_one()
+        company = self.company_id or self.env.company
+        journal = None
+        
+        # Fallback 1: Buscar journal de ventas de la compañía
+        journal = self.env['account.journal'].search([
+            ('company_id', '=', company.id),
+            ('type', '=', 'sale'),
+        ], limit=1)
+        
+        # Fallback 2: Journal predeterminado de Odoo
+        if not journal and hasattr(company, 'account_sale_tax_id'):
+            # Intentar obtener desde la configuración de la compañía
+            journal = self.env['account.journal'].search([
+                ('type', '=', 'sale'),
+                ('company_id', '=', company.id),
+            ], order='sequence', limit=1)
+        
+        # Si no hay nada, error informativo
+        if not journal:
+            raise UserError(_(
+                'No se puede crear la factura: no existe un diario de ventas '
+                'configurado para la compañía "%s". '
+                'Por favor, vaya a Contabilidad > Configuración > Diarios '
+                'y cree un diario de tipo "Ventas".'
+            ) % company.name)
+        
+        return journal
     def action_vehicle_rent_deposit(self):
         """Handle vehicle rent deposit process."""
         if self.if_any_deposit and not self.deposit:
@@ -538,10 +592,14 @@ class VehicleContract(models.Model):
                 'price_unit': self.deposit,
             }
             invoice_lines.append((0, 0, invoice_line_vals))
+            # Obtener journal de ventas
+            sale_journal = self._get_sale_journal()
             data = {
                 'partner_id': self.customer_id.id,
                 'move_type': 'out_invoice',
+                'journal_id': sale_journal.id,
                 'invoice_date': fields.Date.today(),
+                'invoice_date_due': fields.Date.today(),
                 'invoice_line_ids': invoice_lines,
                 'vehicle_contract_id': self.id
             }
@@ -668,34 +726,84 @@ class VehicleContract(models.Model):
     def onchange_vehicle_rent_details(self):
         """Onchange vehicle renta details"""
         for rec in self:
+            # Si el rent ya tiene un valor válido (ej: viene de tarifas del wizard), no lo sobrescribas
+            # Solo sobrescribe si el rent es 0 o no tiene valor
+            should_set_rent = not rec.rent or rec.rent == 0.0
+            
             if rec.rent_type == 'days':
-                rec.rent = rec.vehicle_id.rent_day
+                if should_set_rent and rec.vehicle_id.rent_day:
+                    rec.rent = rec.vehicle_id.rent_day
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_day
             elif rec.rent_type == 'week':
-                rec.rent = rec.vehicle_id.rent_week
+                if should_set_rent and rec.vehicle_id.rent_week:
+                    rec.rent = rec.vehicle_id.rent_week
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_week
             elif rec.rent_type == 'month':
-                rec.rent = rec.vehicle_id.rent_month
+                if should_set_rent and rec.vehicle_id.rent_month:
+                    rec.rent = rec.vehicle_id.rent_month
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_month
             elif rec.rent_type == 'hour':
-                rec.rent = rec.vehicle_id.rent_hour
+                if should_set_rent and rec.vehicle_id.rent_hour:
+                    rec.rent = rec.vehicle_id.rent_hour
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_hour
             elif rec.rent_type == 'year':
-                rec.rent = rec.vehicle_id.rent_year
+                if should_set_rent and rec.vehicle_id.rent_year:
+                    rec.rent = rec.vehicle_id.rent_year
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_year
             elif rec.rent_type == 'km':
-                rec.rent = rec.vehicle_id.rent_km
+                if should_set_rent and rec.vehicle_id.rent_km:
+                    rec.rent = rec.vehicle_id.rent_km
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_km
             elif rec.rent_type == 'mi':
-                rec.rent = rec.vehicle_id.rent_mi
+                if should_set_rent and rec.vehicle_id.rent_mi:
+                    rec.rent = rec.vehicle_id.rent_mi
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_mi
+
+    def _sync_deposit_from_calculated(self):
+        """
+        Sincroniza el campo 'deposit' con 'calculated_deposit' cuando use_deposit_from_rule=True.
+        Este método se llama EXPLÍCITAMENTE después de guardar para asegurar sincronización.
+        """
+        for record in self:
+            if record.use_deposit_from_rule and record.calculated_deposit > 0:
+                # Usar depósito automático
+                if record.deposit != record.calculated_deposit or not record.if_any_deposit:
+                    record.write({
+                        'if_any_deposit': True,
+                        'deposit': record.calculated_deposit
+                    })
+            elif not record.use_deposit_from_rule:
+                # Permitir manual - no cambiar nada automáticamente
+                pass
+            else:
+                # Sin depósito disponible
+                if record.if_any_deposit:
+                    record.write({'if_any_deposit': False})
+    
+    def write(self, vals):
+        """Override write para sincronizar depósito después de cambios"""
+        result = super().write(vals)
+        
+        # Después de escribir, sincronizar depósito si es necesario
+        # Esto se ejecuta después de que los campos computed se hayan actualizado
+        if any(field in vals for field in ['vehicle_id', 'deposit_card_type', 'use_deposit_from_rule']):
+            self._sync_deposit_from_calculated()
+        
+        return result
+    
+    def create(self, vals_list):
+        """Override create para sincronizar depósito después de crear"""
+        records = super().create(vals_list)
+        # Sincronizar depósito en los registros nuevos
+        records._sync_deposit_from_calculated()
+        return records
 
     @api.depends('extra_service_ids.amount', 'extra_service_ids.product_qty')
     def _compute_total_extra_service_charge(self):
@@ -763,8 +871,12 @@ class VehicleContract(models.Model):
             if rec.start_date and rec.end_date and rec.start_date <= rec.end_date:
                 delta = rec.end_date - rec.start_date
                 
-                # Calcular días reales independientemente del tipo de renta
-                real_days = delta.days + 1
+                # Calcular días reales considerando horas
+                # Si start y end tienen la misma hora, calcular días exactos
+                total_hours = delta.total_seconds() / 3600
+                # Redondear hacia arriba: 24h = 1 día, 25h = 2 días, etc.
+                import math
+                real_days = (rec.end_date.date() - rec.start_date.date()).days
                 
                 # SIEMPRE calcular días reales si hay fechas válidas
                 if rec.rent_type == 'days' or rec.pricing_type == 'flexirent' or rec.rent_type == False:
@@ -913,10 +1025,13 @@ class VehicleContract(models.Model):
         }
         invoice_lines = [(0, 0, extra_charge_line)]
         # Prepare invoice data
+        sale_journal = self._get_sale_journal()
         data = {
             'partner_id': self.customer_id.id,
             'move_type': 'out_invoice',
+            'journal_id': sale_journal.id,
             'invoice_date': fields.Date.today(),
+                'invoice_date_due': fields.Date.today(),
             'invoice_line_ids': invoice_lines,
             'vehicle_contract_id': self.id,
         }
@@ -1172,10 +1287,13 @@ class VehicleContract(models.Model):
                 'price_unit': record.amount,
             }
             invoice_lines.append((0, 0, extra_service))
+        sale_journal = self._get_sale_journal()
         data = {
             'partner_id': self.customer_id.id,
             'move_type': 'out_invoice',
+            'journal_id': sale_journal.id,
             'invoice_date': fields.Date.today(),
+                'invoice_date_due': fields.Date.today(),
             'invoice_line_ids': invoice_lines,
             'vehicle_contract_id': self.id
         }
@@ -1248,10 +1366,13 @@ class VehicleContract(models.Model):
                     'price_unit': rec.cancellation_charge
                 }
                 invoice_line = [(0, 0, cancellation_data)]
+        sale_journal = self._get_sale_journal()
         data = {
             'partner_id': self.customer_id.id,
             'move_type': 'out_invoice',
+            'journal_id': sale_journal.id,
             'invoice_date': fields.Date.today(),
+                'invoice_date_due': fields.Date.today(),
             'invoice_line_ids': invoice_line,
             'vehicle_contract_id': self.id
         }

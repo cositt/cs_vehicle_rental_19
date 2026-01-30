@@ -60,6 +60,11 @@
                   parent="main_menu_vehicle_rental"
                   action="action_vehicle_insurance_pricing"
                   sequence="10"/>
+        <menuitem id="menu_vehicle_deposit_rule"
+                  name="Reglas de Depósitos"
+                  parent="main_menu_vehicle_rental"
+                  action="action_vehicle_deposit_rule"
+                  sequence="11"/>
 
         <menuitem id="menu_configuration" name="Configuraciones" parent="main_menu_vehicle_rental" sequence="20"/>
         <menuitem id="menu_cancellation_policy"

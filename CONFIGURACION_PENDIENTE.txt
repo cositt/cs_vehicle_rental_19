@@ -1,0 +1,67 @@
+CONFIGURACIÓN PENDIENTE PARA FACTURACIÓN
+=========================================
+
+El módulo vehicle_rental está implementado y funcional, pero requiere configuración en la UI de Odoo.
+
+PROBLEMA ACTUAL:
+- Error al crear facturas: "No puede eliminar un método de pago vinculado a un proveedor"
+- Error al crear facturas: "No existe un diario de ventas configurado para la compañía Pinveco"
+
+CAUSAS:
+1. Redsys Payment Provider está en estado "test" y bloquea cambios en la localización
+2. La empresa "Pinveco" (company_id=2) no tiene un journal de ventas configurado
+3. No hay cuentas contables de "receivable" en la base de datos
+
+PASOS A REALIZAR EN LA UI (Odoo):
+==================================
+
+1. CONFIGURAR REDSYS (Opcional - solo si quieres usar Redsys en producción)
+   - Ir a Configuración > Métodos de Pago > Redsys
+   - Cambiar estado de "Test" a "Disabled" (para limpiar sin bloqueos)
+   - O mantener en Test si lo necesitas
+
+2. INSTALAR LOCALIZACIÓN ESPAÑA (CRÍTICO)
+   - Ir a Aplicaciones > Buscar "l10n_es" o "Localización - España"
+   - Instalar
+   - Esto crea automáticamente:
+     * Cuentas contables de ingresos, gastos, receivable
+     * Impuestos configurados
+     * Estructura contable básica
+
+3. CREAR JOURNAL DE VENTAS PARA PINVECO (CRÍTICO)
+   - Ir a Contabilidad > Configuración > Diarios
+   - Crear nuevo diario:
+     * Nombre: "Ventas" o similar
+     * Tipo: "Ventas"
+     * Empresa: "Pinveco" (¡IMPORTANTE! Asegúrate de seleccionar Pinveco, no Sunset)
+     * Código: VNT (o similar)
+   - Guardar
+
+4. VERIFICAR PARTNER (CLIENTE) TIENE CUENTA CONTABLE
+   - Ir a Contactos > Seleccionar cliente
+   - Ir a pestaña "Contabilidad"
+   - Verificar que "Cuenta por cobrar" está configurada
+   - Si no, debería auto-asignarse al crear la localización
+
+5. CREAR DATOS DE PRUEBA
+   - Una vez configurado, el flujo completo será:
+     1. Crear reserva en web (lead de tipo "opportunity")
+     2. Pagar con Redsys
+     3. Crear contrato desde lead (genera sale.order automáticamente)
+     4. Crear factura del sale.order
+   - Esto debe funcionar sin errores
+
+VERIFICACIÓN TÉCNICA:
+=====================
+Código implementado en vehicle_rental:
+- models/vehicle_contract.py: método _get_sale_journal() para obtener journal correcto
+- wizards/lead_rental_contract.py: método _create_sale_order() para generar sale.order automáticamente
+- Todos los puntos de creación de facturas incluyen journal_id e invoice_date_due
+
+Base de datos limpiada:
+- Tablas truncadas: crm_lead, sale_order, vehicle_contract, payment_transaction, account_move
+- account_payment eliminados (28 registros que bloqueaban)
+
+Una vez completes los pasos 1-4 en la UI, el sistema funcionará sin necesidad de cambios en código.
+
+FECHA: 2026-01-18

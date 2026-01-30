@@ -40,10 +40,14 @@ class VehicleDamage(models.TransientModel):
                 'price_unit': self.damage_amount,
             }
             invoice_lines = [(0, 0, damage_amount)]
+            # Obtener journal de ventas del contrato
+            sale_journal = vehicle_contract._get_sale_journal()
             data = {
                 'partner_id': vehicle_contract.customer_id.id,
                 'move_type': 'out_invoice',
+                'journal_id': sale_journal.id,
                 'invoice_date': fields.Date.today(),
+                'invoice_date_due': fields.Date.today(),
                 'invoice_line_ids': invoice_lines,
                 'vehicle_contract_id': vehicle_contract.id
             }

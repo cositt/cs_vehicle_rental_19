@@ -72,6 +72,7 @@ class PaymentGatewayController(http.Controller):
             
             # Crear payment.transaction
             tx_vals = {
+                'booking_data_json': json.dumps(booking_data),
                 'provider_id': providers.id,
                 'payment_method_id': payment_methods.id,
                 'amount': selected_price,

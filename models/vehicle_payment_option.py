@@ -24,11 +24,13 @@ class VehiclePaymentOption(models.Model):
     vehicle_contract_id = fields.Many2one('vehicle.contract', ondelete='cascade')
 
     def action_create_payment_invoice(self):
-        """Action create payment invoice"""
+        """Crea cuota con TODOS los conceptos: alquiler, seguro, depósito, servicios y cargos"""
         tax = []
         invoice_lines = []
+        
         for rec in self.vehicle_contract_id.tax_ids:
             tax.append(rec.id)
+        
         for rec in self:
             if rec.payment_amount == 0:
                 message = _display_rental_notification(
@@ -36,7 +38,11 @@ class VehiclePaymentOption(models.Model):
                     message_type='warning')
                 return message
             
-            # LÍNEA 1: Alquiler del vehículo
+            contract = self.vehicle_contract_id
+            
+            # ═══════════════════════════════════════════
+            # LÍNEA 1: ALQUILER DEL VEHÍCULO
+            # ═══════════════════════════════════════════
             payment_details = {
                 'product_id': self.invoice_item_id.id,
                 'name': self.name,
@@ -46,26 +52,20 @@ class VehiclePaymentOption(models.Model):
             }
             invoice_lines.append((0, 0, payment_details))
             
-            # LÍNEA 2: Seguro (si está configurado)
-            contract = self.vehicle_contract_id
-            # Debug: verificar datos del seguro
+            # ═══════════════════════════════════════════
+            # LÍNEA 2: SEGURO (OBLIGATORIO)
+            # ═══════════════════════════════════════════
             import logging
             _logger = logging.getLogger(__name__)
-            _logger.info(f"DEBUG SEGURO - Tipo: {contract.insurance_type}, Precio: {contract.insurance_price_per_day}, Producto: {contract.insurance_product_id}")
             
-            # Verificar si el contrato tiene seguro configurado
-            if contract.insurance_type and contract.insurance_price_per_day and contract.insurance_price_per_day > 0:
-                # Determinar el nombre del seguro
-                if contract.insurance_type == 'basic':
-                    insurance_name = "Seguro Básico - Franquicia 300€"
-                else:
-                    insurance_name = "Seguro Sin Franquicia"
+            if (contract.insurance_type and 
+                contract.insurance_price_per_day and 
+                contract.insurance_price_per_day > 0):
                 
-                # Agregar conductor especial si aplica
+                insurance_name = "Seguro Básico - Franquicia 300€" if contract.insurance_type == 'basic' else "Seguro Sin Franquicia"
                 if contract.driver_special:
                     insurance_name += " (Conductor Especial)"
                 
-                # Crear línea de seguro
                 insurance_line = {
                     'product_id': contract.insurance_product_id.id if contract.insurance_product_id else False,
                     'name': insurance_name,
@@ -74,7 +74,81 @@ class VehiclePaymentOption(models.Model):
                     'tax_ids': [(6, 0, contract.insurance_product_id.taxes_id.ids)] if contract.insurance_product_id and contract.insurance_product_id.taxes_id else [],
                 }
                 invoice_lines.append((0, 0, insurance_line))
+            
+            # ═══════════════════════════════════════════
+            # LÍNEA 3: DEPÓSITO DE SEGURIDAD (NUEVO)
+            # ═══════════════════════════════════════════
+            # Usar calculated_deposit si use_deposit_from_rule=True, sino usar deposit manual
+            deposit_amount = 0
+            if contract.use_deposit_from_rule and contract.calculated_deposit > 0:
+                # Depósito automático desde regla
+                deposit_amount = contract.calculated_deposit
+            elif not contract.use_deposit_from_rule and contract.if_any_deposit and contract.deposit > 0:
+                # Depósito manual ingresado por usuario
+                deposit_amount = contract.deposit
+            
+            if deposit_amount > 0:
+                deposit_line = {
+                    'product_id': self.env.ref('vehicle_rental.vehicle_rent_deposit').id,
+                    'name': f"Depósito de Seguridad - {contract.reference_no}",
+                    'quantity': 1,
+                    'price_unit': deposit_amount,
+                    'tax_ids': tax,
+                }
+                invoice_lines.append((0, 0, deposit_line))
+                _logger.info(f"CUOTA: Depósito {deposit_amount}€ agregado a cuota {rec.name} (automático: {contract.use_deposit_from_rule})")
+            
+            # ═══════════════════════════════════════════
+            # LÍNEA 4: KM EXTRA (FLEXIRENT) (NUEVO)
+            # ═══════════════════════════════════════════
+            if contract.extra_km_cost and contract.extra_km_cost > 0:
+                extra_km_product = self.env.ref('vehicle_rental.product_extra_km_flexirent', raise_if_not_found=False)
+                if not extra_km_product:
+                    extra_km_product = self.env.ref('vehicle_rental.vehicle_rent_extra_charge', raise_if_not_found=False)
+                
+                if extra_km_product:
+                    extra_km_line = {
+                        'product_id': extra_km_product.id,
+                        'name': f"Kilómetros Extra - FLEXIRENT\n{contract.extra_km_used:.0f} km × {contract.extra_km_price_unit:.2f}€",
+                        'quantity': contract.extra_km_used,
+                        'price_unit': contract.extra_km_price_unit,
+                        'tax_ids': [(6, 0, extra_km_product.taxes_id.ids)],
+                    }
+                    invoice_lines.append((0, 0, extra_km_line))
+                    _logger.info(f"CUOTA: Km Extra {contract.extra_km_cost}€ agregado a cuota {rec.name}")
+            
+            # ═══════════════════════════════════════════
+            # LÍNEA 5: SERVICIOS EXTRAS (NUEVO)
+            # ═══════════════════════════════════════════
+            for extra_service in contract.extra_service_ids:
+                if extra_service.product_id:
+                    service_line = {
+                        'product_id': extra_service.product_id.id,
+                        'name': extra_service.description or extra_service.product_id.name,
+                        'quantity': extra_service.product_qty,
+                        'price_unit': extra_service.amount,
+                        'tax_ids': tax,
+                    }
+                    invoice_lines.append((0, 0, service_line))
+                    _logger.info(f"CUOTA: Servicio extra {extra_service.amount}€ agregado a cuota {rec.name}")
+            
+            # ═══════════════════════════════════════════
+            # LÍNEA 6: CARGOS EXTRAS (NUEVO)
+            # ═══════════════════════════════════════════
+            if contract.total_extra_charges and contract.total_extra_charges > 0:
+                extra_charges_line = {
+                    'product_id': self.env.ref('vehicle_rental.vehicle_rent_extra_charge').id,
+                    'name': 'Cargos Extras',
+                    'quantity': 1,
+                    'price_unit': contract.total_extra_charges,
+                    'tax_ids': tax,
+                }
+                invoice_lines.append((0, 0, extra_charges_line))
+                _logger.info(f"CUOTA: Cargos extras {contract.total_extra_charges}€ agregado a cuota {rec.name}")
         
+        # ═══════════════════════════════════════════
+        # CREAR FACTURA CON TODAS LAS LÍNEAS
+        # ═══════════════════════════════════════════
         data = {
             'partner_id': self.vehicle_contract_id.customer_id.id,
             'move_type': 'out_invoice',
@@ -83,7 +157,17 @@ class VehiclePaymentOption(models.Model):
             'vehicle_contract_id': self.vehicle_contract_id.id
         }
         invoice_id = self.env['account.move'].sudo().create(data)
-        self.invoice_id = invoice_id
+        
+        # Guardar la referencia a la factura en la cuota
+        # IMPORTANTE: También actualizar payment_amount con el total de la factura
+        # para que se refleje correctamente (alquiler + seguro + depósito + extras)
+        self.write({
+            'invoice_id': invoice_id.id,
+            'payment_amount': invoice_id.amount_total  # ← Actualizar con el total de la factura
+        })
+        
+        _logger.info(f"CUOTA: Factura creada {invoice_id.name} - Total: {invoice_id.amount_total}€")
+        
         return {
             'type': 'ir.actions.act_window',
             'name': _('Invoice'),
@@ -92,3 +176,4 @@ class VehiclePaymentOption(models.Model):
             'view_mode': 'form',
             'target': 'current'
         }
+
