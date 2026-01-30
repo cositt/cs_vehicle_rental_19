@@ -128,10 +128,12 @@
                                 class="oe_highlight"
                                 invisible="status == 'a_draft' or installment_created != False or status == 'd_cancel'"/>
 
+                        <!-- Botón comentado: Crear Factura Automática
                         <button string="Crear Factura Automática" name="action_create_invoice_automatic" type="object"
                                 class="btn btn-success" icon="fa-magic" 
                                 invisible="invoice_id != False or status in ['a_draft', 'd_cancel']"
                                 help="Genera factura automática con todos los conceptos: vehículo, seguro, km extra y servicios"/>
+                        -->
 
                         <button string="Return" name="b_in_progress_to_c_return" type="object" class="btn btn-success"
                                 invisible="status != 'b_in_progress' or not vehicle_payment_option_ids"/>
