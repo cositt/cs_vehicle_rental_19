@@ -98,7 +98,7 @@ class RentalPaymentController(http.Controller):
             ], limit=1)
             
             if not redsys_provider:
-                return "Error: No Redsys provider configured for this company"
+                return "<!DOCTYPE html><html><head><title>Error</title></head><body><h1>Error</h1><p>No Redsys provider configured for this company</p></body></html>"
             
             # Usar redsys_provider también como provider genérico para payment_method
             provider = redsys_provider
@@ -222,4 +222,4 @@ class RentalPaymentController(http.Controller):
             
         except Exception as e:
             _logger.error(f"ERROR en rental_payment: {str(e)}", exc_info=True)
-            return f"Error: {str(e)}"
+            return f"<!DOCTYPE html><html><head><title>Error</title></head><body><h1>Error</h1><p>{str(e)}</p></body></html>"
