@@ -117,8 +117,10 @@
                         <button string="In Progress" name="a_draft_to_b_in_progress" type="object"
                                 class="btn btn-warning" invisible="status != 'a_draft'"/>
 
+                        <!-- Botón comentado: Depósito (ahora se crea automáticamente desde cuotas)
                         <button string="Deposit" name="action_vehicle_rent_deposit" class="btn btn-info" type="object"
                                 invisible="if_any_deposit == False or deposit_invoice_id != False"/>
+                        -->
 
                         <button string="Create Extra Service Invoice" name="action_create_extra_service_charge_invoice"
                                 type="object" class="btn btn-primary"
@@ -128,10 +130,12 @@
                                 class="oe_highlight"
                                 invisible="status == 'a_draft' or installment_created != False or status == 'd_cancel'"/>
 
+                        <!-- Botón comentado: Crear Factura Automática
                         <button string="Crear Factura Automática" name="action_create_invoice_automatic" type="object"
                                 class="btn btn-success" icon="fa-magic" 
                                 invisible="invoice_id != False or status in ['a_draft', 'd_cancel']"
                                 help="Genera factura automática con todos los conceptos: vehículo, seguro, km extra y servicios"/>
+                        -->
 
                         <button string="Return" name="b_in_progress_to_c_return" type="object" class="btn btn-success"
                                 invisible="status != 'b_in_progress' or not vehicle_payment_option_ids"/>
@@ -454,6 +458,37 @@
                             <field name="payment_type" widget="radio" options="{'horizontal': true}"
                                    readonly="installment_created != False"/>
                         </group>
+                        
+                        <!-- NUEVA SECCIÓN: DETALLES DE DEPÓSITO DINÁMICO -->
+                        <separator string="Detalles de Depósito Dinámico" name="deposit_dynamic_details"/>
+                        <group>
+                            <group>
+                                <!-- Selector de tipo de tarjeta -->
+                                <field name="deposit_card_type" 
+                                       widget="radio" 
+                                       options="{'horizontal': true}"
+                                       readonly="status != 'a_draft'"/>
+                            </group>
+                            <group>
+                                <!-- Checkbox para usar regla o manual -->
+                                <field name="use_deposit_from_rule" 
+                                       readonly="status != 'a_draft'"/>
+                            </group>
+                        </group>
+                        
+                        <!-- FILA 1: Información de la regla y depósito calculado -->
+                        <group>
+                            <group>
+                                <field name="deposit_rule_id" readonly="1" 
+                                       help="Regla de depósito que se aplicó"/>
+                            </group>
+                            <group>
+                                <field name="calculated_deposit" readonly="1"
+                                       help="Depósito calculado automáticamente"/>
+                            </group>
+                        </group>
+                        
+                        <!-- FILA 2: Depósito final (automático o manual) -->
                         <group>
                             <group>
                                 <field name="invoice_item_id" readonly="installment_created != False"/>
@@ -461,8 +496,19 @@
                             <group>
                                 <field name="if_any_deposit"
                                        readonly="status == 'c_return' or deposit_invoice_id != False"/>
-                                <field name="deposit" invisible="if_any_deposit == False"
-                                       readonly="deposit_invoice_id != False"/>
+                            </group>
+                        </group>
+                        
+                        <group>
+                            <group>
+                                <!-- Si usa regla: readonly. Si es manual: editable -->
+                                <field name="deposit" 
+                                       invisible="if_any_deposit == False"
+                                       readonly="use_deposit_from_rule or deposit_invoice_id != False"
+                                       help="Automático si usa regla, manual si no"/>
+                            </group>
+                            <group>
+                                <!-- Campos ocultos que se necesitan -->
                                 <field name="deposit_invoice_id" invisible="1"/>
                                 <field name="currency_id" invisible="1"/>
                                 <field name="company_id" invisible="1"/>

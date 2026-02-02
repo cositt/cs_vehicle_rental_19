@@ -14,18 +14,22 @@
 
             <!-- Añadir campos de pricing después de los campos de rent -->
             <xpath expr="//field[@name='rent'][last()]" position="after">
+                <!-- COMENTADO: Campo "Precio Calculado Automáticamente" - No aporta valor al usuario
                 <field name="calculated_rent" 
                        readonly="1" 
                        widget="monetary"
                        string="💰 Precio Calculado Automáticamente"
                        invisible="calculated_rent == 0 or crm_lead_id"/>
+                -->
                 <field name="price_manually_modified" invisible="1"/>
+                <!-- COMENTADO: Mensaje "Precio Modificado Manualmente" - Ocultar al usuario
                 <div class="alert alert-warning" role="alert" 
                      invisible="not price_manually_modified or crm_lead_id">
                     <i class="fa fa-exclamation-triangle"/> 
                     <strong>Precio Modificado Manualmente</strong>
                     <p><field name="discount_reason" placeholder="Explicar motivo de la modificación..."/></p>
                 </div>
+                -->
             </xpath>
 
             <!-- Añadir sección de Seguros después de los detalles de vehículo -->

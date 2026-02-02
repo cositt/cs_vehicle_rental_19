@@ -62,6 +62,36 @@ class BookingEnquiryLead(models.Model):
                 lead.probability = 100
         return True
     
+    def action_set_won_rainbowman(self):
+        """Override para manejar el error de date_closed=NULL en Odoo 19
+        
+        Odoo 19 tiene un bug donde intenta calcular (date_closed - create_date)
+        pero date_closed es NULL/False cuando se marca como ganado.
+        
+        Solución: establecer date_closed Y cambiar a stage "Ganado" ANTES de llamar al método padre
+        """
+        # Obtener el stage "Ganado" (Won)
+        won_stage = self.env['crm.stage'].search([('name', '=', 'Won')], limit=1) or \
+                   self.env['crm.stage'].search([('name', 'ilike', '%Won%')], limit=1) or \
+                   self.env['crm.stage'].search([('name', 'ilike', '%ganado%')], limit=1)
+        
+        # Cambiar a "Ganado" y establecer date_closed
+        for lead in self:
+            vals = {'probability': 100}
+            
+            # Establecer date_closed
+            if not lead.date_closed:
+                vals['date_closed'] = fields.Datetime.now()
+            
+            # Cambiar stage a Won
+            if won_stage:
+                vals['stage_id'] = won_stage.id
+            
+            lead.write(vals)
+        
+        # Ahora llamar al método padre que ya tiene date_closed y stage válidos
+        return super(BookingEnquiryLead, self).action_set_won_rainbowman()
+    
     def _find_or_create_partner_from_lead(self, lead):
         """Find existing partner or create new one from lead data"""
         Partner = self.env['res.partner']

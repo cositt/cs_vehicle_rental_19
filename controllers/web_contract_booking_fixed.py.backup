@@ -1141,7 +1141,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                             <div class="row">
                                             {''.join([f'''
                                             <div class="col-lg-4 col-md-6 mb-4">
-                                                <div class="card h-100 {'border-warning' if offer.get('popular') else ''} offer-card" style="{'border-color: {primary_color} !important; border-width: 2px !important;' if offer.get('popular') else ''} cursor: pointer;" onclick="selectFixedOffer('{offer.get('duration', '')}', '{offer.get('km', '')}', {offer.get('price', 0)}, event)">
+                                                <div class="card h-100 {'border-warning' if offer.get('popular') else ''} offer-card" style="{'border-color: {primary_color} !important; border-width: 2px !important;' if offer.get('popular') else ''} cursor: pointer;" onclick="selectFixedOffer('{offer.get('duration', '')}', '{offer.get('km', '')}', {offer.get('price', 0)})">
                                                     <div class="card-body text-center d-flex flex-column justify-content-center" style="min-height: 100%; padding: 2rem 1.5rem;">
                                                         {'<div class="badge mb-3" style="background-color: {primary_color}; color: white;">Más Popular</div>' if offer.get('popular') else '<div class="mb-3"></div>'}
                                                         <div class="form-check d-flex justify-content-center mb-3">
@@ -1240,7 +1240,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                         <i class="fa fa-map-marker me-2" style="color: {primary_color};"></i>
                                                         <strong>Ubicación de recogida *</strong>
                                                     </label>
-                                                    <select class="form-select form-select-lg" id="location_select" name="location" required onchange="checkLocationAvailability(); loadAvailableVehicles();">
+                                                    <select class="form-select form-select-lg" id="location_select" name="location" required onchange="checkLocationAvailability()">
                                                         <option value="">-- Selecciona una ubicación --</option>
                                                         {''.join([f'<option value="{loc}">{loc}</option>' for loc in available_locations])}
                                                     </select>
@@ -1454,51 +1454,74 @@ class WebsiteContractBookingFixed(http.Controller):
                             const cardTypeInput = document.getElementById('card_type');
                             const cardTypeDisplay = document.getElementById('card_type_display');
                             const cardTypeIcon = document.getElementById('card_type_icon');
+                            const depositDisplay = document.getElementById('deposit_display');
+                            const totalDisplay = document.getElementById('total_display');
+                            const selectedPrice = document.getElementById('selected_price');
 
                             if (!cardNumberInput) {{
+                                console.warn('[WARNING] card_number input no encontrado');
                                 return;
                             }}
 
-                            // Validar BIN cuando el usuario ingrese 6+ dígitos CON DEBOUNCE
+                            console.log('[DEBUG] ✅ Inicializando validación de tarjetas');
+
+                            // Validar BIN cuando el usuario ingrese 6+ dígitos CON DEBOUNCE AGRESIVO
                             let binValidationTimeout = null;
                             let lastBinValidated = null;
                             
                             cardNumberInput.addEventListener('input', function() {{
                                 let cardNumber = this.value.replace(/\D/g, '');
+                                console.log('[DEBUG] Cambio en card_number, dígitos totales: ' + cardNumber.length);
                                 
                                 if (cardNumber.length >= 6) {{
                                     const bin = cardNumber.substring(0, 6);
                                     cardBinInput.value = bin;
                                     
+                                    // Cancelar validación anterior si existe
                                     if (binValidationTimeout) {{
+                                        console.log('[DEBUG] Cancelando validación anterior, timer id: ' + binValidationTimeout);
                                         clearTimeout(binValidationTimeout);
                                     }}
                                     
-                                    cardTypeDisplay.textContent = '✏️ Escribiendo...';
+                                    // Mostrar estado "escribiendo..."
+                                    cardTypeDisplay.textContent = '✏️ Escribiendo... (espera 2 segundos)';
                                     cardTypeIcon.className = 'fa fa-pencil me-2';
                                     cardTypeIcon.style.color = '#6c757d';
                                     
+                                    // ESPERAR 2 SEGUNDOS sin cambios antes de validar
                                     binValidationTimeout = setTimeout(function() {{
+                                        // Solo validar si el BIN cambió
                                         if (bin !== lastBinValidated) {{
                                             lastBinValidated = bin;
+                                            console.log('[DEBUG] ✅ INICIANDO VALIDACIÓN DEL BIN: ' + bin + ' (después de 2s de inactividad)');
                                             
-                                            cardTypeDisplay.textContent = '⏳ Validando...';
+                                            // Mostrar estado "validando..."
+                                            cardTypeDisplay.textContent = '⏳ Validando tarjeta...';
                                             cardTypeIcon.className = 'fa fa-hourglass-half me-2';
                                             cardTypeIcon.style.color = '#6c757d';
                                             
+                                            // Validar con el endpoint de Odoo
                                             fetch('/rental/validate-bin', {{
                                                 method: 'POST',
                                                 headers: {{'Content-Type': 'application/json'}},
                                                 body: JSON.stringify({{bin: bin}})
                                             }})
-                                                .then(response => response.json())
+                                                .then(response => {{
+                                                    console.log('[DEBUG] Response recibido del servidor, status: ' + response.status);
+                                                    return response.json();
+                                                }})
                                                 .then(data => {{
+                                                    console.log('[DEBUG] Datos JSON parseados:', data);
+                                                    
                                                     if (data.success && data.card_type) {{
                                                         const detectedType = data.card_type.toLowerCase();
+                                                        console.log('[DEBUG] ✅ Tipo detectado: ' + detectedType);
+                                                        
                                                         if (detectedType === 'credit' || detectedType === 'debit') {{
                                                             cardTypeInput.value = detectedType;
                                                             document.getElementById('card_type_hidden').value = detectedType;
                                                             
+                                                            // Actualizar display del tipo
                                                             if (detectedType === 'credit') {{
                                                                 cardTypeDisplay.textContent = '💳 Tarjeta de Crédito';
                                                                 cardTypeIcon.className = 'fa fa-credit-card me-2';
@@ -1509,27 +1532,31 @@ class WebsiteContractBookingFixed(http.Controller):
                                                                 cardTypeIcon.style.color = '#28a745';
                                                             }}
                                                             
-                                                            // Si ya hay una tarifa seleccionada, recalcular el depósito
-                                                            const selectedPrice = document.getElementById('selected_price');
-                                                            if (selectedPrice && selectedPrice.value) {{
-                                                                updateDepositDisplay();
-                                                            }}
+                                                            console.log('[INFO] ✅ BIN validado exitosamente: ' + detectedType);
+                                                            updateDepositDisplay();
                                                         }}
                                                     }} else {{
-                                                        cardTypeDisplay.textContent = '❌ ' + (data.error || 'Error');
+                                                        // Error en la validación
+                                                        cardTypeDisplay.textContent = '❌ ' + (data.error || 'Error al validar');
                                                         cardTypeIcon.className = 'fa fa-times-circle me-2';
                                                         cardTypeIcon.style.color = '#dc3545';
+                                                        console.error('[ERROR] Validación fallida: ' + (data.error || 'desconocido'));
                                                     }}
                                                 }})
                                                 .catch(error => {{
-                                                    cardTypeDisplay.textContent = '⚠️ Error';
+                                                    console.error('[ERROR CRÍTICO] Error en fetch: ' + error);
+                                                    cardTypeDisplay.textContent = '⚠️ Error de conexión';
                                                     cardTypeIcon.className = 'fa fa-exclamation-triangle me-2';
                                                     cardTypeIcon.style.color = '#dc3545';
                                                 }});
+                                        }} else {{
+                                            console.log('[DEBUG] BIN no cambió, no se valida nuevamente');
                                         }}
-                                    }}, 2000);
+                                    }}, 2000); // ESPERAR 2 SEGUNDOS COMPLETOS
+                                    
+                                    console.log('[DEBUG] Timer configurado para validar en 2s, ID: ' + binValidationTimeout);
                                 }} else {{
-                                    cardTypeDisplay.textContent = 'Ingresa el número de tarjeta';
+                                    cardTypeDisplay.textContent = 'Ingresa el número de tarjeta (6+ dígitos)';
                                     cardTypeIcon.className = 'fa fa-credit-card me-2';
                                     cardTypeIcon.style.color = '#0c63e4';
                                     lastBinValidated = null;
@@ -1537,110 +1564,40 @@ class WebsiteContractBookingFixed(http.Controller):
                             }});
                         }}
 
-                        // Ejecutar cuando el DOM esté listo
+                            // Función para actualizar el depósito dinámico
+                            function updateDepositDisplay() {{
+                                const cardType = cardTypeInput.value;
+                                const rentalPrice = parseFloat(selectedPrice?.value || 0);
+                                
+                                if (depositDisplay && totalDisplay) {{
+                                    if (cardType) {{
+                                        let typeLabel = cardType === 'credit' ? 'Crédito' : 'Débito';
+                                        depositDisplay.innerHTML = `
+                                            <div style="font-size: 14px;">
+                                                <div><i class="fa fa-money me-2"></i><strong>Tipo:</strong> ` + typeLabel + `</div>
+                                                <div class="mt-2"><i class="fa fa-shield me-2"></i><strong>Monto:</strong> Calculando...</div>
+                                            </div>
+                                        `;
+                                        totalDisplay.textContent = 'Total con depósito: ' + rentalPrice.toFixed(2) + ' EUR (a confirmar)';
+                                    }} else {{
+                                        depositDisplay.textContent = 'El depósito se calculará una vez detectado el tipo de tarjeta';
+                                        totalDisplay.textContent = 'EUR 0.00';
+                                    }}
+                                }}
+                            }}
+                        }}
+
+                        // Ejecutar inicialmente
                         if (document.readyState === 'loading') {{
                             document.addEventListener('DOMContentLoaded', initCardValidation);
                         }} else {{
                             initCardValidation();
                         }}
 
-                        // Función para actualizar el depósito dinámico
-                        function updateDepositDisplay() {{
-                            const cardTypeInput = document.getElementById('card_type');
-                            const depositDisplay = document.getElementById('deposit_display');
-                            const totalDisplay = document.getElementById('total_display');
-                            const selectedPrice = document.getElementById('selected_price');
-                            const categoryIdInput = document.querySelector('input[name="category_id"]');
-                            const minDurationDaysInput = document.getElementById('min_duration_days');
-                            
-                            const cardType = cardTypeInput ? cardTypeInput.value : '';
-                            const pricePerDay = parseFloat(selectedPrice ? selectedPrice.value : 0);
-                            const minDays = parseInt(minDurationDaysInput ? minDurationDaysInput.value : 1);
-                            const categoryId = categoryIdInput ? parseInt(categoryIdInput.value) : 0;
-                            
-                            // IMPORTANTE: Calcular el total multiplying price × minimum days
-                            const totalRentalPrice = pricePerDay * minDays;
-                            
-                            console.log('[DEBUG updateDepositDisplay] cardType=' + cardType + ', pricePerDay=' + pricePerDay + ', minDays=' + minDays + ', totalRentalPrice=' + totalRentalPrice + ', categoryId=' + categoryId);
-                            
-                            if (!depositDisplay || !totalDisplay) {{
-                                return;
-                            }}
-                            
-                            // Si no hay tipo de tarjeta, no calcular depósito
-                            if (!cardType) {{
-                                console.log('[DEBUG] Sin cardType - no se calcula depósito');
-                                depositDisplay.textContent = 'Primero debes validar el tipo de tarjeta';
-                                totalDisplay.textContent = 'EUR 0.00';
-                                return;
-                            }}
-                            
-                            // Si no hay precio seleccionado
-                            if (totalRentalPrice <= 0) {{
-                                console.log('[DEBUG] totalRentalPrice <= 0');
-                                depositDisplay.textContent = 'Selecciona una tarifa para calcular el depósito';
-                                totalDisplay.textContent = 'EUR 0.00';
-                                return;
-                            }}
-                            
-                            // Validar que categoryId sea válido
-                            if (!categoryId) {{
-                                console.warn('[DEBUG] categoryId es 0 - NO se calculará depósito');
-                                depositDisplay.innerHTML = '<div style="font-size: 14px; color: #999;">Selecciona una categoría</div>';
-                                return;
-                            }}
-                            
-                            // Mostrar estado "calculando..."
-                            depositDisplay.innerHTML = '<div style="font-size: 14px;"><i class="fa fa-spinner fa-spin me-2"></i>Calculando depósito...</div>';
-                            
-                            console.log('[DEBUG] Enviando solicitud con: category_id=' + categoryId + ', card_type=' + cardType + ', total_price=' + totalRentalPrice);
-                            
-                            // Llamar al endpoint para calcular depósito - ENVIANDO EL TOTAL (no solo el precio por día)
-                            fetch('/rental/calculate-deposit', {{
-                                method: 'POST',
-                                headers: {{'Content-Type': 'application/json'}},
-                                body: JSON.stringify({{
-                                    category_id: categoryId,
-                                    card_type: cardType,
-                                    total_price: totalRentalPrice
-                                }})
-                            }})
-                                .then(response => {{
-                                    console.log('[DEBUG] Response status=' + response.status);
-                                    if (!response.ok) {{
-                                        throw new Error('HTTP ' + response.status);
-                                    }}
-                                    return response.json();
-                                }})
-                                .then(data => {{
-                                    console.log('[DEBUG] Response data=' + JSON.stringify(data));
-                                    if (data.success) {{
-                                        const depositAmount = data.deposit_amount || 0;
-                                        const totalWithDeposit = data.total_with_deposit || 0;
-                                        let typeLabel = cardType === 'credit' ? 'Crédito' : 'Débito';
-                                        
-                                        depositDisplay.innerHTML = '<div style="font-size: 14px;"><div><i class="fa fa-money me-2"></i><strong>Tipo:</strong> ' + typeLabel + '</div><div class="mt-2"><i class="fa fa-shield me-2"></i><strong>Monto:</strong> ' + depositAmount.toFixed(2) + ' EUR</div></div>';
-                                        totalDisplay.innerHTML = '<strong style="color: #e67e22; font-size: 20px;">' + totalWithDeposit.toFixed(2) + ' EUR</strong><br><small style="color: #999;">' + totalRentalPrice.toFixed(2) + ' EUR (alquiler ' + minDays + ' día' + (minDays > 1 ? 's' : '') + ') + ' + depositAmount.toFixed(2) + ' EUR (depósito)</small>';
-                                    }} else {{
-                                        console.error('[ERROR] Error del servidor: ' + data.error);
-                                        depositDisplay.innerHTML = '<div style="font-size: 14px; color: #dc3545;"><i class="fa fa-exclamation-triangle me-2"></i>' + (data.error || 'Error desconocido') + '</div>';
-                                        totalDisplay.textContent = 'Error';
-                                    }}
-                                }})
-                                .catch(error => {{
-                                    console.error('[ERROR CRÍTICO] ' + error.message);
-                                    depositDisplay.innerHTML = '<div style="font-size: 14px; color: #dc3545;"><i class="fa fa-exclamation-triangle me-2"></i>Error: ' + error.message + '</div>';
-                                    totalDisplay.textContent = 'Error';
-                                }});
-                        }}
-
                         // Función para actualizar las opciones de kilometraje según la duración
                         function updateKmOptions() {{
-
-                            // Obtener duración del select
-                            const durationSelect = document.getElementById('duration_select');
+                            const duration = document.getElementById('duration_select').value;
                             const kmSelect = document.getElementById('km_select');
-                            const duration = durationSelect ? durationSelect.value : '';
 
                             if (!duration) {{
                                 kmSelect.disabled = true;
@@ -1653,16 +1610,13 @@ class WebsiteContractBookingFixed(http.Controller):
                             kmSelect.innerHTML = '<option value="">Cargando opciones...</option>';
 
                             // Obtener opciones válidas de kilometraje
-                            const categoryIdInput = document.querySelector('input[name="category_id"]');
-                            const categoryId = categoryIdInput ? parseInt(categoryIdInput.value) : 0;
+                            const formData = new FormData();
+                            formData.append('category_id', {category_id});
+                            formData.append('duration', duration);
 
                             fetch('/web/get-valid-km-options', {{
                                 method: 'POST',
-                                headers: {{'Content-Type': 'application/json'}},
-                                body: JSON.stringify({{
-                                    category_id: categoryId,
-                                    duration: duration
-                                }})
+                                body: formData
                             }})
                             .then(response => response.json())
                             .then(data => {{
@@ -1692,7 +1646,7 @@ class WebsiteContractBookingFixed(http.Controller):
                         }}
 
                         // Función para seleccionar ofertas fijas
-                        function selectFixedOffer(duration, km, price, event) {{
+                        function selectFixedOffer(duration, km, price) {{
                             // Desmarcar todos los radio buttons
                             const radioButtons = document.querySelectorAll('input[name="fixed_offer"]');
                             radioButtons.forEach(radio => {{
@@ -1712,12 +1666,10 @@ class WebsiteContractBookingFixed(http.Controller):
                                 card.style.borderWidth = '';
                             }});
 
-                            // Resaltar la tarjeta seleccionada - encontrar el div padre (offer-card)
-                            const selectedCard = event.target.closest('.offer-card');
-                            if (selectedCard) {{
-                                selectedCard.style.borderColor = '{primary_color}';
-                                selectedCard.style.borderWidth = '3px';
-                            }}
+                            // Resaltar la tarjeta seleccionada
+                            const selectedCard = event.currentTarget;
+                            selectedCard.style.borderColor = '{primary_color}';
+                            selectedCard.style.borderWidth = '3px';
 
                             console.log(`Oferta fija seleccionada: ${{duration}} - ${{km}} - €${{price}}`);
 
@@ -1730,8 +1682,6 @@ class WebsiteContractBookingFixed(http.Controller):
                             document.getElementById('selected_pricing_type').value = 'fixed';
                             document.getElementById('selected_duration').value = duration;
                             document.getElementById('selected_km').value = km;
-                            // IMPORTANTE: El precio almacenado es por día, pero para el depósito necesitamos el total
-                            // Por ahora, almacenamos el precio unitario. El total se calcula en updateDepositDisplay()
                             document.getElementById('selected_price').value = price;
                             document.getElementById('min_duration_days').value = minDays;
                             document.getElementById('max_duration_days').value = maxDays || '';
@@ -1741,12 +1691,6 @@ class WebsiteContractBookingFixed(http.Controller):
 
                             // Actualizar fecha de fin si ya hay fecha de inicio
                             updateEndDate();
-                            
-                            // Calcular y mostrar depósito SOLO si hay tarjeta validada
-                            const cardTypeValue = document.getElementById('card_type')?.value;
-                            if (cardTypeValue) {{
-                                updateDepositDisplay();
-                            }}
 
                             // Validar formulario
                             validateForm();
@@ -1809,12 +1753,6 @@ class WebsiteContractBookingFixed(http.Controller):
 
                                     // Actualizar fecha de fin si ya hay fecha de inicio
                                     updateEndDate();
-                                    
-                                    // Calcular y mostrar depósito SOLO si hay tarjeta validada
-                                    const cardTypeValue = document.getElementById('card_type')?.value;
-                                    if (cardTypeValue) {{
-                                        updateDepositDisplay();
-                                    }}
 
                                     // Validar formulario
                                     validateForm();
@@ -1832,17 +1770,23 @@ class WebsiteContractBookingFixed(http.Controller):
                             }});
                         }}
 
-                        // Interceptar envío del formulario para validar selección de tarifa
-                        // NOTA: No validamos vehicle_id porque se asigna automáticamente al crear el contrato
+                        // Interceptar envío del formulario para validar selección de tarifa y vehículo
                         document.addEventListener('DOMContentLoaded', function() {{
                             const form = document.getElementById('booking_form');
                             if (form) {{
                                 form.addEventListener('submit', function(e) {{
                                     const pricingType = document.getElementById('selected_pricing_type').value;
+                                    const vehicleId = document.getElementById('selected_vehicle_id').value;
 
                                     if (!pricingType) {{
                                         e.preventDefault();
                                         alert('Por favor, selecciona una tarifa (Ofertas Fijas o Tarifas Dinámicas)');
+                                        return false;
+                                    }}
+
+                                    if (!vehicleId) {{
+                                        e.preventDefault();
+                                        alert('Por favor, selecciona un vehículo disponible');
                                         return false;
                                     }}
                                 }});
@@ -1920,8 +1864,8 @@ class WebsiteContractBookingFixed(http.Controller):
                             // Verificar si todos los campos están completos
                             const allFieldsComplete = customerName && customerEmail && customerPhone && customerDni && customerDniExpiry && cardValid && startDate && endDate && startTime && endTime && dniValid;
 
-                            if (allFieldsComplete && pricingType) {{
-                                // Cargar disponibilidad de categoría (CAMBIO: sin seleccionar vehículo específico)
+                            if (allFieldsComplete && pricingType && !vehicleId) {{
+                                // Cargar vehículos disponibles
                                 loadAvailableVehicles();
                             }}
 
@@ -1931,8 +1875,8 @@ class WebsiteContractBookingFixed(http.Controller):
                                 durationValid = validateDateRange();
                             }}
 
-                            // Habilitar botón solo si todo está completo y la duración es válida (SIN requerer vehículo específico)
-                            if (allFieldsComplete && pricingType && durationValid && dniValid) {{
+                            // Habilitar botón solo si todo está completo y la duración es válida
+                            if (allFieldsComplete && pricingType && vehicleId && durationValid && dniValid) {{
                                 submitBtn.disabled = false;
                                 submitBtn.style.opacity = '1';
                                 requirements.innerHTML = '<small class="text-success"><i class="fa fa-check me-1"></i>Todo listo para continuar</small>';
@@ -1941,6 +1885,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                 submitBtn.style.opacity = '0.6';
                                 let message = 'Complete todos los datos';
                                 if (allFieldsComplete && !pricingType) message += ', seleccione una tarifa';
+                                if (allFieldsComplete && pricingType && !vehicleId) message += ', seleccione un vehículo';
                                 if (!durationValid) message += ', ajuste la duración de fechas';
                                 if (!dniValid) message += ', DNI expirado';
                                 requirements.innerHTML = `<small class="text-muted"><i class="fa fa-info-circle me-1"></i>${{message}}</small>`;
@@ -1954,8 +1899,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             const endDate = document.getElementById('end_date').value;
                             const categoryId = document.getElementById('category_id') ? document.getElementById('category_id').value : document.querySelector('[name="category_id"]').value;
 
-                            // No esperar fechas para cargar disponibilidad - mostrar conteos sin importar fechas
-                            if (!location) return;  // Pero sí necesitamos ubicación
+                            if (!startDate || !endDate) return;
 
                             // Mostrar sección de vehículos
                             document.getElementById('available_vehicles_section').style.display = 'block';
@@ -1980,8 +1924,8 @@ class WebsiteContractBookingFixed(http.Controller):
                             .then(data => {{
                                 document.getElementById('vehicles_loading').style.display = 'none';
 
-                                if (data.success) {{
-                                    displayVehicles(data);
+                                if (data.success && data.vehicles.length > 0) {{
+                                    displayVehicles(data.vehicles);
                                 }} else {{
                                     document.getElementById('no_vehicles_message').style.display = 'block';
                                 }}
@@ -1993,37 +1937,65 @@ class WebsiteContractBookingFixed(http.Controller):
                             }});
                         }}
 
-                        // Función para mostrar disponibilidad (SOLO DISPONIBLES)
-                        function displayVehicles(data) {{
+                        // Función para mostrar vehículos
+                        function displayVehicles(vehicles) {{
                             const container = document.getElementById('vehicles_container');
                             container.innerHTML = '';
 
-                            // Crear UNA sola tarjeta mostrando SOLO los vehículos disponibles
-                            const availabilityCard = document.createElement('div');
-                            availabilityCard.className = 'col-md-8 col-lg-6 mx-auto mb-3';
-                            availabilityCard.innerHTML = `
-                                <div class="card h-100 text-center">
-                                    <div class="card-body">
-                                        <h5 class="card-title mb-4">✓ Disponibilidad de Vehículos</h5>
-                                        <div class="row mb-4">
-                                            <div class="col-12">
-                                                <strong class="display-3" style="color: #28a745;">${{data.available}}</strong>
-                                                <p class="text-muted" style="font-size: 1.2rem;">Vehículos Disponibles</p>
-                                            </div>
+                            vehicles.forEach(vehicle => {{
+                                // Usar categoría para determinar imagen
+                                const categoryName = vehicle.category_name || vehicle.name;
+                                // Extraer nombre sin matrícula (quitar la última parte)
+                                const nameParts = vehicle.name.split('/');
+                                const vehicleName = nameParts.length > 1 ? nameParts.slice(0, -1).join('/') : vehicle.name;
+
+                                // Detectar si es Pinveco o Sunset
+                                const currentDomain = window.location.hostname;
+                                const isPinveco = currentDomain.includes('pinveco');
+                                const imgDir = isPinveco ? '/vehicle_rental/static/description/img/tipos_pinveco' : '/vehicle_rental/static/description/img/tipos';
+
+                                // Extraer tipo de la categoría (Tipo B -> B)
+                                const typeMatch = categoryName.match(/Tipo\s+([A-Z])/);
+                                let brandImage = '/vehicle_rental/static/description/img/marcas/ford.svg'; // fallback
+
+                                if (typeMatch && typeMatch[1]) {{
+                                    const typeId = typeMatch[1]; // B, A, D, etc.
+                                    brandImage = `${{imgDir}}/tipo${{typeId}}.png`;
+                                }}
+
+                                const vehicleCard = document.createElement('div');
+                                vehicleCard.className = 'col-md-6 col-lg-4 mb-3';
+                                vehicleCard.innerHTML = `
+                                    <div class="card h-100 vehicle-card" style="cursor: pointer;" onclick="selectVehicle(${{vehicle.id}}, '${{vehicle.name}}', '${{vehicle.license_plate}}')">
+                                        <div class="card-body text-center">
+                                            <img src="${{brandImage}}" class="card-img-top mb-3" style="height: 120px; object-fit: contain;" alt="${{categoryName}}">
+                                            <h6 class="card-title">${{vehicleName}}</h6>
                                         </div>
-                                        <hr>
-                                        <p class="text-muted"><i class="fas fa-info-circle"></i> Se asignará un vehículo específico al firmar el contrato</p>
                                     </div>
-                                </div>
-                            `;
-                            container.appendChild(availabilityCard);
+                                `;
+                                container.appendChild(vehicleCard);
+                            }});
                         }}
 
-                        // DEPRECATED: selectVehicle() ya no se usa (ahora se reserva por categoría, no por vehículo específico)
-                        // Mantener para compatibilidad con código legacy
-                        function selectVehicle(vehicleId, vehicleName, licensePlate, event) {{
-                            // Ya no hacer nada - el vehículo se asigna automáticamente al crear el contrato
-                            console.log('selectVehicle() deprecated - reservation by category model');
+                        // Función para seleccionar vehículo
+                        function selectVehicle(vehicleId, vehicleName, licensePlate) {{
+                            // Desmarcar todos los vehículos
+                            document.querySelectorAll('.vehicle-card').forEach(card => {{
+                                card.style.borderColor = '';
+                                card.style.borderWidth = '';
+                            }});
+
+                            // Marcar el seleccionado
+                            event.currentTarget.style.borderColor = '{primary_color}';
+                            event.currentTarget.style.borderWidth = '3px';
+
+                            // Guardar selección
+                            document.getElementById('selected_vehicle_id').value = vehicleId;
+
+                            console.log(`Vehículo seleccionado: ${{vehicleName}} (${{licensePlate}}) - ID: ${{vehicleId}}`);
+
+                            // Validar formulario
+                            validateForm();
                         }}
 
                         // Función para calcular días mínimos basado en la duración de la tarifa
@@ -2197,8 +2169,8 @@ class WebsiteContractBookingFixed(http.Controller):
                             }})
                             .then(response => response.json())
                             .then(data => {{
-                                if (data.success && data.available > 0) {{
-                                    displayVehicles(data);
+                                if (data.success && data.vehicles.length > 0) {{
+                                    displayVehicles(data.vehicles);
                                 }} else {{
                                     vehicleContainer.innerHTML = `
                                         <div class="alert alert-warning w-100">
@@ -2228,7 +2200,6 @@ class WebsiteContractBookingFixed(http.Controller):
                             const bookingFormSection = document.getElementById('booking_form_section');
                             const noVehiclesMessage = document.getElementById('no_vehicles_location_message');
                             const bookingLocationInput = document.getElementById('booking_location');
-                            const categoryId = document.getElementById('category_id') ? document.getElementById('category_id').value : document.querySelector('[name="category_id"]').value;
 
                             // Ocultar formulario y mensaje inicialmente
                             bookingFormSection.style.display = 'none';
@@ -2245,7 +2216,7 @@ class WebsiteContractBookingFixed(http.Controller):
 
                             // Verificar disponibilidad llamando al endpoint
                             const formData = new FormData();
-                            formData.append('category_id', categoryId);
+                            formData.append('category_id', {category_id});
                             formData.append('location', location);
                             // No necesitamos fechas para verificar disponibilidad inicial
                             formData.append('start_date', '');
@@ -2270,7 +2241,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             .then(data => {{
                                 console.log('Location availability check:', data);
 
-                                if (data.success && data.available > 0) {{
+                                if (data.success && data.count > 0) {{
                                     // Hay vehículos disponibles - mostrar formulario
                                     bookingFormSection.style.display = 'block';
                                     noVehiclesMessage.style.display = 'none';
@@ -2529,16 +2500,8 @@ class WebsiteContractBookingFixed(http.Controller):
         try:
             import json
 
-            # Soportar tanto JSON como FormData
-            try:
-                # Intentar parsear como JSON
-                body_data = json.loads(request.httprequest.data.decode('utf-8'))
-                category_id = body_data.get('category_id')
-                duration = body_data.get('duration')
-            except:
-                # Fallback a form data
-                category_id = kw.get('category_id')
-                duration = kw.get('duration')
+            category_id = kw.get('category_id')
+            duration = kw.get('duration')
 
             print(f"DEBUG: Getting valid km options for category {category_id}, duration {duration}")
 
@@ -2580,14 +2543,11 @@ class WebsiteContractBookingFixed(http.Controller):
 
     @http.route('/web/get-available-vehicles', auth='public', website=True, type='http', methods=['POST'], csrf=False)
     def get_available_vehicles(self, **kw):
-        """Get availability counts for a category and date range (NOT individual vehicles)"""
+        """Get available vehicles for a category and date range"""
         try:
             import json
-            from datetime import datetime
-            import logging
-            _logger = logging.getLogger(__name__)
 
-            category_id = int(kw.get('category_id', 0))
+            category_id = kw.get('category_id')
             start_date = kw.get('start_date')
             end_date = kw.get('end_date')
             location = kw.get('location', '').strip()
@@ -2597,21 +2557,28 @@ class WebsiteContractBookingFixed(http.Controller):
             is_pinveco = 'pinveco' in current_domain.lower()
             company_id = 2 if is_pinveco else 1  # Pinveco=2, Sunset=1
 
-            # Log de parámetros recibidos
-            _logger.warning(f"GET_AVAILABLE_VEHICLES: category_id={category_id}, start_date={start_date}, end_date={end_date}, location='{location}', company_id={company_id}")
+            print(f"DEBUG: Getting available vehicles for category {category_id}, dates {start_date} - {end_date}, location: {location}, company: {company_id}")
 
-            # 1. TOTAL: Buscar todos los vehículos en la categoría con status='available'
-            total_domain = [
+            # Buscar vehículos disponibles de la categoría
+            print(f"DEBUG: Searching vehicles with category_id={category_id}, company_id={company_id}")
+
+            # Construir dominio de búsqueda
+            # Buscar por category_id directamente en el vehículo O por model_id.category_id
+            # Y filtrar por compañía y estado
+            domain = [
                 '|',
-                ('category_id', '=', category_id),
-                ('model_id.category_id', '=', category_id),
+                ('category_id', '=', int(category_id)),
+                ('model_id.category_id', '=', int(category_id)),
                 ('company_id', '=', company_id),
                 ('status', '=', 'available')
             ]
-            
-            _logger.warning(f"GET_AVAILABLE_VEHICLES: Dominio ANTES de location: {total_domain}")
-            
+
+            # Nota: En Odoo, el dominio se interpreta como:
+            # (category_id = X OR model_id.category_id = X) AND company_id = Y AND status = 'available'
+
+            # Filtrar por ubicación si se proporciona y no es "Todas las ubicaciones"
             if location and location != 'Todas las ubicaciones':
+                # Buscar vehículos con la ubicación exacta o variaciones (Málaga/Malaga, Córdoba/Cordoba)
                 location_variations = [location]
                 if location == 'Málaga':
                     location_variations.append('Malaga')
@@ -2621,82 +2588,77 @@ class WebsiteContractBookingFixed(http.Controller):
                     location_variations.append('Cordoba')
                 elif location == 'Cordoba':
                     location_variations.append('Córdoba')
-                _logger.warning(f"GET_AVAILABLE_VEHICLES: Location variations: {location_variations}")
-                total_domain.append(('location', 'in', location_variations))
-            else:
-                _logger.warning(f"GET_AVAILABLE_VEHICLES: NO location filter (empty or 'Todas')")
 
-            _logger.warning(f"GET_AVAILABLE_VEHICLES: Dominio FINAL: {total_domain}")
-            
-            total_vehicles = request.env['fleet.vehicle'].sudo().search(total_domain)
-            total_count = len(total_vehicles)
-            
-            _logger.warning(f"GET_AVAILABLE_VEHICLES: Resultados TOTAL: {total_count} vehicles")
-            for v in total_vehicles:
-                _logger.warning(f"GET_AVAILABLE_VEHICLES:   - ID: {v.id}, Name: {v.name}, Location: {v.location}")
+                domain.append(('location', 'in', location_variations))
+                print(f"DEBUG: Filtering by location: {location_variations}")
 
-            # 2. OCCUPIED: Vehículos con contratos activos que se solapan con fechas
-            occupied_vehicles = set()
+            # Primero buscar TODOS los vehículos de la categoría (sin filtro de status) para debug
+            all_vehicles = request.env['fleet.vehicle'].sudo().search([
+                '|',
+                ('category_id', '=', int(category_id)),
+                ('model_id.category_id', '=', int(category_id)),
+                ('company_id', '=', company_id)
+            ])
+            print(f"DEBUG: Found {len(all_vehicles)} total vehicles for category {category_id}")
+            for v in all_vehicles:
+                v_location = getattr(v, 'location', 'N/A')
+                print(f"DEBUG:   - Vehicle ID={v.id}, Name={v.name}, Plate={v.license_plate}, Status={v.status if hasattr(v, 'status') else 'N/A'}, Location={v_location}")
+
+            # Ahora buscar solo los disponibles con el filtro de ubicación
+            vehicles = request.env['fleet.vehicle'].sudo().search(domain)
+            print(f"DEBUG: Found {len(vehicles)} available vehicles matching criteria")
+            
+            # Ahora filtrar por disponibilidad de fechas
             if start_date and end_date:
+                from datetime import datetime
                 try:
                     start_dt = datetime.strptime(start_date, '%Y-%m-%d')
                     end_dt = datetime.strptime(end_date, '%Y-%m-%d')
                     
-                    # Buscar contratos activos que se solapan
-                    overlapping_contracts = request.env['vehicle.contract'].sudo().search([
-                        ('status', 'in', ['b_in_progress', 'c_return']),
-                        ('start_date', '<=', end_dt),
-                        ('end_date', '>=', start_dt),
-                    ])
+                    # Filtrar vehículos sin solapamientos
+                    available_vehicles = []
+                    for vehicle in vehicles:
+                        # Buscar contratos que se solapen con las fechas solicitadas
+                        overlapping = request.env['vehicle.contract'].sudo().search([
+                            ('vehicle_id', '=', vehicle.id),
+                            ('status', 'in', ['b_in_progress', 'c_return']),
+                            ('start_date', '<=', end_dt),
+                            ('end_date', '>=', start_dt),
+                        ])
+                        
+                        if not overlapping:
+                            available_vehicles.append(vehicle)
+                            print(f"DEBUG: Vehicle {vehicle.id} is available for dates {start_date} - {end_date}")
+                        else:
+                            print(f"DEBUG: Vehicle {vehicle.id} has conflict - skipping")
                     
-                    # Recopilar IDs únicos de vehículos ocupados
-                    for contract in overlapping_contracts:
-                        if contract.vehicle_id:
-                            occupied_vehicles.add(contract.vehicle_id.id)
-                    
-                    print(f"DEBUG: OCCUPIED vehicles: {len(occupied_vehicles)}")
+                    vehicles = available_vehicles
                 except Exception as e:
-                    print(f"DEBUG: Error calculating occupied: {e}")
+                    print(f"DEBUG: Error filtering by date: {e}")
 
-            # 3. RESERVED: Leads sin vehículo asignado, con type='opportunity', en esas fechas
-            reserved_leads = set()
-            if start_date and end_date:
-                try:
-                    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-                    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-                    
-                    # Buscar leads con vehicle_id=False, type='opportunity', categoría y fechas
-                    reserved = request.env['crm.lead'].sudo().search([
-                        ('selected_category_id', '=', category_id),
-                        ('vehicle_id', '=', False),
-                        ('type', '=', 'opportunity'),
-                        ('start_date', '<=', end_dt),
-                        ('end_date', '>=', start_dt),
-                        ('company_id', '=', company_id),
-                    ])
-                    
-                    # Recopilar IDs únicos de leads (aunque sean del mismo cliente)
-                    for lead in reserved:
-                        reserved_leads.add(lead.id)
-                    
-                    print(f"DEBUG: RESERVED leads: {len(reserved_leads)}")
-                except Exception as e:
-                    print(f"DEBUG: Error calculating reserved: {e}")
+            vehicles_data = []
+            for vehicle in vehicles:
+                # Obtener categoría
+                category_id = vehicle.category_id.id if vehicle.category_id else (vehicle.model_id.category_id.id if vehicle.model_id and vehicle.model_id.category_id else None)
+                category_name = vehicle.category_id.name if vehicle.category_id else (vehicle.model_id.category_id.name if vehicle.model_id and vehicle.model_id.category_id else 'Sin categoría')
 
-            # 4. AVAILABLE = TOTAL - OCCUPIED - RESERVED
-            occupied_count = len(occupied_vehicles)
-            reserved_count = len(reserved_leads)
-            available_count = max(0, total_count - occupied_count - reserved_count)
-
-            print(f"DEBUG: AVAILABILITY SUMMARY - Total: {total_count}, Occupied: {occupied_count}, Reserved: {reserved_count}, Available: {available_count}")
+                vehicles_data.append({
+                    'id': vehicle.id,
+                    'name': vehicle.name,
+                    'license_plate': vehicle.license_plate,
+                    'model_name': vehicle.model_id.name if vehicle.model_id else 'Sin modelo',
+                    'seats': vehicle.seats,
+                    'fuel_type': vehicle.fuel_type,
+                    'transmission': vehicle.transmission,
+                    'category_id': category_id,
+                    'category_name': category_name,
+                    'image': f'/web/image/fleet.vehicle/{vehicle.id}/image_128' if hasattr(vehicle, 'image_128') else self._get_image_path('default')
+                })
 
             result = {
                 'success': True,
-                'total': total_count,
-                'occupied': occupied_count,
-                'reserved': reserved_count,
-                'available': available_count,
-                'message': f'Disponibles: {available_count} vehículos' if available_count > 0 else 'No hay vehículos disponibles'
+                'vehicles': vehicles_data,
+                'count': len(vehicles_data)
             }
 
             response = request.make_response(
@@ -2706,9 +2668,7 @@ class WebsiteContractBookingFixed(http.Controller):
             return response
 
         except Exception as e:
-            print(f"DEBUG: Error getting availability: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"DEBUG: Error getting available vehicles: {e}")
             result = {
                 'success': False,
                 'message': f'Error: {str(e)}'

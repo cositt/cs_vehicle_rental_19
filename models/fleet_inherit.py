@@ -2,7 +2,7 @@
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 from odoo import models, fields, api, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 from dateutil.relativedelta import relativedelta
 from ..utils import _display_rental_notification
 
@@ -84,9 +84,33 @@ class FleetVehicle(models.Model):
         }
 
     def action_create_book_contract(self):
-        """Action create book contract"""
+        """Action create book contract from wizard"""
         context = self._context
-        customer = self.env['res.partner'].browse(context.get('customer_id'))
+        
+        # Try to get wizard - check all possible sources
+        wizard_id = None
+        wizard_model = None
+        
+        # Priority 1: Explicit wizard_id in context (from button in Many2many with parent.id)
+        if context.get('wizard_id') and context.get('wizard_model') == 'rental.contract.booking':
+            wizard_id = context.get('wizard_id')
+            wizard_model = context.get('wizard_model')
+        
+        # Priority 2: active_id (passed automatically by Odoo)
+        elif context.get('active_model') == 'rental.contract.booking':
+            wizard_id = context.get('active_id')
+            wizard_model = context.get('active_model')
+        
+        if not wizard_id or wizard_model != 'rental.contract.booking':
+            from odoo.exceptions import UserError
+            raise UserError("No se pudo obtener los datos del wizard.")
+        
+        wizard = self.env['rental.contract.booking'].browse(wizard_id)
+        if not wizard or not wizard.exists():
+            from odoo.exceptions import UserError
+            raise UserError("El wizard no existe.")
+        
+        # Create the contract with wizard data
         data = {
             'vehicle_id': self.id,
             'driver_id': self.driver_id.id,
@@ -96,12 +120,18 @@ class FleetVehicle(models.Model):
             'transmission': self.transmission,
             'fuel_type': self.fuel_type,
             'license_plate': self.license_plate,
-            'customer_id': customer.id,
-            'customer_phone': customer.phone,
-            'customer_email': customer.email,
-            'start_date': context.get('start_date'),
-            'end_date': context.get('end_date'),
+            'customer_id': wizard.customer_id.id,
+            'customer_phone': wizard.customer_id.phone,
+            'customer_email': wizard.customer_id.email,
+            'start_date': wizard.start_date,
+            'end_date': wizard.end_date,
+            'company_id': wizard.company_id.id,
+            'rent': wizard.calculated_price,
+            'rent_type': 'days',
+            'pricing_type': wizard.pricing_type,
+            'discount_reason': 'Tarifa del sistema de reservas',  # Set reason to bypass validation
         }
+        
         vehicle_contract = self.env['vehicle.contract'].create(data)
         return {
             'type': 'ir.actions.act_window',

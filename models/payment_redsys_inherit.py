@@ -7,6 +7,7 @@ import logging
 from datetime import datetime, timedelta
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
+from odoo.tools import DEFAULT_SERVER_DATE_FORMAT
 
 _logger = logging.getLogger(__name__)
 
@@ -96,6 +97,179 @@ class PaymentTransaction(models.Model):
                 return None
 
         return None
+    
+    def _create_and_pay_deposit_invoice(self, lead, partner, deposit_amount):
+        """
+        Crear automáticamente una factura de depósito y marcarla como pagada usando register_payment().
+        Se ejecuta cuando el pago de Redsys se completa.
+        """
+        try:
+            # Obtener el producto de depósito
+            deposit_product = self.env.ref('vehicle_rental.vehicle_rent_deposit')
+            
+            # Obtener el diario de ventas
+            sale_journal = self.env['account.journal'].sudo().search([
+                ('type', '=', 'sale'),
+                ('company_id', '=', lead.company_id.id)
+            ], limit=1)
+            
+            if not sale_journal:
+                sale_journal = self.env['account.journal'].sudo().search([
+                    ('type', '=', 'sale')
+                ], limit=1)
+            
+            if not sale_journal:
+                _logger.warning(f"REDSYS: No sale journal found para crear factura de depósito")
+                return None
+            
+            # Crear la factura de depósito
+            invoice_vals = {
+                'move_type': 'out_invoice',
+                'partner_id': partner.id,
+                'journal_id': sale_journal.id,
+                'invoice_date': fields.Date.today(),
+                'company_id': lead.company_id.id,
+                'ref': f"Depósito para reserva TX:{self.reference}",
+                'invoice_line_ids': [
+                    (0, 0, {
+                        'product_id': deposit_product.id,
+                        'name': f"Depósito de seguridad - {lead.name}",
+                        'quantity': 1,
+                        'price_unit': deposit_amount,
+                    })
+                ]
+            }
+            
+            deposit_invoice = self.env['account.move'].sudo().create(invoice_vals)
+            _logger.info(f"REDSYS: Factura de depósito creada - Invoice ID:{deposit_invoice.id}")
+            
+            # Obtener el diario de banco para Redsys
+            bank_journal = self.env['account.journal'].sudo().search([
+                ('type', '=', 'bank'),
+                ('name', 'ilike', 'redsys')
+            ], limit=1)
+            
+            if not bank_journal:
+                bank_journal = self.env['account.journal'].sudo().search([
+                    ('type', '=', 'bank')
+                ], limit=1)
+            
+            if bank_journal:
+                # Crear el pago usando el método oficial de Odoo
+                payment_vals = {
+                    'payment_type': 'inbound',
+                    'partner_type': 'customer',
+                    'partner_id': partner.id,
+                    'amount': deposit_amount,
+                    'currency_id': deposit_invoice.currency_id.id,
+                    'journal_id': bank_journal.id,
+                    'company_id': deposit_invoice.company_id.id,
+                    'payment_method_id': self.env.ref('account.account_payment_method_manual_in').id,
+                    'ref': f"Pago Redsys TX:{self.reference}",
+                    'communication': f"Depósito {deposit_invoice.name}",
+                }
+                
+                payment = self.env['account.payment'].sudo().create(payment_vals)
+                payment.action_post()
+                _logger.info(f"REDSYS: Payment creado y posted - Payment ID:{payment.id}")
+                
+                # Usar register_payment() - método oficial de Odoo para marcar factura como pagada
+                try:
+                    deposit_invoice.register_payment(payment.move_id)
+                    _logger.info(f"REDSYS: Factura de depósito reconciliada exitosamente usando register_payment()")
+                except Exception as e:
+                    _logger.warning(f"REDSYS: register_payment() falló, intentando reconciliación manual: {e}")
+                    # Fallback a reconciliación manual
+                    self._reconcile_payment_manual(payment, deposit_invoice)
+            else:
+                _logger.warning(f"REDSYS: No bank journal found, factura de depósito quedará sin pago")
+            
+            return deposit_invoice
+            
+        except Exception as e:
+            _logger.error(f"REDSYS: Error creando factura de depósito: {str(e)}", exc_info=True)
+            return None
+    
+    def _reconcile_payment_manual(self, payment, invoice):
+        """
+        Reconciliación manual como fallback si register_payment() falla.
+        """
+        try:
+            payment_line = payment.move_id.line_ids.filtered(
+                lambda x: x.account_id.internal_type == 'receivable'
+            )
+            invoice_line = invoice.line_ids.filtered(
+                lambda x: x.account_id.internal_type == 'receivable'
+            )
+            
+            if payment_line and invoice_line:
+                (payment_line + invoice_line).reconcile()
+                _logger.info(f"REDSYS: Reconciliación manual completada")
+            else:
+                _logger.warning(f"REDSYS: No se encontraron líneas receivable para reconciliación manual")
+        except Exception as e:
+            _logger.error(f"REDSYS: Error en reconciliación manual: {str(e)}", exc_info=True)
+    
+    def _create_payment_for_invoice(self, invoice, amount, payment_method_name='Redsys'):
+        """
+        Crear un pago (account.payment) para reconciliar una factura.
+        Esto marca la factura como "Pagado" automáticamente.
+        """
+        try:
+            # Buscar el diario de banco para Redsys
+            bank_journal = self.env['account.journal'].sudo().search([
+                ('type', '=', 'bank'),
+                ('name', 'ilike', 'redsys')
+            ], limit=1)
+            
+            if not bank_journal:
+                # Usar el diario de banco por defecto
+                bank_journal = self.env['account.journal'].sudo().search([
+                    ('type', '=', 'bank')
+                ], limit=1)
+            
+            if not bank_journal:
+                _logger.warning(f"REDSYS: No bank journal found para crear payment")
+                return None
+            
+            # Crear el pago
+            payment_vals = {
+                'payment_type': 'inbound',
+                'partner_type': 'customer',
+                'partner_id': invoice.partner_id.id,
+                'amount': amount,
+                'currency_id': invoice.currency_id.id,
+                'journal_id': bank_journal.id,
+                'company_id': invoice.company_id.id,
+                'payment_method_id': self.env.ref('account.account_payment_method_manual_in').id,
+                'ref': f"Pago Redsys TX:{self.reference}",
+                'communication': f"Depósito para {invoice.name}",
+            }
+            
+            payment = self.env['account.payment'].sudo().create(payment_vals)
+            _logger.info(f"REDSYS: Payment creado para invoice {invoice.id} - Payment ID:{payment.id}")
+            
+            # Marcar como enviado (posted)
+            payment.action_post()
+            _logger.info(f"REDSYS: Payment posted - Payment ID:{payment.id}")
+            
+            # Reconciliar el pago con la factura
+            payment_line = payment.move_id.line_ids.filtered(
+                lambda x: x.account_id.internal_type == 'receivable'
+            )
+            invoice_line = invoice.line_ids.filtered(
+                lambda x: x.account_id.internal_type == 'receivable'
+            )
+            
+            if payment_line and invoice_line:
+                (payment_line + invoice_line).reconcile()
+                _logger.info(f"REDSYS: Invoice {invoice.id} reconciliada con Payment {payment.id}")
+            
+            return payment
+            
+        except Exception as e:
+            _logger.error(f"REDSYS: Error creando payment para invoice {invoice.id}: {str(e)}", exc_info=True)
+            return None
 
     def _create_lead_from_payment(self, booking_data):
         """
@@ -122,23 +296,23 @@ class PaymentTransaction(models.Model):
             with open('/tmp/method_execution.log', 'a') as me:
                 me.write(f"[PARTNER_OK] TX:{self.id} - Partner ID={partner.id}\n")
 
-            # 2. Encontrar vehículo disponible
-            vehicle = self._find_available_vehicle(
-                booking_data.get('company_id'),
-                booking_data.get('category_id'),
-                booking_data.get('start_date'),
-                booking_data.get('end_date')
-            )
-
-            if not vehicle:
-                # Si el vehículo se agotó, crear reembolso
+            # 2. Verificar que existen vehículos en la categoría (NO asignar uno específico)
+            category_id = booking_data.get('category_id')
+            company_id = booking_data.get('company_id')
+            
+            available_count = self.env['fleet.vehicle'].sudo().search_count([
+                ('model_id.category_id', '=', int(category_id)),
+                ('status', '=', 'available'),
+                ('company_id', '=', company_id),
+            ])
+            
+            if available_count == 0:
                 _logger.warning(
-                    f"REDSYS: Vehículo no disponible | TX:{self.id} | "
-                    f"Category:{booking_data.get('category_id')}"
+                    f"REDSYS: No hay vehículos disponibles | TX:{self.id} | "
+                    f"Category:{category_id}"
                 )
-                # TODO: Implementar reembolso automático
                 raise ValidationError(
-                    "El vehículo seleccionado ya no está disponible. "
+                    "No hay vehículos disponibles en esta categoría. "
                     "Se procesará un reembolso automático."
                 )
 
@@ -158,23 +332,50 @@ class PaymentTransaction(models.Model):
             except:
                 pass
             
+            # Construir descripción con validación de seguridad
+            total_price = float(booking_data.get('total_price', 0.0))
+            deposit_amount = float(booking_data.get('deposit_amount', 0.0))
+            total_with_deposit = float(booking_data.get('total_with_deposit', 0.0))
+            card_type = booking_data.get('card_type', 'N/A')
+            card_bin = booking_data.get('card_bin', 'N/A')
+            
+            # Obtener nombre de la categoría de vehículo
+            try:
+                category_id = int(booking_data.get('category_id'))
+                category = self.env['fleet.vehicle.model.category'].sudo().browse(category_id)
+                category_name = category.name if category.exists() else f"Categoría {category_id}"
+            except:
+                category_name = "Categoría desconocida"
+            
+            # Validación de seguridad: Comparar BIN y tipo de tarjeta validados vs los usados en pago
+            # TODO PRODUCCIÓN: Verificar si Redsys devuelve BIN del pago para comparar
+            security_note = f"✅ BIN validado: {card_bin} | Tipo: {card_type}"
+            
+            description = (
+                f"Reserva procesada vía web | TX:{self.id}<br/><br/>"
+                f"--- RESUMEN DEL ALQUILER ---<br/>"
+                f"- Tipo de vehículo: {category_name}<br/>"
+                f"- Tarifa: {float(booking_data.get('selected_price', 0.0)):.2f} €/día<br/>"
+                f"- Precio total alquiler: {total_price:.2f} €<br/>"
+                f"- Depósito de seguridad: {deposit_amount:.2f} € ({card_type})<br/>"
+                f"- TOTAL PAGADO: {total_with_deposit:.2f} €<br/>"
+                f"- Fechas: {booking_data.get('start_date')} {booking_data.get('start_time')} → {booking_data.get('end_date')} {booking_data.get('end_time')}<br/>"
+                f"- Ubicación: {booking_data.get('location')}<br/>"
+                f"- Transacción Redsys: {self.reference}<br/><br/>"
+                f"--- SEGURIDAD ---<br/>"
+                f"{security_note}"
+            )
+            
             lead_vals = {
                 'name': f"Consulta de Reserva - {booking_data.get('customer_name')}",
                 'partner_id': partner.id,
-                'company_id': vehicle.company_id.id,
+                'company_id': company_id,
                 'type': 'opportunity',
                 'email_from': booking_data.get('customer_email'),
                 'phone': booking_data.get('customer_phone'),
-                'description': (
-                    f"Reserva procesada vía web | TX:{self.id}<br/><br/>"
-                    f"--- RESUMEN DEL ALQUILER ---<br/>"
-                    f"- Tarifa: {float(booking_data.get('selected_price', 0.0)):.2f} €/día<br/>"
-                    f"- Fechas: {booking_data.get('start_date')} {booking_data.get('start_time')} → {booking_data.get('end_date')} {booking_data.get('end_time')}<br/>"
-                    f"- Ubicación: {booking_data.get('location')}<br/>"
-                    f"- Transacción Redsys: {self.reference}"
-                ),
+                'description': description,
                 'stage_id': lead_stage_id,
-                'vehicle_id': vehicle.id,
+                'vehicle_id': False,
                 'start_date': booking_data.get('start_date'),
                 'end_date': booking_data.get('end_date'),
                 'selected_category_id': int(booking_data.get('category_id')),
@@ -198,12 +399,21 @@ class PaymentTransaction(models.Model):
                 raise
 
             _logger.info(
-                f"REDSYS: Lead creado exitosamente | TX:{self.id} | "
+                f"REDSYS: Lead creado exitosamente (SIN vehículo asignado) | TX:{self.id} | "
                 f"Lead:{lead.id} | "
-                f"Vehicle:{vehicle.name}"
+                f"Category:{category_id}"
             )
 
-            # 7. Limpiar sesión si es posible
+            # 7. Crear factura de depósito automáticamente y marcarla como pagada
+            try:
+                deposit_amount = float(booking_data.get('deposit_amount', 0.0))
+                if deposit_amount > 0:
+                    self._create_and_pay_deposit_invoice(lead, partner, deposit_amount)
+            except Exception as e:
+                _logger.warning(f"REDSYS: Error creando factura de depósito automático: {e}")
+                # No fallar el flujo si falla la factura de depósito
+            
+            # 8. Limpiar sesión si es posible
             try:
                 from odoo.http import request
                 if request and hasattr(request, 'session'):

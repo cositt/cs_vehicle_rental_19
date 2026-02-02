@@ -405,7 +405,27 @@ class VehicleContract(models.Model):
             if record.reference_no == _('New'):
                 record.reference_no = self.env['ir.sequence'].next_by_code('vehicle.contract') or _(
                     'New')
+            
+            # Actualizar ubicación del vehículo basado en drop_off_city
+            # Si se especifica una ubicación de devolución, el vehículo se reubica allí
+            # para que futuros alquileres se hagan desde la ubicación de destino
+            if record.drop_off_city and record.vehicle_id:
+                record.vehicle_id.location = record.drop_off_city
+        
         return records
+
+    def write(self, vals):
+        """Update vehicle location when drop_off_city is modified"""
+        result = super().write(vals)
+        
+        # Si se modifica drop_off_city, actualizar ubicación del vehículo
+        # Esto permite cambiar la ubicación del vehículo al editar un contrato existente
+        if 'drop_off_city' in vals:
+            for record in self:
+                if record.drop_off_city and record.vehicle_id:
+                    record.vehicle_id.location = record.drop_off_city
+        
+        return result
 
     @api.constrains('start_date', 'end_date', 'rent_type')
     def _check_date_rent_type(self):
@@ -706,34 +726,84 @@ class VehicleContract(models.Model):
     def onchange_vehicle_rent_details(self):
         """Onchange vehicle renta details"""
         for rec in self:
+            # Si el rent ya tiene un valor válido (ej: viene de tarifas del wizard), no lo sobrescribas
+            # Solo sobrescribe si el rent es 0 o no tiene valor
+            should_set_rent = not rec.rent or rec.rent == 0.0
+            
             if rec.rent_type == 'days':
-                rec.rent = rec.vehicle_id.rent_day
+                if should_set_rent and rec.vehicle_id.rent_day:
+                    rec.rent = rec.vehicle_id.rent_day
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_day
             elif rec.rent_type == 'week':
-                rec.rent = rec.vehicle_id.rent_week
+                if should_set_rent and rec.vehicle_id.rent_week:
+                    rec.rent = rec.vehicle_id.rent_week
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_week
             elif rec.rent_type == 'month':
-                rec.rent = rec.vehicle_id.rent_month
+                if should_set_rent and rec.vehicle_id.rent_month:
+                    rec.rent = rec.vehicle_id.rent_month
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_month
             elif rec.rent_type == 'hour':
-                rec.rent = rec.vehicle_id.rent_hour
+                if should_set_rent and rec.vehicle_id.rent_hour:
+                    rec.rent = rec.vehicle_id.rent_hour
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_hour
             elif rec.rent_type == 'year':
-                rec.rent = rec.vehicle_id.rent_year
+                if should_set_rent and rec.vehicle_id.rent_year:
+                    rec.rent = rec.vehicle_id.rent_year
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_year
             elif rec.rent_type == 'km':
-                rec.rent = rec.vehicle_id.rent_km
+                if should_set_rent and rec.vehicle_id.rent_km:
+                    rec.rent = rec.vehicle_id.rent_km
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_km
             elif rec.rent_type == 'mi':
-                rec.rent = rec.vehicle_id.rent_mi
+                if should_set_rent and rec.vehicle_id.rent_mi:
+                    rec.rent = rec.vehicle_id.rent_mi
                 if rec.is_any_extra_charges:
                     rec.extra_charge = rec.vehicle_id.extra_charge_mi
+
+    def _sync_deposit_from_calculated(self):
+        """
+        Sincroniza el campo 'deposit' con 'calculated_deposit' cuando use_deposit_from_rule=True.
+        Este método se llama EXPLÍCITAMENTE después de guardar para asegurar sincronización.
+        """
+        for record in self:
+            if record.use_deposit_from_rule and record.calculated_deposit > 0:
+                # Usar depósito automático
+                if record.deposit != record.calculated_deposit or not record.if_any_deposit:
+                    record.write({
+                        'if_any_deposit': True,
+                        'deposit': record.calculated_deposit
+                    })
+            elif not record.use_deposit_from_rule:
+                # Permitir manual - no cambiar nada automáticamente
+                pass
+            else:
+                # Sin depósito disponible
+                if record.if_any_deposit:
+                    record.write({'if_any_deposit': False})
+    
+    def write(self, vals):
+        """Override write para sincronizar depósito después de cambios"""
+        result = super().write(vals)
+        
+        # Después de escribir, sincronizar depósito si es necesario
+        # Esto se ejecuta después de que los campos computed se hayan actualizado
+        if any(field in vals for field in ['vehicle_id', 'deposit_card_type', 'use_deposit_from_rule']):
+            self._sync_deposit_from_calculated()
+        
+        return result
+    
+    def create(self, vals_list):
+        """Override create para sincronizar depósito después de crear"""
+        records = super().create(vals_list)
+        # Sincronizar depósito en los registros nuevos
+        records._sync_deposit_from_calculated()
+        return records
 
     @api.depends('extra_service_ids.amount', 'extra_service_ids.product_qty')
     def _compute_total_extra_service_charge(self):

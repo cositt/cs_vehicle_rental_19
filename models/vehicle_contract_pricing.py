@@ -119,6 +119,42 @@ class VehicleContractPricing(models.Model):
     )
     
     # ============================================
+    # DEPÓSITO DINÁMICO (BASADO EN REGLAS)
+    # ============================================
+    
+    deposit_card_type = fields.Selection(
+        [
+            ('debit', 'Tarjeta de Débito'),
+            ('credit', 'Tarjeta de Crédito'),
+        ],
+        string='Tipo de Tarjeta para Depósito',
+        default='debit',
+        help='Determina qué regla de depósito se aplica según el tipo de tarjeta'
+    )
+    
+    deposit_rule_id = fields.Many2one(
+        'vehicle.deposit.rule',
+        string='Regla de Depósito Aplicada',
+        compute='_compute_deposit_rule',
+        store=True,
+        help='La regla de depósito que se está utilizando actualmente'
+    )
+    
+    calculated_deposit = fields.Monetary(
+        string='Depósito Calculado (Automático)',
+        compute='_compute_calculated_deposit',
+        store=True,
+        currency_field='currency_id',
+        help='Depósito calculado automáticamente según la categoría del vehículo, tipo de tarjeta y precio del alquiler'
+    )
+    
+    use_deposit_from_rule = fields.Boolean(
+        string='Usar Depósito de Regla',
+        default=True,
+        help='Si está marcado, usa el depósito calculado de la regla. Si no, permite ingresar un depósito manual.'
+    )
+    
+    # ============================================
     # KM EXTRA (PARA FLEXIRENT)
     # ============================================
     
@@ -665,4 +701,59 @@ class VehicleContractPricing(models.Model):
             'view_mode': 'form',
             'target': 'current',
         }
+    
+    # ============================================
+    # MÉTODOS DE CÁLCULO DE DEPÓSITO DINÁMICO
+    # ============================================
+    
+    @api.depends('vehicle_id', 'vehicle_id.category_id', 'deposit_card_type')
+    def _compute_deposit_rule(self):
+        """
+        Busca la regla de depósito aplicable para este contrato.
+        
+        Criterios:
+        - Categoría del vehículo
+        - Tipo de tarjeta (débito/crédito)
+        - Fecha válida (hoy)
+        """
+        for record in self:
+            if (record.vehicle_id and 
+                record.vehicle_id.category_id and 
+                record.deposit_card_type):
+                
+                # Buscar regla usando el método que ya existe en vehicle.deposit.rule
+                rule = self.env['vehicle.deposit.rule'].find_deposit_rule(
+                    record.vehicle_id.category_id.id,
+                    record.deposit_card_type,
+                    fields.Date.today()
+                )
+                record.deposit_rule_id = rule.id if rule else False
+            else:
+                record.deposit_rule_id = False
+    
+    @api.depends(
+        'deposit_rule_id',
+        'total_vehicle_rent',
+        'use_deposit_from_rule'
+    )
+    def _compute_calculated_deposit(self):
+        """
+        Calcula el depósito usando la regla encontrada.
+        
+        Fórmula:
+        - Si hay regla: deposit = regla.calculate_deposit(total_vehicle_rent)
+        - Si no hay regla: deposit = 0
+        """
+        for record in self:
+            if (record.use_deposit_from_rule and 
+                record.deposit_rule_id and 
+                record.total_vehicle_rent > 0):
+                
+                # Usar el método calculate_deposit() que ya existe en vehicle.deposit.rule
+                calculated = record.deposit_rule_id.calculate_deposit(
+                    record.total_vehicle_rent
+                )
+                record.calculated_deposit = calculated
+            else:
+                record.calculated_deposit = 0
 
