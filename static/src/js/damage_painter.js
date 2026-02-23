@@ -181,13 +181,13 @@ import { useService } from "@web/core/utils/hooks";
     }
 
     function initDamagePainter() {
-        console.log('Iniciando damage painter...');
+        // console.log('Iniciando damage painter...');
         
         // Esperar a que el DOM esté listo
         setTimeout(() => {
             canvas = document.getElementById('damage_canvas');
             if (!canvas) {
-                console.log('Canvas no encontrado, reintentando...');
+                // console.log('Canvas no encontrado, reintentando...');
                 // Reintentar
                 setTimeout(initDamagePainter, 500);
                 return;
