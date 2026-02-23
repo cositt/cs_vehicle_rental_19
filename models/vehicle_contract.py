@@ -78,6 +78,12 @@ class VehicleContract(models.Model):
     customer_id = fields.Many2one("res.partner")
     customer_phone = fields.Char(string="Phone")
     customer_email = fields.Char(string="Email")
+    customer_dni = fields.Char(string="DNI/NIE")
+    customer_dni_expiry_date = fields.Date(string="Fecha de Expiración del DNI")
+    customer_address = fields.Char(string="Domicilio")
+    driver_license_number = fields.Char(string="Carnet de Conducir")
+    driver_license_issue_date = fields.Date(string="Fecha Expedición Carnet")
+    driver_license_expiry_date = fields.Date(string="Fecha Caducidad Carnet")
     customer_document_id = fields.Many2one("customer.documents", string="Document")
     document_count = fields.Integer(compute='_compute_document_count')
 

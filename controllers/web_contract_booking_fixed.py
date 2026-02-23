@@ -1063,6 +1063,25 @@ class WebsiteContractBookingFixed(http.Controller):
 
                 # Obtener tarifas dinámicas del módulo
                 pricing_rules = self._get_dynamic_pricing_rules(category_id)
+                # Países para el selector de dirección (en español si está instalado, España por defecto)
+                countries = request.env['res.country'].sudo().search([], order='name')
+                spain = request.env['res.country'].sudo().search([('code', '=', 'ES')], limit=1)
+                spain_id = spain.id if spain else None
+                # Usar idioma español solo si está instalado (evitar "Invalid language code: es_ES")
+                lang_es = None
+                res_lang = request.env['res.lang'].sudo()
+                for code in ('es_ES', 'es'):
+                    if res_lang.search([('code', '=', code), ('active', '=', True)], limit=1):
+                        lang_es = code
+                        break
+                if not lang_es and (request.env.context.get('lang') or request.env.lang):
+                    current = request.env.context.get('lang') or request.env.lang
+                    if res_lang.search([('code', '=', current), ('active', '=', True)], limit=1):
+                        lang_es = current
+                country_options = ''.join([
+                    f'<option value="{c.id}"{" selected" if c.id == spain_id else ""}>{c.with_context(lang=lang_es).name if lang_es else c.name}</option>'
+                    for c in countries
+                ])
 
                 # Construir el contenido HTML (sin navbar, sin DOCTYPE/html/head/body)
                 # Solo el contenido que va dentro del layout de Odoo
@@ -1316,6 +1335,58 @@ class WebsiteContractBookingFixed(http.Controller):
                                                         <div class="col-md-6 mb-3">
                                                             <label for="customer_dni_expiry_date" class="form-label">Fecha de Expiración del DNI (Mes/Año) <span class="text-danger">*</span></label>
                                                             <input type="month" class="form-control" id="customer_dni_expiry_date" name="customer_dni_expiry_date" required/>
+                                                        </div>
+                                                    </div>
+                                                    <h6 class="mb-2 mt-3"><i class="fa fa-map-marker-alt me-2"></i>Dirección</h6>
+                                                    <div class="row">
+                                                        <div class="col-md-12 mb-3">
+                                                            <label for="street" class="form-label">Calle <span class="text-danger">*</span></label>
+                                                            <input type="text" class="form-control" id="street" name="street" placeholder="Calle..." required/>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row">
+                                                        <div class="col-md-12 mb-3">
+                                                            <label for="street2" class="form-label">Calle 2</label>
+                                                            <input type="text" class="form-control" id="street2" name="street2" placeholder="Calle 2..."/>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="city" class="form-label">Ciudad <span class="text-danger">*</span></label>
+                                                            <input type="text" class="form-control" id="city" name="city" placeholder="Ciudad" required/>
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="zip" class="form-label">C.P. <span class="text-danger">*</span></label>
+                                                            <input type="text" class="form-control" id="zip" name="zip" placeholder="C.P." required/>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row">
+                                                        <div class="col-md-12 mb-3">
+                                                            <label for="country_id" class="form-label">País <span class="text-danger">*</span></label>
+                                                            <select class="form-select" id="country_id" name="country_id" required>
+                                                                <option value="">Seleccione país</option>
+                                                                {country_options}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="driver_license_number" class="form-label">Carnet de Conducir <span class="text-danger">*</span></label>
+                                                            <input type="text" class="form-control" id="driver_license_number" name="driver_license_number" placeholder="Ej: 12345678A" required/>
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="birth_date" class="form-label">Fecha de Nacimiento <span class="text-danger">*</span></label>
+                                                            <input type="date" class="form-control" id="birth_date" name="birth_date" required/>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="driver_license_issue_date" class="form-label">Fecha Expedición Carnet <span class="text-danger">*</span></label>
+                                                            <input type="date" class="form-control" id="driver_license_issue_date" name="driver_license_issue_date" required/>
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="driver_license_expiry_date" class="form-label">Fecha Caducidad Carnet <span class="text-danger">*</span></label>
+                                                            <input type="date" class="form-control" id="driver_license_expiry_date" name="driver_license_expiry_date" required/>
                                                         </div>
                                                     </div>
 
@@ -1852,7 +1923,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             validateForm();
 
                             // Añadir listeners para validación en tiempo real
-                            const inputs = ['customer_name', 'customer_email', 'customer_phone', 'customer_dni', 'customer_dni_expiry_date', 'card_number', 'start_date', 'end_date', 'start_time', 'end_time'];
+                            const inputs = ['customer_name', 'customer_email', 'customer_phone', 'customer_dni', 'customer_dni_expiry_date', 'street', 'city', 'zip', 'country_id', 'driver_license_number', 'birth_date', 'driver_license_issue_date', 'driver_license_expiry_date', 'card_number', 'start_date', 'end_date', 'start_time', 'end_time'];
                             inputs.forEach(inputId => {{
                                 const input = document.getElementById(inputId);
                                 if (input) {{
@@ -1871,6 +1942,14 @@ class WebsiteContractBookingFixed(http.Controller):
                             const customerPhone = document.getElementById('customer_phone').value;
                             const customerDni = document.getElementById('customer_dni').value;
                             const customerDniExpiry = document.getElementById('customer_dni_expiry_date').value;
+                            const street = document.getElementById('street') ? document.getElementById('street').value : '';
+                            const city = document.getElementById('city') ? document.getElementById('city').value : '';
+                            const zip = document.getElementById('zip') ? document.getElementById('zip').value : '';
+                            const countryId = document.getElementById('country_id') ? document.getElementById('country_id').value : '';
+                            const driverLicenseNumber = document.getElementById('driver_license_number') ? document.getElementById('driver_license_number').value : '';
+                            const birthDate = document.getElementById('birth_date') ? document.getElementById('birth_date').value : '';
+                            const driverLicenseIssueDate = document.getElementById('driver_license_issue_date') ? document.getElementById('driver_license_issue_date').value : '';
+                            const driverLicenseExpiryDate = document.getElementById('driver_license_expiry_date') ? document.getElementById('driver_license_expiry_date').value : '';
                             const cardType = document.getElementById('card_type').value;
                             const cardNumber = document.getElementById('card_number').value;
                             const cardBin = document.getElementById('card_bin').value;
@@ -1890,17 +1969,17 @@ class WebsiteContractBookingFixed(http.Controller):
 
                             // Validar que el DNI no esté expirado
                             let dniValid = true;
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
                             if (customerDniExpiry) {{
                                 // Comparar mes/año (el DNI expira al final del mes)
                                 const [expiryYear, expiryMonth] = customerDniExpiry.split('-').map(Number);
-                                const today = new Date();
                                 const currentYear = today.getFullYear();
                                 const currentMonth = today.getMonth() + 1; // getMonth() devuelve 0-11
 
                                 // El DNI está expirado si el año es anterior, o si es el mismo año pero el mes es anterior
                                 if (expiryYear < currentYear || (expiryYear === currentYear && expiryMonth < currentMonth)) {{
                                     dniValid = false;
-                                    // Mostrar mensaje de error
                                     const dniField = document.getElementById('customer_dni_expiry_date');
                                     if (dniField) {{
                                         dniField.setCustomValidity('El DNI está expirado. La fecha de expiración no puede ser anterior al mes actual.');
@@ -1914,11 +1993,46 @@ class WebsiteContractBookingFixed(http.Controller):
                                 }}
                             }}
 
+                            // Validaciones carnet de conducir: mayor de 18 años, expedición <= hoy, caducidad > hoy
+                            let licenseValid = true;
+                            const birthDateEl = document.getElementById('birth_date');
+                            const issueDateEl = document.getElementById('driver_license_issue_date');
+                            const expiryDateEl = document.getElementById('driver_license_expiry_date');
+                            if (birthDateEl) {{
+                                const limit18 = new Date(today);
+                                limit18.setFullYear(limit18.getFullYear() - 18);
+                                if (birthDate && new Date(birthDate) > limit18) {{
+                                    licenseValid = false;
+                                    birthDateEl.setCustomValidity('Debes ser mayor de 18 años para conducir.');
+                                    birthDateEl.reportValidity();
+                                }} else {{
+                                    birthDateEl.setCustomValidity('');
+                                }}
+                            }}
+                            if (issueDateEl && driverLicenseIssueDate) {{
+                                if (new Date(driverLicenseIssueDate) > today) {{
+                                    licenseValid = false;
+                                    issueDateEl.setCustomValidity('La fecha de expedición del carnet no puede ser posterior a hoy.');
+                                    issueDateEl.reportValidity();
+                                }} else {{
+                                    issueDateEl.setCustomValidity('');
+                                }}
+                            }}
+                            if (expiryDateEl && driverLicenseExpiryDate) {{
+                                if (new Date(driverLicenseExpiryDate) <= today) {{
+                                    licenseValid = false;
+                                    expiryDateEl.setCustomValidity('La fecha de caducidad del carnet debe ser posterior a hoy.');
+                                    expiryDateEl.reportValidity();
+                                }} else {{
+                                    expiryDateEl.setCustomValidity('');
+                                }}
+                            }}
+
                             // Validar que la tarjeta esté completa (tipo + número con al menos 6 dígitos)
                             const cardValid = cardType && cardNumber && cardBin.length >= 6;
 
                             // Verificar si todos los campos están completos
-                            const allFieldsComplete = customerName && customerEmail && customerPhone && customerDni && customerDniExpiry && cardValid && startDate && endDate && startTime && endTime && dniValid;
+                            const allFieldsComplete = customerName && customerEmail && customerPhone && customerDni && customerDniExpiry && street && city && zip && countryId && driverLicenseNumber && birthDate && driverLicenseIssueDate && driverLicenseExpiryDate && cardValid && startDate && endDate && startTime && endTime && dniValid && licenseValid;
 
                             if (allFieldsComplete && pricingType) {{
                                 // Cargar disponibilidad de categoría (CAMBIO: sin seleccionar vehículo específico)
@@ -1932,7 +2046,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             }}
 
                             // Habilitar botón solo si todo está completo y la duración es válida (SIN requerer vehículo específico)
-                            if (allFieldsComplete && pricingType && durationValid && dniValid) {{
+                            if (allFieldsComplete && pricingType && durationValid && dniValid && licenseValid) {{
                                 submitBtn.disabled = false;
                                 submitBtn.style.opacity = '1';
                                 requirements.innerHTML = '<small class="text-success"><i class="fa fa-check me-1"></i>Todo listo para continuar</small>';
@@ -1943,6 +2057,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                 if (allFieldsComplete && !pricingType) message += ', seleccione una tarifa';
                                 if (!durationValid) message += ', ajuste la duración de fechas';
                                 if (!dniValid) message += ', DNI expirado';
+                                if (!licenseValid) message += ', revise carnet (edad 18+, expedición ≤ hoy, caducidad &gt; hoy)';
                                 requirements.innerHTML = `<small class="text-muted"><i class="fa fa-info-circle me-1"></i>${{message}}</small>`;
                             }}
                         }}
@@ -2635,16 +2750,17 @@ class WebsiteContractBookingFixed(http.Controller):
             for v in total_vehicles:
                 _logger.warning(f"GET_AVAILABLE_VEHICLES:   - ID: {v.id}, Name: {v.name}, Location: {v.location}")
 
-            # 2. OCCUPIED: Vehículos con contratos activos que se solapan con fechas
+            # 2. OCCUPIED: Solo contratos que aún tienen el vehículo fuera. No cuentan: Devuelto (c_return), Cancelado (d_cancel), vencidos (por fechas).
+            # Sí bloquean: borrador (a_draft) y en curso (b_in_progress). c_return = ya devuelto = vehículo libre.
             occupied_vehicles = set()
             if start_date and end_date:
                 try:
                     start_dt = datetime.strptime(start_date, '%Y-%m-%d')
                     end_dt = datetime.strptime(end_date, '%Y-%m-%d')
                     
-                    # Buscar contratos activos que se solapan
                     overlapping_contracts = request.env['vehicle.contract'].sudo().search([
-                        ('status', 'in', ['b_in_progress', 'c_return']),
+                        ('company_id', '=', company_id),
+                        ('status', 'in', ['a_draft', 'b_in_progress']),
                         ('start_date', '<=', end_dt),
                         ('end_date', '>=', start_dt),
                     ])
@@ -2658,24 +2774,28 @@ class WebsiteContractBookingFixed(http.Controller):
                 except Exception as e:
                     print(f"DEBUG: Error calculating occupied: {e}")
 
-            # 3. RESERVED: Leads sin vehículo asignado, con type='opportunity', en esas fechas
+            # 3. RESERVED: Oportunidades en proceso (no cerradas: no ganadas, perdidas ni canceladas). Pendientes/borradores sí cuentan.
             reserved_leads = set()
             if start_date and end_date:
                 try:
                     start_dt = datetime.strptime(start_date, '%Y-%m-%d')
                     end_dt = datetime.strptime(end_date, '%Y-%m-%d')
                     
-                    # Buscar leads con vehicle_id=False, type='opportunity', categoría y fechas
-                    reserved = request.env['crm.lead'].sudo().search([
+                    reserved_domain = [
                         ('selected_category_id', '=', category_id),
                         ('vehicle_id', '=', False),
                         ('type', '=', 'opportunity'),
                         ('start_date', '<=', end_dt),
                         ('end_date', '>=', start_dt),
                         ('company_id', '=', company_id),
-                    ])
+                        ('contract_id', '=', False),  # ya convertido a contrato no reserva slot
+                        ('probability', '<', 100),  # ganadas (100) no reservan: ya tienen contrato o están cerradas
+                    ]
+                    # Excluir oportunidades cerradas (etapas con fold=True: Ganado/Perdido/Cancelado)
+                    if 'fold' in request.env['crm.stage']._fields:
+                        reserved_domain.append(('stage_id.fold', '=', False))
+                    reserved = request.env['crm.lead'].sudo().search(reserved_domain)
                     
-                    # Recopilar IDs únicos de leads (aunque sean del mismo cliente)
                     for lead in reserved:
                         reserved_leads.add(lead.id)
                     
@@ -3247,9 +3367,16 @@ class WebsiteContractBookingFixed(http.Controller):
                     payment_tx.write({'state': 'done'})
                     _logger.info(f"RENTAL_PAYMENT SUCCESS: Transacción marcada como done TX:{payment_tx.id}")
                 
-                # Obtener booking_data
+                # Obtener booking_data: primero sesión; si no (p. ej. sesión perdida al volver de Redsys), desde la transacción
                 booking_data = request.session.get('booking_data')
-                _logger.info(f"RENTAL_PAYMENT SUCCESS: Booking data: {booking_data}")
+                if not booking_data and getattr(payment_tx, 'booking_data_json', None):
+                    try:
+                        import json as _json
+                        booking_data = _json.loads(payment_tx.booking_data_json)
+                        _logger.info(f"RENTAL_PAYMENT SUCCESS: Booking data tomado de TX.booking_data_json (sesión vacía)")
+                    except Exception as je:
+                        _logger.warning(f"RENTAL_PAYMENT SUCCESS: No se pudo parsear booking_data_json: {je}")
+                _logger.info(f"RENTAL_PAYMENT SUCCESS: Booking data presente: {bool(booking_data)}")
                 
                 # Llamar directamente a _create_lead_from_payment sin pasar por _apply_updates
                 try:
@@ -3258,7 +3385,7 @@ class WebsiteContractBookingFixed(http.Controller):
                         payment_tx.booking_created = True
                         _logger.info(f"RENTAL_PAYMENT SUCCESS: Lead creado exitosamente TX:{payment_tx.id}")
                     else:
-                        _logger.warning("RENTAL_PAYMENT SUCCESS: No hay booking_data para crear lead")
+                        _logger.warning("RENTAL_PAYMENT SUCCESS: No hay booking_data (ni sesión ni TX) para crear lead")
                 except Exception as e:
                     _logger.error(f"RENTAL_PAYMENT SUCCESS: Error en _create_lead_from_payment: {str(e)}", exc_info=True)
             else:

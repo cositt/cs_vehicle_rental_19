@@ -60,6 +60,13 @@
                             <group>
                                 <field name="customer_dni"/>
                                 <field name="customer_dni_expiry_date"/>
+                                <field name="customer_address"/>
+                                <field name="birth_date"/>
+                            </group>
+                            <group>
+                                <field name="driver_license_number"/>
+                                <field name="driver_license_issue_date"/>
+                                <field name="driver_license_expiry_date"/>
                             </group>
                         </group>
                     </page>

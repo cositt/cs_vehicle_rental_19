@@ -3,6 +3,7 @@ from odoo import http
 from odoo.http import request
 import json, logging, base64, hmac, hashlib, subprocess, tempfile, os
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 _logger = logging.getLogger(__name__)
 
@@ -80,9 +81,59 @@ class RentalPaymentController(http.Controller):
             end_time = kw.get('end_time', '')
             customer_dni = kw.get('customer_dni', '')
             customer_dni_expiry_date = kw.get('customer_dni_expiry_date', '')
+            street = kw.get('street', '')
+            street2 = kw.get('street2', '')
+            city = kw.get('city', '')
+            state_name = kw.get('state_name', '')
+            zip_code = kw.get('zip', '')
+            country_id = kw.get('country_id', '')
+            driver_license_number = kw.get('driver_license_number', '')
+            driver_license_issue_date = kw.get('driver_license_issue_date', '')
+            driver_license_expiry_date = kw.get('driver_license_expiry_date', '')
+            birth_date = kw.get('birth_date', '')
             location = kw.get('location', '')
             card_type = kw.get('card_type', 'debit')
             card_bin = kw.get('card_bin', '')
+            
+            # Validaciones carnet: mayor de 18 años, expedición <= hoy, caducidad > hoy
+            today_date = datetime.now().date()
+            validation_errors = []
+            if birth_date:
+                try:
+                    birth_d = datetime.strptime(birth_date, '%Y-%m-%d').date()
+                    limit_18 = today_date - relativedelta(years=18)
+                    if birth_d > limit_18:
+                        validation_errors.append('Debes ser mayor de 18 años para conducir.')
+                except (ValueError, TypeError):
+                    validation_errors.append('Fecha de nacimiento no válida.')
+            if driver_license_issue_date:
+                try:
+                    issue_d = datetime.strptime(driver_license_issue_date, '%Y-%m-%d').date()
+                    if issue_d > today_date:
+                        validation_errors.append('La fecha de expedición del carnet no puede ser posterior a hoy.')
+                except (ValueError, TypeError):
+                    validation_errors.append('Fecha de expedición del carnet no válida.')
+            if driver_license_expiry_date:
+                try:
+                    expiry_d = datetime.strptime(driver_license_expiry_date, '%Y-%m-%d').date()
+                    if expiry_d <= today_date:
+                        validation_errors.append('La fecha de caducidad del carnet debe ser posterior a hoy.')
+                except (ValueError, TypeError):
+                    validation_errors.append('Fecha de caducidad del carnet no válida.')
+            if validation_errors:
+                err_html = '<br/>'.join(validation_errors)
+                return f"""
+                <html><head><meta charset="UTF-8"><title>Datos no válidos</title>
+                <style>body{{font-family:Arial,sans-serif;padding:40px;background:#f5f5f5;}}
+                .error-container{{max-width:600px;margin:0 auto;background:white;padding:30px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}}
+                h1{{color:#dc3545;}} .error-details{{background:#fff3cd;border:1px solid #ffc107;padding:15px;border-radius:4px;margin:20px 0;}}
+                a{{color:#0c63e4;}}</style></head><body>
+                <div class="error-container">
+                <h1>Datos del carnet no válidos</h1>
+                <div class="error-details">{err_html}</div>
+                <p><a href="javascript:history.back()">← Volver al formulario</a></p>
+                </div></body></html>
+                """
             
             num_days = 1
             if start_date and end_date:
@@ -127,6 +178,16 @@ class RentalPaymentController(http.Controller):
                 'end_time': end_time,
                 'customer_dni': customer_dni,
                 'customer_dni_expiry_date': customer_dni_expiry_date,
+                'street': street,
+                'street2': street2,
+                'city': city,
+                'state_name': state_name,
+                'zip': zip_code,
+                'country_id': country_id,
+                'driver_license_number': driver_license_number,
+                'driver_license_issue_date': driver_license_issue_date,
+                'driver_license_expiry_date': driver_license_expiry_date,
+                'birth_date': birth_date,
                 'location': location,
                 'selected_price': selected_price,
                 'total_price': total_price,
@@ -296,10 +357,29 @@ class RentalPaymentController(http.Controller):
         try:
             _logger.info(f"RENTAL_PAYMENT SUCCESS: Parametros recibidos = {kw}")
             booking_data = request.session.get('booking_data')
-            
+            # Si la sesión se perdió al volver de Redsys, usar booking_data de la última transacción
+            if not booking_data:
+                payment_tx = request.env['payment.transaction'].sudo().search([
+                    ('provider_code', '=', 'redsys'),
+                    ('booking_created', '=', False),
+                ], limit=1, order='create_date desc')
+                if payment_tx and getattr(payment_tx, 'booking_data_json', None):
+                    try:
+                        booking_data = json.loads(payment_tx.booking_data_json)
+                        _logger.info(f"RENTAL_PAYMENT SUCCESS: Booking data tomado de TX {payment_tx.id} (sesión vacía)")
+                        if booking_data:
+                            payment_tx._create_lead_from_payment(booking_data)
+                            payment_tx.booking_created = True
+                            _logger.info(f"RENTAL_PAYMENT SUCCESS: Lead creado vía _create_lead_from_payment TX:{payment_tx.id}")
+                    except Exception as e:
+                        _logger.warning(f"RENTAL_PAYMENT SUCCESS: Error con booking_data_json o _create_lead_from_payment: {e}")
+                    booking_data = None  # para no entrar al bloque de abajo y duplicar lead
             if booking_data:
                 try:
                     # Crear lead automáticamente desde los datos de booking
+                    customer_dni_exp = booking_data.get('customer_dni_expiry_date')
+                    if customer_dni_exp and len(customer_dni_exp) == 7:
+                        customer_dni_exp = customer_dni_exp + '-01'
                     lead_vals = {
                         'name': f"Reserva: {booking_data.get('customer_name', 'N/A')} ({booking_data.get('start_date', 'N/A')})",
                         'partner_name': booking_data.get('customer_name', ''),
@@ -310,13 +390,29 @@ Reserva de vehículo completada:
 - Categoría: {booking_data.get('category_id', 'N/A')}
 - Fechas: {booking_data.get('start_date', 'N/A')} a {booking_data.get('end_date', 'N/A')}
 - Ubicación: {booking_data.get('location', 'N/A')}
+- Dirección: {booking_data.get('street', '')} {booking_data.get('street2', '') or ''}, {booking_data.get('zip', '')} {booking_data.get('city', '')}
+- DNI: {booking_data.get('customer_dni', 'N/A')} (exp: {booking_data.get('customer_dni_expiry_date', 'N/A')})
+- Carnet conducir: {booking_data.get('driver_license_number', 'N/A')} (exped: {booking_data.get('driver_license_issue_date', 'N/A')} - cad: {booking_data.get('driver_license_expiry_date', 'N/A')})
+- Fecha nacimiento: {booking_data.get('birth_date', 'N/A')}
 - Precio alquiler: {booking_data.get('total_price', 0)}€
 - Depósito: {booking_data.get('deposit_amount', 0)}€
 - Total pagado: {booking_data.get('total_with_deposit', 0)}€
 - Tipo tarjeta: {booking_data.get('card_type', 'N/A')}
-- DNI: {booking_data.get('customer_dni', 'N/A')}
                         """,
                         'type': 'opportunity',
+                        'start_date': booking_data.get('start_date') or False,
+                        'end_date': booking_data.get('end_date') or False,
+                        'selected_category_id': int(booking_data.get('category_id')) if booking_data.get('category_id') else False,
+                        'customer_dni': booking_data.get('customer_dni') or False,
+                        'customer_dni_expiry_date': customer_dni_exp or False,
+                        'customer_address': ', '.join(filter(None, [booking_data.get('street'), booking_data.get('city'), booking_data.get('zip')])) or False,
+                        'driver_license_number': booking_data.get('driver_license_number') or False,
+                        'driver_license_issue_date': booking_data.get('driver_license_issue_date') or False,
+                        'driver_license_expiry_date': booking_data.get('driver_license_expiry_date') or False,
+                        'birth_date': booking_data.get('birth_date') or False,
+                        'location': booking_data.get('location') or False,
+                        'start_time': booking_data.get('start_time') or False,
+                        'end_time': booking_data.get('end_time') or False,
                     }
                     
                     lead = request.env['crm.lead'].sudo().create(lead_vals)

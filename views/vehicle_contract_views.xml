@@ -189,16 +189,26 @@
                                 <field name="reference_no"/>
                             </h1>
                         </div>
-                        <separator string="Customer Details" name="customer_details"/>
+                        <separator string="Detalles del Cliente" name="customer_details"/>
                         <group>
                             <group>
                                 <field name="crm_lead_id" invisible="crm_lead_id == False" readonly="1"/>
                                 <field name="customer_id" readonly="status != 'a_draft'" required="1"
                                        options="{'no_create': True, 'no_create_edit': True}"/>
-                            </group>
-                            <group>
                                 <field name="customer_phone" readonly="status != 'a_draft'"/>
                                 <field name="customer_email" readonly="status != 'a_draft'"/>
+                            </group>
+                            <group>
+                                <field name="customer_dni" string="DNI/NIE" readonly="status != 'a_draft'"/>
+                                <field name="customer_dni_expiry_date" string="Fecha Exp. DNI" readonly="status != 'a_draft'"/>
+                                <field name="customer_address" string="Domicilio" readonly="status != 'a_draft'" colspan="2"/>
+                            </group>
+                        </group>
+                        <group string="Carnet de Conducir">
+                            <group>
+                                <field name="driver_license_number" readonly="status != 'a_draft'"/>
+                                <field name="driver_license_issue_date" string="Fecha Expedición" readonly="status != 'a_draft'"/>
+                                <field name="driver_license_expiry_date" string="Fecha Caducidad" readonly="status != 'a_draft'"/>
                             </group>
                         </group>
                         <separator string="Detalles de Recogida y Devolución" name="pick_drop_details"/>

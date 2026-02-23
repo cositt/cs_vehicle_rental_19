@@ -286,12 +286,15 @@ class PaymentTransaction(models.Model):
                 raise ValidationError(f"Falta datos obligatorio: {field}")
 
         try:
-            # 1. Encontrar o crear partner (cliente)
+            # 1. Construir dirección para contacto (como en Odoo: calle, ciudad, CP, país, estado)
+            address_data = self._booking_address_to_partner_vals(booking_data)
+            # 2. Encontrar o crear partner y asignar/actualizar dirección
             partner = self._find_or_create_partner(
                 booking_data.get('customer_name'),
                 booking_data.get('customer_email'),
                 booking_data.get('customer_phone'),
-                booking_data.get('company_id')
+                booking_data.get('company_id'),
+                address_data=address_data
             )
             with open('/tmp/method_execution.log', 'a') as me:
                 me.write(f"[PARTNER_OK] TX:{self.id} - Partner ID={partner.id}\n")
@@ -361,10 +364,22 @@ class PaymentTransaction(models.Model):
                 f"- TOTAL PAGADO: {total_with_deposit:.2f} €<br/>"
                 f"- Fechas: {booking_data.get('start_date')} {booking_data.get('start_time')} → {booking_data.get('end_date')} {booking_data.get('end_time')}<br/>"
                 f"- Ubicación: {booking_data.get('location')}<br/>"
+                f"- Dirección: {booking_data.get('street', '')} {booking_data.get('street2', '') or ''}, {booking_data.get('zip', '')} {booking_data.get('city', '')}<br/>"
+                f"- DNI/NIE: {booking_data.get('customer_dni', '')} (exp: {booking_data.get('customer_dni_expiry_date', '')})<br/>"
+                f"- Carnet conducir: {booking_data.get('driver_license_number', '')} (exp: {booking_data.get('driver_license_issue_date', '')} - cad: {booking_data.get('driver_license_expiry_date', '')})<br/>"
+                f"- Fecha nacimiento: {booking_data.get('birth_date', '')}<br/>"
                 f"- Transacción Redsys: {self.reference}<br/><br/>"
                 f"--- SEGURIDAD ---<br/>"
                 f"{security_note}"
             )
+            
+            # Fechas: DNI puede venir YYYY-MM (month); resto YYYY-MM-DD
+            customer_dni_exp = booking_data.get('customer_dni_expiry_date')
+            if customer_dni_exp and len(customer_dni_exp) == 7:
+                customer_dni_exp = customer_dni_exp + '-01'
+            birth_date_val = booking_data.get('birth_date') or False
+            driver_license_issue = booking_data.get('driver_license_issue_date') or False
+            driver_license_expiry = booking_data.get('driver_license_expiry_date') or False
             
             lead_vals = {
                 'name': f"Consulta de Reserva - {booking_data.get('customer_name')}",
@@ -380,7 +395,16 @@ class PaymentTransaction(models.Model):
                 'end_date': booking_data.get('end_date'),
                 'selected_category_id': int(booking_data.get('category_id')),
                 'customer_dni': booking_data.get('customer_dni'),
-                'customer_dni_expiry_date': (booking_data.get('customer_dni_expiry_date') + '-01') if booking_data.get('customer_dni_expiry_date') and len(booking_data.get('customer_dni_expiry_date', '')) == 7 else booking_data.get('customer_dni_expiry_date'),
+                'customer_dni_expiry_date': customer_dni_exp or False,
+                'customer_address': ', '.join(filter(None, [
+                    booking_data.get('street'),
+                    booking_data.get('city'),
+                    booking_data.get('zip'),
+                ])) or False,
+                'driver_license_number': booking_data.get('driver_license_number') or False,
+                'driver_license_issue_date': driver_license_issue,
+                'driver_license_expiry_date': driver_license_expiry,
+                'birth_date': birth_date_val,
                 'location': booking_data.get('location'),
                 'start_time': booking_data.get('start_time'),
                 'end_time': booking_data.get('end_time'),
@@ -433,40 +457,78 @@ class PaymentTransaction(models.Model):
             )
             raise
 
-    def _find_or_create_partner(self, name, email, phone, company_id=None):
-        """Encontrar o crear partner (cliente)"""
+    def _booking_address_to_partner_vals(self, booking_data):
+        """Convierte la dirección del booking (web) a vals para res.partner (como en Odoo)."""
+        vals = {}
+        if booking_data.get('street'):
+            vals['street'] = booking_data['street']
+        if booking_data.get('street2'):
+            vals['street2'] = booking_data['street2']
+        if booking_data.get('city'):
+            vals['city'] = booking_data['city']
+        if booking_data.get('zip'):
+            vals['zip'] = booking_data['zip']
+        cid = booking_data.get('country_id')
+        if cid:
+            try:
+                vals['country_id'] = int(cid)
+            except (TypeError, ValueError):
+                pass
+        state_name = (booking_data.get('state_name') or '').strip()
+        if state_name and vals.get('country_id'):
+            state = self.env['res.country.state'].sudo().search([
+                ('country_id', '=', vals['country_id']),
+                ('name', 'ilike', state_name)
+            ], limit=1)
+            if state:
+                vals['state_id'] = state.id
+        return vals
+
+    def _find_or_create_partner(self, name, email, phone, company_id=None, address_data=None):
+        """Encontrar o crear partner (cliente). Si existe por email/teléfono, actualizar dirección."""
         Partner = self.env['res.partner']
+        address_vals = address_data or {}
 
         # Buscar por email si existe
         if email:
-            partner = Partner.sudo().search([('company_id', '=', company_id),
+            partner = Partner.sudo().search([
+                ('company_id', '=', company_id),
                 ('email', '=', email.strip().lower())
             ], limit=1)
             if partner:
                 _logger.info(f"REDSYS: Partner encontrado por email: {partner.name}")
+                if address_vals:
+                    partner.sudo().write(address_vals)
+                    _logger.info(f"REDSYS: Dirección del contacto actualizada con datos de la reserva")
                 return partner
 
         # Buscar por teléfono si existe
         if phone:
             clean_phone = phone.replace(' ', '').replace('-', '').replace('+', '')
-            partners = Partner.sudo().search([('company_id', '=', company_id),
+            partners = Partner.sudo().search([
+                ('company_id', '=', company_id),
                 ('phone', '!=', False)
             ])
             for partner in partners:
                 partner_phone = (partner.phone or '').replace(' ', '').replace('-', '').replace('+', '')
                 if partner_phone and partner_phone == clean_phone:
                     _logger.info(f"REDSYS: Partner encontrado por teléfono: {partner.name}")
+                    if address_vals:
+                        partner.sudo().write(address_vals)
+                        _logger.info(f"REDSYS: Dirección del contacto actualizada con datos de la reserva")
                     return partner
 
-        # Crear nuevo partner
-        partner = Partner.sudo().create({
+        # Crear nuevo partner con dirección
+        create_vals = {
             'name': name or 'Cliente Web',
             'email': email,
             'phone': phone,
             'customer_rank': 1,
             'company_id': company_id,
             'comment': f'Contacto creado vía reserva web | Fecha: {datetime.now()}',
-        })
+        }
+        create_vals.update(address_vals)
+        partner = Partner.sudo().create(create_vals)
         _logger.info(f"REDSYS: Nuevo partner creado: {partner.name} ({partner.id})")
         return partner
 
@@ -486,11 +548,11 @@ class PaymentTransaction(models.Model):
                 ('company_id', '=', target_company.id),
             ])
 
-            # Verificar disponibilidad (sin solapamientos)
+            # Verificar disponibilidad: solo bloquean a_draft y b_in_progress. Devuelto (c_return) = vehículo libre.
             for vehicle in vehicles:
                 overlapping = self.env['vehicle.contract'].search([
                     ('vehicle_id', '=', vehicle.id),
-                    ('status', 'in', ['b_in_progress', 'c_return']),
+                    ('status', 'in', ['a_draft', 'b_in_progress']),
                     ('start_date', '<=', end_date),
                     ('end_date', '>=', start_date),
                 ])

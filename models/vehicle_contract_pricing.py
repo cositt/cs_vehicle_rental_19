@@ -596,12 +596,17 @@ class VehicleContractPricing(models.Model):
         # Preparar líneas de factura
         invoice_lines = []
         
-        # LÍNEA 1: Alquiler del vehículo
+        # LÍNEA 1: Alquiler del vehículo (con fecha/hora recogida y entrega)
+        fmt_dt = '%d/%m/%Y %H:%M'
+        recogida = self.start_date.strftime(fmt_dt) if self.start_date else ''
+        entrega = self.end_date.strftime(fmt_dt) if self.end_date else ''
         vehicle_line = {
             'product_id': self.pricing_product_id.id,
             'name': f"Alquiler {self.vehicle_id.category_id.name if self.vehicle_id.category_id else self.vehicle_id.model_id.name}\n"
                     f"Vehículo: {self.vehicle_id.license_plate}\n"
-                    f"Período: {self.start_date.strftime('%d/%m/%Y')} - {self.end_date.strftime('%d/%m/%Y')}\n"
+                    f"Fecha recogida: {recogida}\n"
+                    f"Fecha entrega: {entrega}\n"
+                    f"Período: {(self.start_date.strftime('%d/%m/%Y') if self.start_date else '')} - {(self.end_date.strftime('%d/%m/%Y') if self.end_date else '')}\n"
                     f"Días: {self.total_days:.0f} | Km: {self.total_km:.0f}",
             'quantity': self.total_days,
             'price_unit': self.rent,
@@ -684,7 +689,11 @@ class VehicleContractPricing(models.Model):
             'invoice_date_due': fields.Date.today(),  # Fecha vencimiento = hoy (ya pagado)
             'invoice_origin': self.reference_no,
             'invoice_line_ids': invoice_lines,
-            'narration': f"Factura automática generada desde contrato {self.reference_no}",
+            'narration': (
+                f"Factura automática generada desde contrato {self.reference_no}\n\n"
+                f"Recogida: {recogida}\n"
+                f"Entrega: {entrega}"
+            ),
             'vehicle_contract_id': self.id,  # ← Vincular con el contrato para que aparezca en el dashboard
         }
         
