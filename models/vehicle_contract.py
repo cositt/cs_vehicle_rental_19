@@ -358,6 +358,13 @@ class VehicleContract(models.Model):
                                            inverse_name='vehicle_contract_id')
     crm_lead_id = fields.Many2one('crm.lead', string="Lead")
     sale_order_id = fields.Many2one('sale.order', string="Sale Order", readonly=True, copy=False)
+    extension_ids = fields.One2many(
+        'vehicle.contract.extension',
+        'contract_id',
+        string='Ampliaciones',
+        copy=False,
+    )
+    extension_count = fields.Integer(compute='_compute_extension_count')
 
     # DEPRECATED
     total_day_rent = fields.Monetary()
@@ -1342,6 +1349,37 @@ class VehicleContract(models.Model):
         for rec in self:
             rec.invoice_count = self.env['account.move'].search_count(
                 [('vehicle_contract_id', '=', rec.id)])
+
+    def _compute_extension_count(self):
+        for rec in self:
+            rec.extension_count = len(rec.extension_ids)
+
+    def action_new_extension(self):
+        """Abrir formulario de nueva ampliación para este contrato."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Nueva ampliación de contrato'),
+            'res_model': 'vehicle.contract.extension',
+            'view_mode': 'form',
+            'target': 'current',
+            'context': {
+                'default_contract_id': self.id,
+                'default_daily_rate': self.rent or 0,
+            },
+        }
+
+    def action_view_extensions(self):
+        """Abrir listado de ampliaciones de este contrato."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Ampliaciones'),
+            'res_model': 'vehicle.contract.extension',
+            'view_mode': 'list,form',
+            'domain': [('contract_id', '=', self.id)],
+            'context': {'default_contract_id': self.id, 'default_daily_rate': self.rent or 0},
+        }
 
     def view_customer_invoice(self):
         """View customer invoice"""

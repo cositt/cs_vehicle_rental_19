@@ -19,6 +19,7 @@
         'crm',
         'website',
         'portal',
+        'sign',              # Para firma de ampliaciones de contrato
         'account',           # NUEVO - para account.move
         'payment',           # NUEVO - para payment.transaction
         'payment_redsys',    # NUEVO - para integración Redsys
@@ -51,7 +52,9 @@
         'views/assets.xml',
         'views/fleet_inherit_views.xml',
         'views/fleet_vehicle_model_views.xml',
+        'views/vehicle_contract_extension_views.xml',
         'views/vehicle_contract_views.xml',
+        'security/ir_model_access_extension.xml',
         'views/customer_document_views.xml',
         'views/cancellation_policy_views.xml',
         'views/invoice_inherit_views.xml',
@@ -71,6 +74,7 @@
         'report/vehicle_contract_report_views.xml',
         'report/scratch_report_views.xml',
         'report/vehicle_substitution_addendum_report.xml',
+        'report/vehicle_contract_extension_addendum_report.xml',
         # Email templates (después de reports para que existan los XMLID referenciados)
         'data/email_templates.xml',
         # Views de sustitución (después del reporte)
