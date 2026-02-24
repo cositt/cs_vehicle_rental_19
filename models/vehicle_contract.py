@@ -358,6 +358,10 @@ class VehicleContract(models.Model):
                                            inverse_name='vehicle_contract_id')
     crm_lead_id = fields.Many2one('crm.lead', string="Lead")
     sale_order_id = fields.Many2one('sale.order', string="Sale Order", readonly=True, copy=False)
+    group_id = fields.Many2one(
+        'vehicle.contract.group', string='Grupo de Contratos',
+        ondelete='set null', copy=False, tracking=True)
+    is_grouped = fields.Boolean(compute='_compute_is_grouped', store=True)
     extension_ids = fields.One2many(
         'vehicle.contract.extension',
         'contract_id',
@@ -418,13 +422,11 @@ class VehicleContract(models.Model):
             if record.reference_no == _('New'):
                 record.reference_no = self.env['ir.sequence'].next_by_code('vehicle.contract') or _(
                     'New')
-            
-            # Actualizar ubicación del vehículo basado en drop_off_city
-            # Si se especifica una ubicación de devolución, el vehículo se reubica allí
-            # para que futuros alquileres se hagan desde la ubicación de destino
+
             if record.drop_off_city and record.vehicle_id:
                 record.vehicle_id.location = record.drop_off_city
-        
+
+        records._sync_deposit_from_calculated()
         return records
 
     def write(self, vals):
@@ -811,13 +813,6 @@ class VehicleContract(models.Model):
         
         return result
     
-    def create(self, vals_list):
-        """Override create para sincronizar depósito después de crear"""
-        records = super().create(vals_list)
-        # Sincronizar depósito en los registros nuevos
-        records._sync_deposit_from_calculated()
-        return records
-
     @api.depends('extra_service_ids.amount', 'extra_service_ids.product_qty')
     def _compute_total_extra_service_charge(self):
         """Total extra service charge"""
@@ -1353,6 +1348,11 @@ class VehicleContract(models.Model):
     def _compute_extension_count(self):
         for rec in self:
             rec.extension_count = len(rec.extension_ids)
+
+    @api.depends('group_id')
+    def _compute_is_grouped(self):
+        for rec in self:
+            rec.is_grouped = bool(rec.group_id)
 
     def action_new_extension(self):
         """Abrir formulario de nueva ampliación para este contrato."""

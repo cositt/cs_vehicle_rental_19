@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
-from odoo import fields, api, models
+from odoo import fields, api, models, _
 from datetime import datetime
 
 
@@ -24,8 +24,14 @@ class RentalContractBooking(models.TransientModel):
     calculated_price = fields.Float(string="Price (€/day)", compute='_compute_price', store=False)
     
     fleet_vehicle_ids = fields.Many2many('fleet.vehicle', string="Vehicle")
-    # Almacenar el precio calculado en un campo normal para poder pasarlo por contexto
     stored_calculated_price = fields.Float(string="Stored Price", default=0.0)
+
+    group_id = fields.Many2one(
+        'vehicle.contract.group', string="Grupo Existente",
+        help="Si se indica, el contrato se vincula a este grupo.")
+    multi_booking_id = fields.Many2one(
+        'rental.multi.booking', string="Reserva Múltiple",
+        help="Si se indica, el vehículo se añade como línea a la reserva múltiple.")
 
     def _get_duration_options(self):
         """Get unique duration ranges from vehicle.pricing.rule"""
@@ -181,8 +187,26 @@ class RentalContractBooking(models.TransientModel):
             'pricing_type': self.pricing_type,
         }
         
+        if self.group_id:
+            contract_data['group_id'] = self.group_id.id
+            contract_data['discount_reason'] = 'Añadido a grupo %s' % self.group_id.name
+            if self.group_id.deposit_card_type:
+                contract_data['deposit_card_type'] = self.group_id.deposit_card_type
+            if self.group_id.payment_type:
+                contract_data['payment_type'] = self.group_id.payment_type
+
         contract = self.env['vehicle.contract'].create(contract_data)
-        
+
+        if self.group_id:
+            return {
+                'type': 'ir.actions.act_window',
+                'name': _('Contrato Grupo'),
+                'res_model': 'vehicle.contract.group',
+                'res_id': self.group_id.id,
+                'view_mode': 'form',
+                'target': 'current',
+            }
+
         return {
             'type': 'ir.actions.act_window',
             'name': 'Vehicle Contract',
@@ -191,3 +215,32 @@ class RentalContractBooking(models.TransientModel):
             'view_mode': 'form',
             'target': 'current'
         }
+
+    def _add_to_multi_booking(self, vehicle):
+        """Añade el vehículo como línea a la reserva múltiple en vez de crear contrato."""
+        self.ensure_one()
+        mb = self.multi_booking_id
+        if not mb or not mb.exists():
+            raise UserError(_('La reserva múltiple ya no existe.'))
+
+        self.env['rental.multi.booking.line'].create({
+            'booking_id': mb.id,
+            'vehicle_id': vehicle.id,
+            'start_date': self.start_date,
+            'end_date': self.end_date,
+            'pricing_type': self.pricing_type,
+            'rent': self.calculated_price,
+            'selected_category_id': self.selected_category_id.id if self.selected_category_id else False,
+            'duration_range': self.duration_range,
+            'km_range': self.km_range,
+        })
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Reserva Múltiple'),
+            'res_model': 'rental.multi.booking',
+            'res_id': mb.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+

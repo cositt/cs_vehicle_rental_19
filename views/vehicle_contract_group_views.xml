@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================ -->
+    <!-- ACTION (primero para que el menú lo encuentre)                -->
+    <!-- ============================================================ -->
+    <record id="action_vehicle_contract_group" model="ir.actions.act_window">
+        <field name="name">Contratos Grupo</field>
+        <field name="res_model">vehicle.contract.group</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Crear un contrato grupo</p>
+            <p>Los contratos grupo permiten gestionar el alquiler de varios vehículos a un mismo cliente con facturación consolidada.</p>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- SECUENCIA                                                     -->
+    <!-- ============================================================ -->
+    <record id="seq_vehicle_contract_group" model="ir.sequence">
+        <field name="name">Vehicle Contract Group</field>
+        <field name="code">vehicle.contract.group</field>
+        <field name="prefix">GRP-</field>
+        <field name="padding">4</field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- LIST VIEW                                                     -->
+    <!-- ============================================================ -->
+    <record id="vehicle_contract_group_view_list" model="ir.ui.view">
+        <field name="name">vehicle.contract.group.list</field>
+        <field name="model">vehicle.contract.group</field>
+        <field name="arch" type="xml">
+            <list string="Contratos Grupo"
+                  decoration-muted="state == 'cancel'"
+                  decoration-success="state == 'done'"
+                  decoration-info="state == 'active'"
+                  decoration-warning="state == 'partial_return'">
+                <field name="name"/>
+                <field name="customer_id"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="contract_count"/>
+                <field name="total_amount" widget="monetary"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'done'"
+                       decoration-info="state == 'active'"
+                       decoration-warning="state == 'partial_return'"
+                       decoration-danger="state == 'cancel'"
+                       decoration-muted="state == 'draft'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- FORM VIEW                                                     -->
+    <!-- ============================================================ -->
+    <record id="vehicle_contract_group_view_form" model="ir.ui.view">
+        <field name="name">vehicle.contract.group.form</field>
+        <field name="model">vehicle.contract.group</field>
+        <field name="arch" type="xml">
+            <form string="Contrato Grupo">
+                <header>
+                    <button string="Añadir Vehículo" name="action_add_vehicle" type="object"
+                            class="btn btn-primary" icon="fa-plus"
+                            invisible="state in ('done', 'cancel')"/>
+                    <button string="Facturar Período" name="action_create_consolidated_invoice" type="object"
+                            class="btn btn-info" icon="fa-file-text-o"
+                            invisible="state in ('draft', 'cancel')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,active,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="action_view_contracts"
+                                icon="fa-car" invisible="contract_count == 0">
+                            <field string="Contratos" name="contract_count" widget="statinfo"/>
+                        </button>
+                        <button class="oe_stat_button" type="object" name="action_view_invoices"
+                                icon="fa-money" invisible="invoice_count == 0">
+                            <field string="Facturas" name="invoice_count" widget="statinfo"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Datos Generales">
+                            <field name="customer_id"
+                                   readonly="state != 'draft'"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group string="Período y Pago">
+                            <field name="start_date"
+                                   readonly="state not in ('draft', 'active')"/>
+                            <field name="end_date"
+                                   readonly="state not in ('draft', 'active')"/>
+                            <field name="payment_type"/>
+                            <field name="pricing_type"/>
+                            <field name="deposit_card_type"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Totales">
+                            <field name="total_amount" widget="monetary"/>
+                            <field name="total_deposit" widget="monetary"/>
+                        </group>
+                        <group string="Impuestos">
+                            <field name="tax_ids" widget="many2many_tags"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page name="contracts" string="Vehículos / Contratos">
+                            <field name="contract_ids" nolabel="1">
+                                <list create="0" delete="0" edit="0"
+                                      decoration-muted="status == 'd_cancel'"
+                                      decoration-success="status == 'c_return'"
+                                      decoration-info="status == 'b_in_progress'">
+                                    <field name="reference_no"/>
+                                    <field name="vehicle_id"/>
+                                    <field name="license_plate"/>
+                                    <field name="rent" widget="monetary"/>
+                                    <field name="total_vehicle_rent" widget="monetary"/>
+                                    <field name="start_date"/>
+                                    <field name="end_date"/>
+                                    <field name="status" widget="badge"
+                                           decoration-success="status == 'c_return'"
+                                           decoration-info="status == 'b_in_progress'"
+                                           decoration-warning="status == 'a_draft'"
+                                           decoration-danger="status == 'd_cancel'"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page name="invoices" string="Facturas Consolidadas">
+                            <field name="invoice_ids" nolabel="1">
+                                <list create="0" delete="0" edit="0">
+                                    <field name="name"/>
+                                    <field name="invoice_date"/>
+                                    <field name="amount_total" widget="monetary"/>
+                                    <field name="payment_state" widget="badge"
+                                           decoration-success="payment_state == 'paid'"
+                                           decoration-warning="payment_state == 'partial'"
+                                           decoration-danger="payment_state == 'not_paid'"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page name="notes" string="Observaciones">
+                            <field name="notes" placeholder="Notas internas sobre este grupo de contratos..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- VISTA HEREDADA: Mostrar grupo en el contrato individual       -->
+    <!-- ============================================================ -->
+    <record id="vehicle_contract_form_view_group_field" model="ir.ui.view">
+        <field name="name">vehicle.contract.form.view.group.field</field>
+        <field name="model">vehicle.contract</field>
+        <field name="inherit_id" ref="vehicle_rental.vehicle_contract_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='crm_lead_id']" position="before">
+                <field name="group_id" readonly="1"
+                       invisible="not group_id"/>
+                <field name="is_grouped" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
