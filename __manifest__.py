@@ -19,10 +19,11 @@
         'crm',
         'website',
         'portal',
-        'sign',              # Para firma de ampliaciones de contrato
-        'account',           # NUEVO - para account.move
-        'payment',           # NUEVO - para payment.transaction
-        'payment_redsys',    # NUEVO - para integración Redsys
+        'sign',
+        'account',
+        'payment',
+        'payment_redsys',
+        'web_gantt',
     ],
     'data': [
         # Data

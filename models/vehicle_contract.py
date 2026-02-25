@@ -74,6 +74,9 @@ class VehicleContract(models.Model):
         string="Transmission", copy=False)
     
     vehicle_category = fields.Char(string="Categoría del Vehículo", compute='_compute_vehicle_category', store=True)
+    vehicle_category_id = fields.Many2one(
+        'fleet.vehicle.model.category', string='Categoría',
+        related='vehicle_id.category_id', store=True, readonly=True)
 
     customer_id = fields.Many2one("res.partner")
     customer_phone = fields.Char(string="Phone")

@@ -1171,32 +1171,140 @@
                 </calendar>
             </field>
         </record>
+        <!-- ============================================================ -->
+        <!-- GANTT VIEW                                                     -->
+        <!-- ============================================================ -->
+        <record id="vehicle_contract_gantt_view" model="ir.ui.view">
+            <field name="name">vehicle.contract.gantt</field>
+            <field name="model">vehicle.contract</field>
+            <field name="arch" type="xml">
+                <gantt string="Ocupación de Flota"
+                       date_start="start_date"
+                       date_stop="end_date"
+                       default_group_by="vehicle_id"
+                       default_scale="month"
+                       scales="day,week,month,year"
+                       color="status"
+                       decoration-info="status == 'a_draft'"
+                       decoration-success="status == 'b_in_progress'"
+                       decoration-secondary="status == 'c_return'"
+                       decoration-danger="status == 'd_cancel'"
+                       create="false"
+                       edit="false"
+                       plan="false"
+                       sample="true"
+                       progress_bar="status"
+                       thumbnails="{'customer_id': 'avatar_128'}">
+                    <field name="vehicle_id"/>
+                    <field name="customer_id"/>
+                    <field name="reference_no"/>
+                    <field name="total_vehicle_rent"/>
+                    <field name="total_days"/>
+                    <field name="rent"/>
+                    <field name="status"/>
+                    <field name="pricing_type"/>
+                    <templates>
+                        <div t-name="gantt-popover">
+                            <div class="mb-1">
+                                <strong t-out="reference_no"/>
+                            </div>
+                            <div>
+                                <i class="fa fa-user me-1"/>
+                                <t t-out="customer_id[1]"/>
+                            </div>
+                            <div>
+                                <i class="fa fa-car me-1"/>
+                                <t t-out="vehicle_id[1]"/>
+                            </div>
+                            <div>
+                                <i class="fa fa-clock-o me-1"/>
+                                <t t-out="total_days"/> días
+                            </div>
+                            <div>
+                                <i class="fa fa-money me-1"/>
+                                <t t-out="rent"/>€/día →
+                                <strong><t t-out="total_vehicle_rent"/>€ total</strong>
+                            </div>
+                        </div>
+                    </templates>
+                </gantt>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- GRAPH VIEW                                                    -->
+        <!-- ============================================================ -->
+        <record id="vehicle_contract_graph_view" model="ir.ui.view">
+            <field name="name">vehicle.contract.graph</field>
+            <field name="model">vehicle.contract</field>
+            <field name="arch" type="xml">
+                <graph string="Análisis de Alquileres" type="bar" stacked="True" sample="true">
+                    <field name="vehicle_id"/>
+                    <field name="total_vehicle_rent" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- PIVOT VIEW (mejorado)                                         -->
+        <!-- ============================================================ -->
         <record id="vehicle_contract_pivot_view" model="ir.ui.view">
             <field name="name">vehicle.contract.pivot.view</field>
             <field name="model">vehicle.contract</field>
             <field name="priority">60</field>
             <field name="arch" type="xml">
-                <pivot string="Vehicle Contract Details">
-                    <field name="status" type="col"/>
+                <pivot string="Análisis Financiero de Flota" sample="true">
                     <field name="vehicle_id" type="row"/>
+                    <field name="start_date" interval="month" type="col"/>
+                    <field name="total_vehicle_rent" type="measure"/>
+                    <field name="total_days" type="measure"/>
+                    <field name="rent" type="measure"/>
+                    <field name="calculated_deposit" type="measure"/>
+                    <field name="extra_service_charge" type="measure"/>
                 </pivot>
             </field>
         </record>
+
+        <!-- ============================================================ -->
+        <!-- SEARCH VIEW (mejorado)                                        -->
+        <!-- ============================================================ -->
         <record id="vehicle_contract_search_view" model="ir.ui.view">
             <field name="name">vehicle.contract.search.view</field>
             <field name="model">vehicle.contract</field>
             <field name="arch" type="xml">
-                <search>
+                <search string="Buscar Contratos">
                     <field name="reference_no"/>
                     <field name="vehicle_id"/>
                     <field name="customer_id"/>
+                    <field name="license_plate"/>
+                    <field name="vehicle_category_id"/>
+                    <field name="group_id"/>
+                    <separator/>
+                    <filter string="Borrador" name="draft" domain="[('status', '=', 'a_draft')]"/>
+                    <filter string="En Progreso" name="in_progress" domain="[('status', '=', 'b_in_progress')]"/>
+                    <filter string="Devuelto" name="returned" domain="[('status', '=', 'c_return')]"/>
+                    <filter string="Cancelado" name="cancelled" domain="[('status', '=', 'd_cancel')]"/>
+                    <separator/>
+                    <filter string="Estándar" name="standard" domain="[('pricing_type', '=', 'standard')]"/>
+                    <filter string="FLEXIRENT" name="flexirent" domain="[('pricing_type', '=', 'flexirent')]"/>
+                    <separator/>
+                    <filter string="Vehículo" name="group_vehicle" context="{'group_by': 'vehicle_id'}"/>
+                    <filter string="Categoría" name="group_category" context="{'group_by': 'vehicle_category_id'}"/>
+                    <filter string="Cliente" name="group_customer" context="{'group_by': 'customer_id'}"/>
+                    <filter string="Estado" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Tipo de Tarifa" name="group_pricing" context="{'group_by': 'pricing_type'}"/>
+                    <filter string="Grupo" name="group_group" context="{'group_by': 'group_id'}"/>
+                    <separator/>
+                    <filter string="Mes de Inicio" name="group_month" context="{'group_by': 'start_date:month'}"/>
+                    <filter string="Trimestre" name="group_quarter" context="{'group_by': 'start_date:quarter'}"/>
                 </search>
             </field>
         </record>
+
         <record id="action_vehicle_contract" model="ir.actions.act_window">
             <field name="name">Contracts</field>
             <field name="res_model">vehicle.contract</field>
-            <field name="view_mode">list,kanban,form,calendar,pivot,activity</field>
+            <field name="view_mode">list,kanban,form,gantt,graph,calendar,pivot,activity</field>
         </record>
     </data>
 </odoo>
