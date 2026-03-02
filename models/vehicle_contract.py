@@ -619,7 +619,8 @@ class VehicleContract(models.Model):
                 'invoice_date': fields.Date.today(),
                 'invoice_date_due': fields.Date.today(),
                 'invoice_line_ids': invoice_lines,
-                'vehicle_contract_id': self.id
+                'vehicle_contract_id': self.id,
+                'ref': f"{self.reference_no} - {self.group_id.name}" if self.group_id else self.reference_no
             }
             deposit_invoice_id = self.env['account.move'].sudo().create(data)
             self.deposit_invoice_id = deposit_invoice_id.id
@@ -1045,6 +1046,7 @@ class VehicleContract(models.Model):
                 'invoice_date_due': fields.Date.today(),
             'invoice_line_ids': invoice_lines,
             'vehicle_contract_id': self.id,
+            'ref': f"{self.reference_no} - {self.group_id.name}" if self.group_id else self.reference_no,
         }
         # Create and post the invoice
         extra_charge_invoice = self.env['account.move'].sudo().create(data)
@@ -1096,6 +1098,7 @@ class VehicleContract(models.Model):
                         'payment_date': fields.Date.today(),
                         'payment_amount': amount,
                         'vehicle_contract_id': self.id,
+                        'ref': f"{self.reference_no} - {self.group_id.name}" if self.group_id else self.reference_no,
                     }
                     self.env['vehicle.payment.option'].create(payment_data)
                 elif self.payment_type == 'daily':
@@ -1108,6 +1111,7 @@ class VehicleContract(models.Model):
                             'payment_date': invoice_date,
                             'payment_amount': day_amount,
                             'vehicle_contract_id': self.id,
+                            'ref': f"{self.reference_no} - {self.group_id.name}" if self.group_id else self.reference_no,
                         }
                         self.env['vehicle.payment.option'].create(payment_data)
                         invoice_date = invoice_date + relativedelta(days=1)
@@ -1125,6 +1129,7 @@ class VehicleContract(models.Model):
                             'payment_date': invoice_date,
                             'payment_amount': monthly_payment_amount,
                             'vehicle_contract_id': self.id,
+                            'ref': f"{self.reference_no} - {self.group_id.name}" if self.group_id else self.reference_no,
                         }
                         self.env['vehicle.payment.option'].create(payment_data)
                         invoice_date = invoice_date + relativedelta(months=1)
@@ -1137,6 +1142,7 @@ class VehicleContract(models.Model):
                             'payment_date': invoice_date,
                             'payment_amount': remain_amount,
                             'vehicle_contract_id': self.id,
+                            'ref': f"{self.reference_no} - {self.group_id.name}" if self.group_id else self.reference_no,
                         }
                         self.env['vehicle.payment.option'].create(payment_data)
                 elif self.payment_type == 'weekly':
@@ -1153,6 +1159,7 @@ class VehicleContract(models.Model):
                             'payment_date': invoice_date,
                             'payment_amount': weekly_payment_amount,
                             'vehicle_contract_id': self.id,
+                            'ref': f"{self.reference_no} - {self.group_id.name}" if self.group_id else self.reference_no,
                         }
                         self.env['vehicle.payment.option'].create(payment_data)
                         invoice_date = invoice_date + relativedelta(days=7)
@@ -1165,6 +1172,7 @@ class VehicleContract(models.Model):
                             'payment_date': invoice_date,
                             'payment_amount': remain_amount,
                             'vehicle_contract_id': self.id,
+                            'ref': f"{self.reference_no} - {self.group_id.name}" if self.group_id else self.reference_no,
                         }
                         self.env['vehicle.payment.option'].create(payment_data)
                 elif self.payment_type == 'quarterly':
@@ -1181,6 +1189,7 @@ class VehicleContract(models.Model):
                             'payment_date': start_date,
                             'payment_amount': quarterly_payment_amount,
                             'vehicle_contract_id': self.id,
+                            'ref': f"{self.reference_no} - {self.group_id.name}" if self.group_id else self.reference_no,
                         }
                         self.env['vehicle.payment.option'].create(payment_data)
                         start_date = q_end_date + relativedelta(days=1)
@@ -1193,6 +1202,7 @@ class VehicleContract(models.Model):
                             'payment_date': start_date,
                             'payment_amount': remain_amount,
                             'vehicle_contract_id': self.id,
+                            'ref': f"{self.reference_no} - {self.group_id.name}" if self.group_id else self.reference_no,
                         }
                         self.env['vehicle.payment.option'].create(payment_data)
                 elif self.payment_type == 'yearly':
@@ -1212,6 +1222,7 @@ class VehicleContract(models.Model):
                             'payment_date': start_date,
                             'payment_amount': full_year_amount,
                             'vehicle_contract_id': self.id,
+                            'ref': f"{self.reference_no} - {self.group_id.name}" if self.group_id else self.reference_no,
                         }
                         self.env['vehicle.payment.option'].create(payment_data)
                         start_date = start_date + relativedelta(years=1)
@@ -1224,6 +1235,7 @@ class VehicleContract(models.Model):
                             'payment_date': start_date,
                             'payment_amount': remain_amount,
                             'vehicle_contract_id': self.id,
+                            'ref': f"{self.reference_no} - {self.group_id.name}" if self.group_id else self.reference_no,
                         }
                         self.env['vehicle.payment.option'].create(payment_data)
             # Mark installment creation as complete
@@ -1306,7 +1318,8 @@ class VehicleContract(models.Model):
             'invoice_date': fields.Date.today(),
                 'invoice_date_due': fields.Date.today(),
             'invoice_line_ids': invoice_lines,
-            'vehicle_contract_id': self.id
+            'vehicle_contract_id': self.id,
+            'ref': f"{self.reference_no} - {self.group_id.name}" if self.group_id else self.reference_no,
         }
         extra_service_invoice_id = self.env['account.move'].sudo().create(data)
         self.extra_service_invoice_id = extra_service_invoice_id.id
@@ -1421,7 +1434,8 @@ class VehicleContract(models.Model):
             'invoice_date': fields.Date.today(),
                 'invoice_date_due': fields.Date.today(),
             'invoice_line_ids': invoice_line,
-            'vehicle_contract_id': self.id
+            'vehicle_contract_id': self.id,
+            'ref': f"{self.reference_no} - {self.group_id.name}" if self.group_id else self.reference_no,
         }
         cancellation_invoice_id = self.env['account.move'].sudo().create(data)
         self.cancellation_invoice_id = cancellation_invoice_id.id
