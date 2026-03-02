@@ -843,12 +843,12 @@ class VehicleContract(models.Model):
             
             # Validación de solapamiento SOLO para contratos en progreso o posteriores
             # Los borradores pueden tener fechas solapadas (se validarán al activarse)
-            if record.status in ['b_in_progress', 'c_return', 'd_done'] and record.vehicle_id and record.start_date and record.end_date:
+            if record.status in ['b_in_progress'] and record.vehicle_id and record.start_date and record.end_date:
                 # Buscar otros contratos en progreso o completados para el mismo vehículo con fechas solapadas
                 domain = [
                     ('id', '!=', record.id),
                     ('vehicle_id', '=', record.vehicle_id.id),
-                    ('status', 'in', ['b_in_progress', 'c_return', 'd_done']),
+                    ('status', '=', 'b_in_progress'),  # Solo contratos realmente en curso
                 ]
                 
                 # Condición de solapamiento: 
