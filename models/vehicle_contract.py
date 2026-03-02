@@ -74,10 +74,19 @@ class VehicleContract(models.Model):
         string="Transmission", copy=False)
     
     vehicle_category = fields.Char(string="Categoría del Vehículo", compute='_compute_vehicle_category', store=True)
+    vehicle_category_id = fields.Many2one(
+        'fleet.vehicle.model.category', string='Categoría',
+        related='vehicle_id.category_id', store=True, readonly=True)
 
     customer_id = fields.Many2one("res.partner")
     customer_phone = fields.Char(string="Phone")
     customer_email = fields.Char(string="Email")
+    customer_dni = fields.Char(string="DNI/NIE")
+    customer_dni_expiry_date = fields.Date(string="Fecha de Expiración del DNI")
+    customer_address = fields.Char(string="Domicilio")
+    driver_license_number = fields.Char(string="Carnet de Conducir")
+    driver_license_issue_date = fields.Date(string="Fecha Expedición Carnet")
+    driver_license_expiry_date = fields.Date(string="Fecha Caducidad Carnet")
     customer_document_id = fields.Many2one("customer.documents", string="Document")
     document_count = fields.Integer(compute='_compute_document_count')
 
@@ -352,6 +361,17 @@ class VehicleContract(models.Model):
                                            inverse_name='vehicle_contract_id')
     crm_lead_id = fields.Many2one('crm.lead', string="Lead")
     sale_order_id = fields.Many2one('sale.order', string="Sale Order", readonly=True, copy=False)
+    group_id = fields.Many2one(
+        'vehicle.contract.group', string='Grupo de Contratos',
+        ondelete='set null', copy=False, tracking=True)
+    is_grouped = fields.Boolean(compute='_compute_is_grouped', store=True)
+    extension_ids = fields.One2many(
+        'vehicle.contract.extension',
+        'contract_id',
+        string='Ampliaciones',
+        copy=False,
+    )
+    extension_count = fields.Integer(compute='_compute_extension_count')
 
     # DEPRECATED
     total_day_rent = fields.Monetary()
@@ -405,13 +425,11 @@ class VehicleContract(models.Model):
             if record.reference_no == _('New'):
                 record.reference_no = self.env['ir.sequence'].next_by_code('vehicle.contract') or _(
                     'New')
-            
-            # Actualizar ubicación del vehículo basado en drop_off_city
-            # Si se especifica una ubicación de devolución, el vehículo se reubica allí
-            # para que futuros alquileres se hagan desde la ubicación de destino
+
             if record.drop_off_city and record.vehicle_id:
                 record.vehicle_id.location = record.drop_off_city
-        
+
+        records._sync_deposit_from_calculated()
         return records
 
     def write(self, vals):
@@ -798,13 +816,6 @@ class VehicleContract(models.Model):
         
         return result
     
-    def create(self, vals_list):
-        """Override create para sincronizar depósito después de crear"""
-        records = super().create(vals_list)
-        # Sincronizar depósito en los registros nuevos
-        records._sync_deposit_from_calculated()
-        return records
-
     @api.depends('extra_service_ids.amount', 'extra_service_ids.product_qty')
     def _compute_total_extra_service_charge(self):
         """Total extra service charge"""
@@ -1336,6 +1347,42 @@ class VehicleContract(models.Model):
         for rec in self:
             rec.invoice_count = self.env['account.move'].search_count(
                 [('vehicle_contract_id', '=', rec.id)])
+
+    def _compute_extension_count(self):
+        for rec in self:
+            rec.extension_count = len(rec.extension_ids)
+
+    @api.depends('group_id')
+    def _compute_is_grouped(self):
+        for rec in self:
+            rec.is_grouped = bool(rec.group_id)
+
+    def action_new_extension(self):
+        """Abrir formulario de nueva ampliación para este contrato."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Nueva ampliación de contrato'),
+            'res_model': 'vehicle.contract.extension',
+            'view_mode': 'form',
+            'target': 'current',
+            'context': {
+                'default_contract_id': self.id,
+                'default_daily_rate': self.rent or 0,
+            },
+        }
+
+    def action_view_extensions(self):
+        """Abrir listado de ampliaciones de este contrato."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Ampliaciones'),
+            'res_model': 'vehicle.contract.extension',
+            'view_mode': 'list,form',
+            'domain': [('contract_id', '=', self.id)],
+            'context': {'default_contract_id': self.id, 'default_daily_rate': self.rent or 0},
+        }
 
     def view_customer_invoice(self):
         """View customer invoice"""

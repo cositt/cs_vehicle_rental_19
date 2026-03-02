@@ -3,7 +3,7 @@
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 {
     'name': "Sunset",
-    'version': "19.0.5.9",
+    'version': "19.0.6.0",
     'description': "A car rental, hire car or car hire agency is a company that rents automobiles for short periods.",
     'summary': "Vehicle Rental Management",
     'author': 'Cositt',
@@ -19,9 +19,11 @@
         'crm',
         'website',
         'portal',
-        'account',           # NUEVO - para account.move
-        'payment',           # NUEVO - para payment.transaction
-        'payment_redsys',    # NUEVO - para integración Redsys
+        'sign',
+        'account',
+        'payment',
+        'payment_redsys',
+        'web_gantt',
     ],
     'data': [
         # Data
@@ -46,12 +48,16 @@
         'wizards/vehicle_substitution_wizard_views.xml',
         'wizards/substitution_damage_painter_wizard_views.xml',
         'wizards/sale_order_to_vehicle_contract_views.xml',
+        'wizards/rental_multi_booking_views.xml',
         # Views
         'views/vehicle_deposit_rule_views.xml',
         'views/assets.xml',
         'views/fleet_inherit_views.xml',
         'views/fleet_vehicle_model_views.xml',
+        'views/vehicle_contract_extension_views.xml',
+        'views/vehicle_contract_group_views.xml',
         'views/vehicle_contract_views.xml',
+        'security/ir_model_access_extension.xml',
         'views/customer_document_views.xml',
         'views/cancellation_policy_views.xml',
         'views/invoice_inherit_views.xml',
@@ -71,6 +77,7 @@
         'report/vehicle_contract_report_views.xml',
         'report/scratch_report_views.xml',
         'report/vehicle_substitution_addendum_report.xml',
+        'report/vehicle_contract_extension_addendum_report.xml',
         # Email templates (después de reports para que existan los XMLID referenciados)
         'data/email_templates.xml',
         # Views de sustitución (después del reporte)

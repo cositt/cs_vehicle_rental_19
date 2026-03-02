@@ -51,6 +51,30 @@
                                         <td><strong>Teléfono:</strong></td>
                                         <td><span t-field="contract.partner_id.phone"/></td>
                                     </tr>
+                                    <tr>
+                                        <td><strong>DNI/NIE:</strong></td>
+                                        <td><span t-field="contract.customer_dni"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Fecha de expiración DNI:</strong></td>
+                                        <td><span t-field="contract.customer_dni_expiry_date" t-options="{'widget': 'date'}"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Domicilio:</strong></td>
+                                        <td><span t-field="contract.customer_address"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Carnet de conducir:</strong></td>
+                                        <td><span t-field="contract.driver_license_number"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Fecha expedición carnet:</strong></td>
+                                        <td><span t-field="contract.driver_license_issue_date" t-options="{'widget': 'date'}"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Fecha caducidad carnet:</strong></td>
+                                        <td><span t-field="contract.driver_license_expiry_date" t-options="{'widget': 'date'}"/></td>
+                                    </tr>
                                 </table>
                             </div>
                         </div>

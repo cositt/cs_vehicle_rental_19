@@ -6,20 +6,31 @@
             <field name="model">rental.contract.booking</field>
             <field name="arch" type="xml">
                 <form>
+                    <field name="group_id" invisible="1"/>
+                    <field name="multi_booking_id" invisible="1"/>
+
+                    <div class="alert alert-info" role="alert"
+                         invisible="not multi_booking_id">
+                        <strong>Modo Reserva Múltiple:</strong>
+                        Al pulsar "Reservar" el vehículo se añadirá a la reserva múltiple.
+                    </div>
+
                     <group>
                         <group>
                             <field name="customer_id" required="1"
+                                   readonly="multi_booking_id"
                                    options="{'no_create': True, 'no_create_edit': True}"/>
                             <field name="start_date" required="1"/>
                         </group>
                         <group>
                             <field name="company_id" required="1"
+                                   readonly="multi_booking_id"
                                    options="{'no_create': True, 'no_create_edit': True}"
                                    string="Compañía"/>
                             <field name="end_date" required="1"/>
                         </group>
                     </group>
-                    
+
                     <group>
                         <group>
                             <field name="selected_category_id" required="1" string="Tipo de Vehículo"/>
@@ -30,7 +41,7 @@
                             <field name="km_range" required="1" string="Rango de Km"/>
                         </group>
                     </group>
-                    
+
                     <group>
                         <group>
                             <field name="pricing_type" required="1" string="Tipo de Tarifa"/>
@@ -39,7 +50,7 @@
                             <field name="calculated_price" readonly="1" string="Tarifa (€/día)"/>
                         </group>
                     </group>
-                    
+
                     <notebook>
                         <page name="fleet_vehicles" string="Vehículos Disponibles"
                               invisible="start_date == False or end_date == False or selected_category_id == False">

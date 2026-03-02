@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Reporte PDF del Addendum de Ampliación de Contrato -->
+    <template id="vehicle_contract_extension_addendum_report_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="ext">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <style>
+                            .addendum-title {
+                                text-align: center;
+                                font-size: 22px;
+                                font-weight: bold;
+                                color: #495057;
+                                margin-bottom: 30px;
+                                text-transform: uppercase;
+                                border-bottom: 3px solid #28a745;
+                                padding-bottom: 10px;
+                            }
+                            .section-title {
+                                font-size: 16px;
+                                font-weight: bold;
+                                color: #28a745;
+                                margin-top: 20px;
+                                margin-bottom: 10px;
+                                padding: 8px;
+                                background-color: #e8f5e9;
+                                border-left: 4px solid #28a745;
+                            }
+                            .info-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-bottom: 20px;
+                            }
+                            .info-table td {
+                                padding: 8px;
+                                border: 1px solid #dee2e6;
+                                font-size: 12px;
+                            }
+                            .info-label {
+                                font-weight: bold;
+                                width: 35%;
+                                background-color: #f8f9fa;
+                                color: #495057;
+                            }
+                            .info-value { width: 65%; }
+                            .highlight-box {
+                                background-color: #e8f5e9;
+                                border: 2px solid #28a745;
+                                padding: 15px;
+                                margin: 20px 0;
+                                border-radius: 5px;
+                            }
+                            .legal-text {
+                                font-size: 11px;
+                                line-height: 1.6;
+                                text-align: justify;
+                                color: #6c757d;
+                                margin: 20px 0;
+                            }
+                        </style>
+
+                        <div class="addendum-title">
+                            ADDENDUM / ANEXO AL CONTRATO DE ALQUILER
+                            <br/>
+                            <span style="font-size: 16px; font-weight: normal;">Ampliación de plazo</span>
+                        </div>
+
+                        <div class="section-title">
+                            <i class="fa fa-file-text-o"/> CONTRATO ORIGINAL
+                        </div>
+                        <table class="info-table">
+                            <tr>
+                                <td class="info-label">Contrato N°:</td>
+                                <td class="info-value"><strong><span t-field="ext.contract_id.reference_no"/></strong></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Cliente:</td>
+                                <td class="info-value"><span t-field="ext.contract_id.customer_id"/></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Vehículo:</td>
+                                <td class="info-value"><span t-field="ext.contract_id.vehicle_id"/></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Fecha inicio contrato:</td>
+                                <td class="info-value"><span t-field="ext.contract_id.start_date"/></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Fecha fin original:</td>
+                                <td class="info-value"><span t-field="ext.original_end_date"/></td>
+                            </tr>
+                        </table>
+
+                        <div class="section-title">
+                            <i class="fa fa-calendar-plus-o"/> AMPLIACIÓN ACORDADA
+                        </div>
+                        <table class="info-table">
+                            <tr>
+                                <td class="info-label">Nueva fecha de fin:</td>
+                                <td class="info-value"><strong><span t-field="ext.new_end_date"/></strong></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Días de ampliación:</td>
+                                <td class="info-value"><span t-field="ext.extension_days"/></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Tarifa por día:</td>
+                                <td class="info-value"><span t-field="ext.daily_rate" t-options='{"widget": "monetary", "display_currency": ext.currency_id}'/></td>
+                            </tr>
+                        </table>
+
+                        <div class="highlight-box">
+                            <strong><i class="fa fa-money"/> IMPORTE TOTAL DE LA AMPLIACIÓN:</strong><br/>
+                            <span t-field="ext.extension_amount" t-options='{"widget": "monetary", "display_currency": ext.currency_id}'/>
+                        </div>
+
+                        <div class="legal-text">
+                            <p>
+                                <strong>ACUERDO DE AMPLIACIÓN:</strong> Las partes acuerdan ampliar el plazo del contrato de alquiler 
+                                número <strong><span t-field="ext.contract_id.reference_no"/></strong> hasta la nueva fecha de fin indicada. 
+                                El resto de condiciones del contrato original se mantienen vigentes.
+                            </p>
+                            <p>
+                                El cliente se compromete a abonar el importe indicado por los días adicionales de alquiler y a devolver 
+                                el vehículo en la nueva fecha de fin acordada.
+                            </p>
+                        </div>
+
+                        <div style="margin-top: 40px; padding-top: 10px; border-top: 1px solid #dee2e6; font-size: 10px; text-align: center; color: #6c757d;">
+                            Documento generado el <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%d/%m/%Y %H:%M')"/>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_vehicle_contract_extension_addendum" model="ir.actions.report">
+        <field name="name">Addendum de Ampliación de Contrato</field>
+        <field name="model">vehicle.contract.extension</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">vehicle_rental.vehicle_contract_extension_addendum_report_template</field>
+        <field name="report_file">vehicle_rental.vehicle_contract_extension_addendum_report_template</field>
+        <field name="print_report_name">'Addendum_Ampliacion_%s' % (object.contract_id.reference_no)</field>
+        <field name="binding_model_id" ref="vehicle_rental.model_vehicle_contract_extension"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

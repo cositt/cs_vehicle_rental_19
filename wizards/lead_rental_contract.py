@@ -37,13 +37,12 @@ class LeadRentalContract(models.TransientModel):
     end_date = fields.Datetime(string="End Date")
 
     def _get_occupied_vehicle_ids(self, start_date, end_date):
-        """Retorna IDs de vehículos ocupados en el rango de fechas (contratos activos)"""
+        """Vehículos ocupados: solo contratos que aún tienen el vehículo (a_draft, b_in_progress). Devuelto (c_return) no bloquea."""
         occupied_ids = []
         if start_date and end_date:
             try:
-                # Buscar contratos activos que se solapan con las fechas
                 overlapping_contracts = self.env['vehicle.contract'].search([
-                    ('status', 'in', ['b_in_progress', 'c_return']),
+                    ('status', 'in', ['a_draft', 'b_in_progress']),
                     ('start_date', '<=', end_date),
                     ('end_date', '>=', start_date),
                 ])
@@ -53,23 +52,25 @@ class LeadRentalContract(models.TransientModel):
         return occupied_ids
 
     def _get_reserved_vehicle_ids(self, category_id, start_date, end_date):
-        """Retorna IDs de vehículos reservados (leads sin vehículo asignado pero pagados)"""
-        reserved_ids = []
-        if category_id and start_date and end_date:
-            try:
-                # Buscar leads con vehicle_id=False, type='opportunity' que se solapan
-                reserved_leads = self.env['crm.lead'].search([
-                    ('selected_category_id', '=', category_id),
-                    ('vehicle_id', '=', False),
-                    ('type', '=', 'opportunity'),
-                    ('start_date', '<=', end_date),
-                    ('end_date', '>=', start_date),
-                ])
-                # No retornamos IDs directos porque los leads no tienen vehículos asignados
-                # Pero marcamos que esa categoría está reservada
-                return len(reserved_leads) > 0
-            except Exception as e:
-                _logger.warning(f"Error calculating reserved vehicles: {e}")
+        """Retorna si la categoría está reservada (solo oportunidades en etapas abiertas, no canceladas/perdidas)"""
+        if not (category_id and start_date and end_date):
+            return False
+        try:
+            domain = [
+                ('selected_category_id', '=', category_id),
+                ('vehicle_id', '=', False),
+                ('type', '=', 'opportunity'),
+                ('start_date', '<=', end_date),
+                ('end_date', '>=', start_date),
+                ('contract_id', '=', False),
+                ('probability', '<', 100),
+            ]
+            if 'fold' in self.env['crm.stage']._fields:
+                domain.append(('stage_id.fold', '=', False))
+            reserved_leads = self.env['crm.lead'].search(domain)
+            return len(reserved_leads) > 0
+        except Exception as e:
+            _logger.warning(f"Error calculating reserved vehicles: {e}")
         return False
 
     @api.model
@@ -271,11 +272,18 @@ class LeadRentalContract(models.TransientModel):
         # España por defecto
         spain = self.env['res.country'].search([('code', '=', 'ES')], limit=1)
         
+        lead = self.crm_lead_id
         contract_vals = {
-            'crm_lead_id': self.crm_lead_id.id,
+            'crm_lead_id': lead.id,
             'customer_id': self.partner_id.id,
             'customer_phone': self.partner_id.phone,
             'customer_email': self.partner_id.email,
+            'customer_dni': getattr(lead, 'customer_dni', None) or False,
+            'customer_dni_expiry_date': getattr(lead, 'customer_dni_expiry_date', None) or False,
+            'customer_address': getattr(lead, 'customer_address', None) or False,
+            'driver_license_number': getattr(lead, 'driver_license_number', None) or False,
+            'driver_license_issue_date': getattr(lead, 'driver_license_issue_date', None) or False,
+            'driver_license_expiry_date': getattr(lead, 'driver_license_expiry_date', None) or False,
             'vehicle_id': self.vehicle_id.id,
             'model_year': self.vehicle_id.model_year,
             'transmission': self.vehicle_id.transmission,

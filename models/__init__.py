@@ -21,6 +21,11 @@ from . import sale_order
 
 from . import fleet_vehicle_model
 from . import vehicle_substitution
+from . import vehicle_contract_extension
+from . import vehicle_contract_group
+from . import rental_multi_booking
+from . import fleet_vehicle_multi_booking
+from . import sign_request_inherit
 
 # Sistema de Tarifas Automático 2025
 from . import vehicle_pricing_rule
