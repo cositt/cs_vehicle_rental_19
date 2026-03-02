@@ -504,7 +504,7 @@ class VehicleContract(models.Model):
             overlapping_contracts = self.env['vehicle.contract'].search([
                 ('id', '!=', rec.id),  # Excluir el contrato actual
                 ('vehicle_id', '=', vehicle_id),
-                ('status', 'in', ['b_in_progress', 'c_return']),  # Contratos activos
+                ('status', '=', 'b_in_progress'),  # Solo contratos realmente en curso
                 ('start_date', '<=', rec.end_date),  # Su inicio es antes o igual a nuestro fin
                 ('end_date', '>=', rec.start_date),  # Su fin es después o igual a nuestro inicio
             ], limit=1)
