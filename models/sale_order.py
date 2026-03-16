@@ -28,24 +28,35 @@ class SaleOrder(models.Model):
 
     @api.onchange('opportunity_id')
     def _onchange_opportunity_id(self):
-        """Copy vehicle and dates from opportunity/lead"""
-        res = super()._onchange_opportunity_id()
+        """Copy vehicle and dates from opportunity/lead (compatible across Odoo versions)."""
+        res = {}
+
+        # Compatibility guard: in some Odoo versions parent has no _onchange_opportunity_id
+        parent_method = getattr(super(SaleOrder, self), '_onchange_opportunity_id', None)
+        if callable(parent_method):
+            parent_res = parent_method()
+            if isinstance(parent_res, dict):
+                res = parent_res
+
         if self.opportunity_id and self.opportunity_id.vehicle_id:
             self.vehicle_id = self.opportunity_id.vehicle_id
+
+            from datetime import datetime, time
+
             if hasattr(self.opportunity_id, 'start_date') and self.opportunity_id.start_date:
-                from datetime import datetime, time
                 if isinstance(self.opportunity_id.start_date, str):
                     date_obj = datetime.strptime(self.opportunity_id.start_date, '%Y-%m-%d').date()
                 else:
                     date_obj = self.opportunity_id.start_date
                 self.rental_start_date = datetime.combine(date_obj, time.min)
+
             if hasattr(self.opportunity_id, 'end_date') and self.opportunity_id.end_date:
-                from datetime import datetime, time
                 if isinstance(self.opportunity_id.end_date, str):
                     date_obj = datetime.strptime(self.opportunity_id.end_date, '%Y-%m-%d').date()
                 else:
                     date_obj = self.opportunity_id.end_date
                 self.rental_end_date = datetime.combine(date_obj, time.max)
+
         return res
 
     def action_create_vehicle_contract(self):
