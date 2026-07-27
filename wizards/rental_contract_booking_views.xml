@@ -59,8 +59,7 @@
                                     <field name="name"/>
                                     <field name="model_id"/>
                                     <field name="license_plate"/>
-                                    <field name="model_year"/>
-                                    <field name="transmission"/>
+                                    <field name="location" string="Ubicación"/>
                                     <field name="fuel_type"/>
                                     <field name="category_id"/>
                                     <button string="Reservar" name="action_create_book_contract" type="object"
