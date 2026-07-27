@@ -120,6 +120,7 @@ class FleetVehicle(models.Model):
             'transmission': self.transmission,
             'fuel_type': self.fuel_type,
             'license_plate': self.license_plate,
+            'pick_up_city': self.location,
             'customer_id': wizard.customer_id.id,
             'customer_phone': wizard.customer_id.phone,
             'customer_email': wizard.customer_id.email,

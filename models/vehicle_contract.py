@@ -401,8 +401,8 @@ class VehicleContract(models.Model):
                 vals['pick_up_city'] = company.city
             if not vals.get('pick_up_state_id') and company.state_id:
                 vals['pick_up_state_id'] = company.state_id.id
-            if not vals.get('pick_up_country_id') and company.country_id:
-                vals['pick_up_country_id'] = company.country_id.id
+            if not vals.get('pick_up_country_id'):
+                vals['pick_up_country_id'] = self.env.ref('base.es').id
             if not vals.get('pick_up_zip') and company.zip:
                 vals['pick_up_zip'] = company.zip
             
@@ -415,8 +415,8 @@ class VehicleContract(models.Model):
                 vals['drop_off_city'] = company.city
             if not vals.get('drop_off_state_id') and company.state_id:
                 vals['drop_off_state_id'] = company.state_id.id
-            if not vals.get('drop_off_country_id') and company.country_id:
-                vals['drop_off_country_id'] = company.country_id.id
+            if not vals.get('drop_off_country_id'):
+                vals['drop_off_country_id'] = self.env.ref('base.es').id
             if not vals.get('drop_off_zip') and company.zip:
                 vals['drop_off_zip'] = company.zip
         
@@ -693,6 +693,8 @@ class VehicleContract(models.Model):
             rec.transmission = rec.vehicle_id.transmission
             rec.fuel_type = rec.vehicle_id.fuel_type
             rec.license_plate = rec.vehicle_id.license_plate
+            if rec.vehicle_id.location:
+                rec.pick_up_city = rec.vehicle_id.location
 
     @api.onchange('cancellation_policy_id')
     def onchange_policy_terms(self):
