@@ -76,6 +76,11 @@
                     <field name="fleet_vehicle_id" invisible="fleet_vehicle_id == False" readonly="1"/>
                 </xpath>
                 <xpath expr="//field[@name='maintenance_type']" position="after">
+                    <label for="vehicle_odometer" invisible="fleet_vehicle_id == False"/>
+                    <div class="o_row" invisible="fleet_vehicle_id == False">
+                        <field name="vehicle_odometer"/>
+                        <field name="odometer_unit" readonly="1" nolabel="1"/>
+                    </div>
                     <field name="maintenance_schedule_id" invisible="maintenance_schedule_id == False" readonly="1"/>
                     <field name="upcoming_maintenance_date" invisible="upcoming_maintenance_date == False"
                            readonly="1"/>

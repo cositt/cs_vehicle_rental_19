@@ -65,6 +65,11 @@
                   parent="main_menu_vehicle_rental"
                   action="action_vehicle_contract_substitution"
                   sequence="9"/>
+        <menuitem id="menu_vehicle_contract_return"
+                  name="Devoluciones de Vehículos"
+                  parent="main_menu_vehicle_rental"
+                  action="action_vehicle_contract_return"
+                  sequence="9"/>
         <menuitem id="menu_vehicle_pricing_rule"
                   name="Tarifas de Vehículos"
                   parent="main_menu_vehicle_rental"

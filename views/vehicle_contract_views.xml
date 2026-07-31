@@ -243,18 +243,32 @@
                             </group>
                         </group>
                         <separator string="Vehicle Details" name="vehicle_details"/>
+                        <!-- El orden importa: categoría y fechas acotan la lista de
+                             vehículos, así que van antes del vehículo. Sin ellas no
+                             se puede saber cuáles están libres. -->
+                        <div class="alert alert-info" role="alert"
+                             invisible="status != 'a_draft' or (vehicle_category_id != False and start_date != False and end_date != False)">
+                            <i class="fa fa-info-circle" title="Información"/>
+                            Elija la <strong>categoría</strong> y las <strong>fechas de recogida y
+                            devolución</strong>. Después se mostrarán los vehículos de esa categoría
+                            que estén libres en esas fechas.
+                        </div>
                         <group>
                             <group>
+                                <field name="vehicle_category_id"
+                                       string="Categoría del Vehículo"
+                                       readonly="status != 'a_draft'"
+                                       options="{'no_create': True, 'no_create_edit': True}"/>
                                 <field name="vehicle_id" required="start_date != False or end_date != False"
-                                       readonly="start_date == False or end_date == False or status != 'a_draft'"
+                                       readonly="vehicle_category_id == False or start_date == False or end_date == False or status != 'a_draft'"
                                        options="{'no_create': True, 'no_create_edit': True}"/>
                                 <field name="license_plate" invisible="1"/>
                                 <field name="vehicle_ids" invisible="1"/>
+                                <field name="available_vehicle_ids" invisible="1"/>
                                 <field name="model_year" readonly="1" force_save="1"/>
                                 <field name="transmission" widget="radio" options="{'horizontal': True}" readonly="1"
                                        force_save="1"/>
                                 <field name="fuel_type" readonly="1" force_save="1"/>
-                                <field name="vehicle_category" readonly="1" force_save="1" string="Categoría del Vehículo"/>
                                 <label for="last_odometer" string="Last Odometer"/>
                                 <div name="oe_inline">
                                     <field name="last_odometer" class="oe_inline me-1" readonly="status == 'c_return'"/>

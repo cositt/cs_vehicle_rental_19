@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!-- Acta de Devolución de Vehículo -->
+    <template id="vehicle_contract_return_report_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="ret">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <style>
+                            .acta-title {
+                                text-align: center;
+                                font-size: 22px;
+                                font-weight: bold;
+                                color: #495057;
+                                margin-bottom: 30px;
+                                text-transform: uppercase;
+                                border-bottom: 3px solid #17a2b8;
+                                padding-bottom: 10px;
+                            }
+
+                            .section-title {
+                                font-size: 16px;
+                                font-weight: bold;
+                                color: #17a2b8;
+                                margin-top: 20px;
+                                margin-bottom: 10px;
+                                padding: 8px;
+                                background-color: #e7f7fa;
+                                border-left: 4px solid #17a2b8;
+                            }
+
+                            .info-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-bottom: 20px;
+                            }
+
+                            .info-table td {
+                                padding: 8px;
+                                border: 1px solid #dee2e6;
+                                font-size: 12px;
+                            }
+
+                            .info-label {
+                                font-weight: bold;
+                                width: 30%;
+                                background-color: #f8f9fa;
+                                color: #495057;
+                            }
+
+                            .info-value {
+                                width: 70%;
+                            }
+
+                            .highlight-box {
+                                background-color: #fff3cd;
+                                border: 2px solid #ffc107;
+                                padding: 15px;
+                                margin: 20px 0;
+                                border-radius: 5px;
+                            }
+
+                            .ok-box {
+                                background-color: #d4edda;
+                                border: 2px solid #28a745;
+                                padding: 15px;
+                                margin: 20px 0;
+                                border-radius: 5px;
+                            }
+
+                            .signature-box {
+                                border: 1px solid #dee2e6;
+                                padding: 15px;
+                                min-height: 100px;
+                                margin-top: 10px;
+                                text-align: center;
+                            }
+
+                            .legal-text {
+                                font-size: 11px;
+                                line-height: 1.6;
+                                text-align: justify;
+                                color: #6c757d;
+                                margin: 20px 0;
+                            }
+                        </style>
+
+                        <!-- Título Principal -->
+                        <div class="acta-title">
+                            ACTA DE DEVOLUCIÓN DE VEHÍCULO
+                            <br/>
+                            <span style="font-size: 16px; font-weight: normal;">Anexo al Contrato de Alquiler</span>
+                        </div>
+
+                        <!-- Información del Contrato -->
+                        <div class="section-title">
+                            <i class="fa fa-file-text-o"/> INFORMACIÓN DEL CONTRATO
+                        </div>
+                        <table class="info-table">
+                            <tr>
+                                <td class="info-label">Contrato N°:</td>
+                                <td class="info-value"><strong><span t-field="ret.contract_id.reference_no"/></strong></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Cliente:</td>
+                                <td class="info-value"><span t-field="ret.contract_id.customer_id"/></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Periodo de Alquiler:</td>
+                                <td class="info-value">
+                                    Desde: <span t-field="ret.contract_id.start_date"/>
+                                    hasta: <span t-field="ret.contract_id.end_date"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Fecha de Devolución:</td>
+                                <td class="info-value"><strong><span t-field="ret.return_date"/></strong></td>
+                            </tr>
+                        </table>
+
+                        <!-- Vehículo Devuelto -->
+                        <div class="section-title">
+                            <i class="fa fa-car"/> VEHÍCULO DEVUELTO
+                        </div>
+                        <table class="info-table">
+                            <tr>
+                                <td class="info-label">Vehículo:</td>
+                                <td class="info-value"><strong><span t-field="ret.vehicle_id"/></strong></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Matrícula:</td>
+                                <td class="info-value"><strong><span t-field="ret.vehicle_id.license_plate"/></strong></td>
+                            </tr>
+                        </table>
+
+                        <!-- Estado: Entrega vs Devolución -->
+                        <div class="section-title">
+                            <i class="fa fa-exchange"/> ESTADO DEL VEHÍCULO: ENTREGA VS DEVOLUCIÓN
+                        </div>
+                        <table class="info-table">
+                            <tr>
+                                <td class="info-label"></td>
+                                <td class="info-value" style="width: 35%; font-weight: bold; background-color: #f8f9fa;">En la Entrega</td>
+                                <td class="info-value" style="width: 35%; font-weight: bold; background-color: #f8f9fa;">En la Devolución</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Kilometraje:</td>
+                                <td><span t-esc="'{:,.0f}'.format(ret.odometer_start)"/>
+                                    <span t-if="ret.odometer_unit == 'kilometers'"> km</span>
+                                    <span t-else=""> mi</span>
+                                </td>
+                                <td><strong><span t-esc="'{:,.0f}'.format(ret.odometer)"/>
+                                    <span t-if="ret.odometer_unit == 'kilometers'"> km</span>
+                                    <span t-else=""> mi</span>
+                                </strong></td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Combustible:</td>
+                                <td>
+                                    <span t-if="ret.fuel_level_start == '0'">Vacío</span>
+                                    <span t-if="ret.fuel_level_start == '1'">1/4</span>
+                                    <span t-if="ret.fuel_level_start == '2'">2/4 (Medio)</span>
+                                    <span t-if="ret.fuel_level_start == '3'">3/4</span>
+                                    <span t-if="ret.fuel_level_start == '4'">Lleno</span>
+                                    <span t-if="not ret.fuel_level_start">No registrado</span>
+                                </td>
+                                <td>
+                                    <strong>
+                                        <span t-if="ret.fuel_level == '0'">Vacío</span>
+                                        <span t-if="ret.fuel_level == '1'">1/4</span>
+                                        <span t-if="ret.fuel_level == '2'">2/4 (Medio)</span>
+                                        <span t-if="ret.fuel_level == '3'">3/4</span>
+                                        <span t-if="ret.fuel_level == '4'">Lleno</span>
+                                    </strong>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Kilómetros Recorridos:</td>
+                                <td colspan="2"><strong><span t-esc="'{:,.0f}'.format(ret.km_driven)"/>
+                                    <span t-if="ret.odometer_unit == 'kilometers'"> km</span>
+                                    <span t-else=""> mi</span>
+                                </strong></td>
+                            </tr>
+                        </table>
+
+                        <!-- Inspección de Daños -->
+                        <div class="section-title">
+                            <i class="fa fa-search"/> INSPECCIÓN DE DAÑOS
+                        </div>
+                        <div t-if="not ret.has_damage" class="ok-box">
+                            <strong><i class="fa fa-check-circle"/> SIN DAÑOS:</strong>
+                            El vehículo ha sido inspeccionado a la devolución y no se han detectado daños
+                            más allá del desgaste normal derivado del uso.
+                        </div>
+                        <div t-if="ret.has_damage" class="highlight-box">
+                            <strong><i class="fa fa-exclamation-triangle"/> DAÑOS DETECTADOS</strong>
+                            <div style="margin-top: 10px;">
+                                <span t-field="ret.damage_description"/>
+                            </div>
+                            <div t-if="ret.damage_amount" style="margin-top: 10px;">
+                                <strong>Importe estimado: </strong>
+                                <span t-field="ret.damage_amount"
+                                      t-options='{"widget": "monetary", "display_currency": ret.currency_id}'/>
+                            </div>
+                            <div t-if="not ret.damage_amount" style="margin-top: 10px;">
+                                <strong>Importe estimado: </strong>
+                                pendiente de valoración. Se comunicará al arrendatario una vez
+                                peritados los daños.
+                            </div>
+                        </div>
+
+                        <div t-if="ret.painted_damage_image" style="text-align: center; margin: 20px 0;">
+                            <img t-att-src="'data:image/png;base64,' + ret.painted_damage_image.decode('utf-8')"
+                                 style="max-width: 100%; max-height: 400px; border: 1px solid #dee2e6;"/>
+                            <div style="font-size: 10px; color: #6c757d; margin-top: 5px;">
+                                Marcado de daños realizado en la inspección de devolución
+                            </div>
+                        </div>
+
+                        <!-- Notas -->
+                        <div t-if="ret.notes">
+                            <div class="section-title">
+                                <i class="fa fa-sticky-note-o"/> OBSERVACIONES
+                            </div>
+                            <p style="font-size: 12px;"><span t-field="ret.notes"/></p>
+                        </div>
+
+                        <!-- Texto Legal -->
+                        <div class="legal-text">
+                            <p>
+                                <strong>ACTA DE DEVOLUCIÓN:</strong> Las partes hacen constar que en la fecha indicada
+                                se ha producido la devolución del vehículo objeto del contrato de alquiler número
+                                <strong><span t-field="ret.contract_id.reference_no"/></strong>, en el estado descrito
+                                en el presente documento.
+                            </p>
+                            <p>
+                                El arrendatario (cliente) declara haber devuelto el vehículo con el kilometraje y nivel
+                                de combustible reflejados, y reconoce como correcta la inspección de daños practicada en
+                                su presencia.
+                            </p>
+                            <p t-if="ret.has_damage and ret.damage_amount">
+                                El arrendatario queda informado de los daños detectados y del importe estimado de su
+                                reparación, que será repercutido conforme a las condiciones del contrato original.
+                            </p>
+                            <p t-if="ret.has_damage and not ret.damage_amount">
+                                El arrendatario queda informado de los daños detectados. El importe de su reparación
+                                se determinará mediante la correspondiente valoración y le será comunicado, para su
+                                repercusión conforme a las condiciones del contrato original.
+                            </p>
+                            <p>
+                                La firma del presente documento no exime de responsabilidad por daños ocultos que
+                                pudieran detectarse con posterioridad en una revisión técnica del vehículo.
+                            </p>
+                        </div>
+
+                        <!-- Firmas -->
+                        <div style="margin-top: 40px;">
+                            <table style="width: 100%;">
+                                <tr>
+                                    <td style="width: 48%; vertical-align: top;">
+                                        <div class="section-title">FIRMA DEL CLIENTE</div>
+                                        <div class="signature-box">
+                                            <img t-if="ret.customer_signature"
+                                                 t-att-src="'data:image/png;base64,' + ret.customer_signature.decode('utf-8')"
+                                                 style="max-height: 80px;"/>
+                                        </div>
+                                        <div style="margin-top: 10px; text-align: center;">
+                                            <strong><span t-field="ret.contract_id.customer_id"/></strong><br/>
+                                            <span t-field="ret.signature_date" t-options='{"widget": "datetime"}'/>
+                                        </div>
+                                    </td>
+                                    <td style="width: 4%;"></td>
+                                    <td style="width: 48%; vertical-align: top;">
+                                        <div class="section-title">FIRMA DE LA EMPRESA</div>
+                                        <div class="signature-box">
+                                            <img t-if="ret.company_signature"
+                                                 t-att-src="'data:image/png;base64,' + ret.company_signature.decode('utf-8')"
+                                                 style="max-height: 80px;"/>
+                                        </div>
+                                        <div style="margin-top: 10px; text-align: center;">
+                                            <strong><span t-field="ret.company_id.name"/></strong><br/>
+                                            <span t-field="ret.signature_date" t-options='{"widget": "datetime"}'/>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Pie de página -->
+                        <div style="margin-top: 30px; padding-top: 10px; border-top: 1px solid #dee2e6; font-size: 10px; text-align: center; color: #6c757d;">
+                            Documento generado automáticamente el
+                            <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%d/%m/%Y %H:%M')"/>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- Action del Reporte -->
+    <record id="action_report_vehicle_contract_return" model="ir.actions.report">
+        <field name="name">Acta de Devolución de Vehículo</field>
+        <field name="model">vehicle.contract.return</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">vehicle_rental.vehicle_contract_return_report_template</field>
+        <field name="report_file">vehicle_rental.vehicle_contract_return_report_template</field>
+        <field name="print_report_name">'Acta_Devolucion_%s' % (object.contract_id.reference_no)</field>
+        <field name="binding_model_id" ref="model_vehicle_contract_return"/>
+        <field name="binding_type">report</field>
+    </record>
+
+</odoo>

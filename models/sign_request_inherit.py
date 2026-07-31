@@ -14,4 +14,6 @@ class SignRequestInherit(models.Model):
                 ext = req.reference_doc
                 if ext.exists() and ext.state in ('draft', 'sent'):
                     ext.state = 'signed'
+                    # Dejar constancia de la firma en el chatter del contrato
+                    ext._post_signed_to_contract()
         return res

@@ -209,6 +209,34 @@
         </field>
     </record>
 
+    <!-- Heredar vista contrato: tab inline de sustituciones -->
+    <record id="vehicle_contract_form_view_substitution_tab" model="ir.ui.view">
+        <field name="name">vehicle.contract.form.view.substitution.tab</field>
+        <field name="model">vehicle.contract</field>
+        <field name="inherit_id" ref="vehicle_rental.vehicle_contract_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='damage']" position="after">
+                <page name="contract_substitutions" string="Sustituciones"
+                      invisible="substitution_count == 0">
+                    <field name="substitution_ids" nolabel="1" readonly="1">
+                        <list create="0" delete="0" edit="0"
+                              decoration-danger="old_vehicle_has_damage">
+                            <field name="substitution_date"/>
+                            <field name="old_vehicle_id"/>
+                            <field name="new_vehicle_id"/>
+                            <field name="reason"/>
+                            <field name="old_vehicle_has_damage" widget="boolean_toggle"/>
+                            <field name="old_vehicle_damage_amount" widget="monetary"/>
+                            <field name="price_difference" widget="monetary"/>
+                            <field name="addendum_generated" widget="boolean_toggle"/>
+                            <field name="currency_id" column_invisible="1"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
     <!-- Action -->
     <record id="action_vehicle_contract_substitution" model="ir.actions.act_window">
         <field name="name">Sustituciones de Vehículos</field>

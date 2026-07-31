@@ -180,21 +180,54 @@ import { useService } from "@web/core/utils/hooks";
         }
     }
 
+    /**
+     * Canvas del editor que está realmente abierto.
+     *
+     * El canvas usa siempre el mismo id, así que al reabrir el editor pueden
+     * coexistir el nodo viejo y el nuevo. getElementById devolvería el viejo —
+     * que ya está marcado como inicializado — y el editor nuevo se quedaría en
+     * blanco. Se busca por eso dentro del diálogo más reciente.
+     */
+    function findActiveCanvas() {
+        const dialogs = document.querySelectorAll('.o_dialog, .modal');
+        for (let i = dialogs.length - 1; i >= 0; i--) {
+            const found = dialogs[i].querySelector('#damage_canvas');
+            if (found && found.isConnected) {
+                return found;
+            }
+        }
+        const fallback = document.getElementById('damage_canvas');
+        return fallback && fallback.isConnected ? fallback : null;
+    }
+
     function initDamagePainter() {
         // console.log('Iniciando damage painter...');
         
         // Esperar a que el DOM esté listo
         setTimeout(() => {
-            canvas = document.getElementById('damage_canvas');
+            canvas = findActiveCanvas();
             if (!canvas) {
-                // console.log('Canvas no encontrado, reintentando...');
-                // Reintentar
-                setTimeout(initDamagePainter, 500);
+                // Sin sondeo: el MutationObserver vuelve a llamar cuando se abra
+                // un editor.
                 return;
             }
 
+            // initDamagePainter() se invoca por varias vías (readyState y window.load).
+            // Sin este guardia cada pasada añade otro listener al botón Guardar, y un
+            // solo clic dispara dos guardados simultáneos sobre la misma fila, lo que
+            // provoca "could not serialize access due to concurrent update".
+            if (canvas.dataset.damagePainterBound) {
+                return;
+            }
+            canvas.dataset.damagePainterBound = '1';
+
             console.log('Canvas encontrado!');
             ctx = canvas.getContext('2d');
+
+            // Todas las búsquedas de la barra de herramientas se limitan al editor
+            // abierto; si quedara un diálogo anterior en el DOM se engancharían sus
+            // botones y los clics no llegarían al canvas visible.
+            const root = canvas.closest('.o_dialog, .modal') || document;
             
             // Obtener Contract ID del contexto de Odoo
             getContractIdFromOdooForm();
@@ -203,11 +236,11 @@ import { useService } from "@web/core/utils/hooks";
             loadBaseImage();
 
             // Event listeners para herramientas
-            document.querySelectorAll('.damage_tool').forEach(btn => {
+            root.querySelectorAll('.damage_tool').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.preventDefault();
                     currentTool = e.currentTarget.dataset.tool;
-                    document.querySelectorAll('.damage_tool').forEach(b => b.classList.remove('active'));
+                    root.querySelectorAll('.damage_tool').forEach(b => b.classList.remove('active'));
                     e.currentTarget.classList.add('active');
                 });
             });
@@ -223,7 +256,7 @@ import { useService } from "@web/core/utils/hooks";
             });
             
             // Event listener para input de color
-            const colorInput = document.querySelector('.damage_color_input');
+            const colorInput = root.querySelector('.damage_color_input');
             if (colorInput) {
                 colorInput.addEventListener('input', (e) => {
                     currentColor = e.target.value;
@@ -237,7 +270,7 @@ import { useService } from "@web/core/utils/hooks";
             }
             
             // Botones de Undo y Clear
-            const undoBtn = document.querySelector('.damage_undo');
+            const undoBtn = root.querySelector('.damage_undo');
             if (undoBtn) {
                 undoBtn.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -254,7 +287,7 @@ import { useService } from "@web/core/utils/hooks";
                 });
             }
             
-            const clearBtn = document.querySelector('.damage_clear');
+            const clearBtn = root.querySelector('.damage_clear');
             if (clearBtn) {
                 clearBtn.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -268,7 +301,7 @@ import { useService } from "@web/core/utils/hooks";
             }
 
             // Event listener para grosor de línea
-            const lineWidthInput = document.querySelector('.damage_line_width');
+            const lineWidthInput = root.querySelector('.damage_line_width');
             if (lineWidthInput) {
                 lineWidthInput.addEventListener('input', (e) => {
                     lineWidth = parseInt(e.target.value);
@@ -297,7 +330,7 @@ import { useService } from "@web/core/utils/hooks";
             canvas.addEventListener('touchend', stopDrawing);
 
             // Botón de descargar imagen
-            const downloadBtn = document.querySelector('.o_download_damage_btn');
+            const downloadBtn = root.querySelector('.o_download_damage_btn');
             if (downloadBtn) {
                 downloadBtn.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -306,7 +339,7 @@ import { useService } from "@web/core/utils/hooks";
             }
             
             // Interceptar el botón de guardar - ANTES de enviar el formulario
-            const saveBtn = document.querySelector('.o_save_damage_btn');
+            const saveBtn = root.querySelector('.o_save_damage_btn');
             if (saveBtn) {
                 saveBtn.addEventListener('click', function(e) {
                     saveCanvasImage();
@@ -314,7 +347,7 @@ import { useService } from "@web/core/utils/hooks";
             }
 
             // Marcar primera herramienta como activa
-            const firstTool = document.querySelector('.damage_tool');
+            const firstTool = root.querySelector('.damage_tool');
             if (firstTool) {
                 firstTool.classList.add('active');
             }
@@ -330,30 +363,71 @@ import { useService } from "@web/core/utils/hooks";
         canvasHistory.push(canvas.toDataURL());
     }
 
-    function loadBaseImage() {
+    async function loadBaseImage() {
         console.log('Cargando imagen base...');
-        const baseImageField = document.querySelector('input[name="base_image"]');
-        console.log('Campo base_image encontrado:', !!baseImageField);
-        
+
         const img = new Image();
-        
+
         img.onload = () => {
             console.log('Imagen cargada exitosamente, dibujando en canvas...');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             // Guardar estado inicial
             saveCanvasState();
         };
-        
-        img.onerror = (e) => {
-            console.error('Error al cargar imagen:', e);
+
+        const DEFAULT_IMG = '/vehicle_rental/static/src/img/img.png';
+
+        img.onerror = () => {
+            // Nunca dejar el canvas vacío: si las marcas guardadas no cargan,
+            // caer al diagrama del vehículo para poder seguir trabajando.
+            console.error('Error al cargar la imagen base, usando el diagrama por defecto');
+            if (!img.src.endsWith(DEFAULT_IMG)) {
+                img.src = DEFAULT_IMG;
+            }
         };
 
+        // Painter de wizard: recuperar las marcas ya guardadas para poder editarlas
+        // (añadir o borrar) en vez de empezar siempre desde el diagrama en blanco.
+        const painter = findOpenPainterRecord();
+        if (painter) {
+            try {
+                const resp = await fetch('/web/dataset/call_kw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        method: 'call',
+                        params: {
+                            model: painter.model,
+                            method: 'get_base_image',
+                            args: [[painter.id]],
+                            kwargs: {}
+                        },
+                        id: Date.now()
+                    })
+                });
+                const res = await resp.json();
+                if (res.error) {
+                    console.error('get_base_image devolvió error:', res.error);
+                } else if (res.result) {
+                    console.log('Usando marcas guardadas previamente:', res.result.length, 'chars');
+                    img.src = 'data:image/png;base64,' + res.result;
+                    return;
+                } else {
+                    console.log('Sin marcas previas guardadas');
+                }
+            } catch (e) {
+                console.error('No se pudieron recuperar las marcas previas:', e);
+            }
+        }
+
+        const baseImageField = document.querySelector('input[name="base_image"]');
         if (baseImageField && baseImageField.value) {
             console.log('Usando imagen existente del contrato');
             img.src = 'data:image/png;base64,' + baseImageField.value;
         } else {
             console.log('Usando imagen por defecto: img.png');
-            img.src = '/vehicle_rental/static/src/img/img.png';
+            img.src = DEFAULT_IMG;
         }
     }
 
@@ -500,7 +574,7 @@ import { useService } from "@web/core/utils/hooks";
 
     function downloadCanvasImage() {
         if (!canvas) {
-            alert('Error: Canvas no encontrado');
+            showToast('Canvas no encontrado', 'error');
             return;
         }
         
@@ -521,19 +595,104 @@ import { useService } from "@web/core/utils/hooks";
                 // Liberar el URL
                 URL.revokeObjectURL(url);
                 
-                alert('✅ Imagen descargada correctamente');
+                showToast('Imagen descargada correctamente', 'success');
             }, 'image/png');
         } catch (error) {
             console.error('Error al descargar imagen:', error);
-            alert('Error al descargar la imagen: ' + error.message);
+            showToast('Error al descargar la imagen: ' + error.message, 'error');
         }
     }
     
+    /**
+     * Aviso flotante no bloqueante.
+     *
+     * Se usa en lugar de alert(): los diálogos nativos del navegador bloquean el
+     * hilo y dejan la interfaz de Odoo congelada hasta que el usuario los cierra
+     * a mano.
+     */
+    function showToast(message, type) {
+        const colors = { success: '#28a745', error: '#dc3545', warning: '#ffc107' };
+        const icons = { success: 'fa-check-circle', error: 'fa-times-circle', warning: 'fa-exclamation-triangle' };
+        const toast = document.createElement('div');
+        toast.style.cssText =
+            'position: fixed; top: 20px; right: 20px; background: ' + (colors[type] || colors.error) + ';' +
+            'color: white; padding: 15px 25px; border-radius: 5px; z-index: 99999;' +
+            'font-size: 16px; max-width: 480px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);';
+        const icon = document.createElement('i');
+        icon.className = 'fa ' + (icons[type] || icons.error);
+        toast.appendChild(icon);
+        toast.appendChild(document.createTextNode(' ' + message));
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 6000);
+    }
+
+    // Modelos painter que guardan la imagen en su wizard en vez de en el contrato
+    const WIZARD_PAINTER_MODELS = [
+        'vehicle.substitution.damage.painter',
+        'vehicle.contract.return.damage.painter',
+    ];
+
+    /**
+     * Localiza el painter abierto para saber dónde guardar la imagen.
+     *
+     * No se puede deducir de la URL: abrir un diálogo no la modifica, así que
+     * cuando el painter se abre como modal la URL sigue siendo la del registro de
+     * fondo (el contrato) y nunca contiene el nombre del modelo del painter.
+     *
+     * Vía principal: el campo painter_ref ("modelo,id") que la vista del painter
+     * renderiza oculto en el DOM. Respaldo: el record de Owl, que no siempre está
+     * expuesto en el elemento del formulario.
+     */
+    function findOpenPainterRecord() {
+        // Buscar dentro del editor abierto: si quedara un diálogo anterior en el
+        // DOM, su referencia apuntaría a un painter que ya no se está usando.
+        const activeCanvas = findActiveCanvas();
+        const scope = activeCanvas
+            ? (activeCanvas.closest('.o_dialog, .modal') || document)
+            : document;
+        const refEl = scope.querySelector('.o_damage_painter_ref');
+        const raw = refEl ? (refEl.textContent || refEl.value || '').trim() : '';
+        if (raw.includes(',')) {
+            const [model, id] = raw.split(',');
+            if (WIZARD_PAINTER_MODELS.includes(model) && parseInt(id)) {
+                return { model: model, id: parseInt(id) };
+            }
+        }
+
+        const dialogs = document.querySelectorAll('.o_dialog, .modal');
+        for (const dialog of dialogs) {
+            const formElement = dialog.querySelector('.o_form_view');
+            const record = formElement?.__owl__?.component?.props?.record;
+            if (record && WIZARD_PAINTER_MODELS.includes(record.resModel) && record.resId) {
+                return { model: record.resModel, id: record.resId };
+            }
+        }
+        return null;
+    }
+
+    let isSaving = false;
+
     async function saveCanvasImage() {
         if (!canvas) {
-            alert('❌ Canvas no encontrado');
+            showToast('Canvas no encontrado', 'error');
             return;
         }
+
+        // Evitar guardados solapados: dos escrituras a la vez sobre la misma fila
+        // acaban en "could not serialize access due to concurrent update".
+        if (isSaving) {
+            console.log('Guardado ya en curso, se ignora el clic');
+            return;
+        }
+        isSaving = true;
+        try {
+            await doSaveCanvasImage();
+        } finally {
+            isSaving = false;
+        }
+    }
+
+    async function doSaveCanvasImage() {
         
         console.log('=== INICIO GUARDADO ===');
         
@@ -545,21 +704,15 @@ import { useService } from "@web/core/utils/hooks";
             const base64Data = canvas.toDataURL('image/png').split(',')[1];
             console.log('✅ Imagen:', base64Data.length, 'bytes');
             
-            // DETECTAR SI ESTAMOS EN EL WIZARD DE SUSTITUCIÓN
-            const isSubstitutionWizard = fullUrl.includes('vehicle.substitution.damage.painter');
-            console.log('¿Es wizard de sustitución?', isSubstitutionWizard);
-            
-            if (isSubstitutionWizard) {
-                // GUARDAR EN EL WIZARD DE SUSTITUCIÓN
-                // Obtener el ID del wizard painter desde la URL
-                const wizardIdMatch = fullUrl.match(/vehicle\.substitution\.damage\.painter\/(\d+)/);
-                if (!wizardIdMatch) {
-                    alert('❌ No se pudo encontrar el ID del wizard');
-                    return;
-                }
-                const painterId = parseInt(wizardIdMatch[1]);
-                console.log('✅ Painter ID:', painterId);
-                
+            // DETECTAR SI ESTAMOS EN UN WIZARD PAINTER (sustitución o devolución)
+            const painter = findOpenPainterRecord();
+            console.log('Painter detectado:', painter || 'ninguno (guardar en contrato)');
+
+            if (painter) {
+                // GUARDAR EN EL WIZARD (sustitución o devolución)
+                const painterModel = painter.model;
+                const painterId = painter.id;
+
                 // Llamar al método save_image_to_wizard
                 const saveResp = await fetch('/web/dataset/call_kw', {
                     method: 'POST',
@@ -568,7 +721,7 @@ import { useService } from "@web/core/utils/hooks";
                         jsonrpc: '2.0',
                         method: 'call',
                         params: {
-                            model: 'vehicle.substitution.damage.painter',
+                            model: painterModel,
                             method: 'save_image_to_wizard',
                             args: [[painterId], base64Data],
                             kwargs: {}
@@ -581,7 +734,7 @@ import { useService } from "@web/core/utils/hooks";
                 console.log('Respuesta:', saveRes);
                 
                 if (saveRes.error) {
-                    alert('❌ ' + (saveRes.error.data?.message || saveRes.error.message));
+                    showToast(saveRes.error.data?.message || saveRes.error.message, 'error');
                 } else if (saveRes.result && saveRes.result.success) {
                     console.log('✅ ¡GUARDADO EN WIZARD!');
                     
@@ -589,14 +742,14 @@ import { useService } from "@web/core/utils/hooks";
                     // El usuario lo cerrará manualmente cuando termine
                     const successMsg = document.createElement('div');
                     successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 15px 25px; border-radius: 5px; z-index: 99999; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);';
-                    successMsg.innerHTML = '<i class="fa fa-check-circle"></i> Imagen guardada correctamente. Puedes cerrar el editor.';
+                    successMsg.innerHTML = '<i class="fa fa-check-circle"></i> Imagen guardada. Pulse "Volver" para continuar con la devolución.';
                     document.body.appendChild(successMsg);
                     
                     setTimeout(() => {
                         successMsg.remove();
                     }, 5000);
                 } else {
-                    alert('❌ Error al guardar: ' + (saveRes.result?.message || 'Error desconocido'));
+                    showToast('Error al guardar: ' + (saveRes.result?.message || 'Error desconocido'), 'error');
                 }
                 
             } else {
@@ -634,7 +787,7 @@ import { useService } from "@web/core/utils/hooks";
                 }
                 
                 if (!finalContractId) {
-                    alert('❌ No se pudo encontrar el ID del contrato');
+                    showToast('No se pudo determinar dónde guardar la imagen', 'error');
                     return;
                 }
 
@@ -661,9 +814,9 @@ import { useService } from "@web/core/utils/hooks";
                 console.log('Respuesta guardado:', saveRes);
 
                 if (saveRes.error) {
-                    alert('❌ ' + (saveRes.error.data?.message || saveRes.error.message));
+                    showToast(saveRes.error.data?.message || saveRes.error.message, 'error');
                 } else if (saveRes.result) {
-                    alert('✅ Imagen guardada correctamente');
+                    showToast('Imagen guardada correctamente', 'success');
                     console.log('✅ ¡GUARDADO EXITOSO!');
                     
                     // Cerrar el modal
@@ -692,20 +845,41 @@ import { useService } from "@web/core/utils/hooks";
             }
         } catch (error) {
             console.error('ERROR:', error);
-            alert('❌ ' + error.message);
+            showToast(error.message, 'error');
         }
     }
 
-    // Inicializar cuando el documento esté listo
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initDamagePainter);
-    } else {
-        initDamagePainter();
+    /**
+     * Arranque del editor.
+     *
+     * DOMContentLoaded y window.load solo se disparan al cargar la página, nunca
+     * al abrir un diálogo de Odoo, que es cuando aparece el canvas. Antes esto
+     * "funcionaba" por el reintento interno de initDamagePainter(), que sondeaba
+     * hasta encontrar el primer canvas y luego se detenía: el primer editor se
+     * inicializaba y los siguientes se quedaban en blanco.
+     *
+     * Se observa el DOM para inicializar cada editor que se abra, sin sondeos
+     * indefinidos y sin necesidad de recargar la página.
+     */
+    function initIfPainterOpen() {
+        const activeCanvas = findActiveCanvas();
+        if (activeCanvas && !activeCanvas.dataset.damagePainterBound) {
+            initDamagePainter();
+        }
     }
 
-    // También inicializar en cambios de vista de Odoo
-    if (window.addEventListener) {
-        window.addEventListener('load', initDamagePainter);
+    function startWatchingForPainter() {
+        initIfPainterOpen();
+        new MutationObserver(initIfPainterOpen).observe(document.body, {
+            childList: true,
+            subtree: true,
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startWatchingForPainter);
+    } else {
+        startWatchingForPainter();
     }
 
 })();

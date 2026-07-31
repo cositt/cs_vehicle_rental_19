@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Modal de Devolución de Vehículo -->
+    <record id="vehicle_return_wizard_form_view" model="ir.ui.view">
+        <field name="name">vehicle.contract.return.wizard.form</field>
+        <field name="model">vehicle.contract.return.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Devolución de Vehículo">
+                <field name="contract_id" invisible="1"/>
+                <field name="company_id" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="odometer_unit" invisible="1"/>
+
+                <div class="alert alert-info" role="alert">
+                    <i class="fa fa-info-circle"/>
+                    Registre el estado del vehículo a la devolución. El contrato pasará a
+                    <strong>Devuelto</strong> y se generará el acta correspondiente.
+                </div>
+
+                <group>
+                    <group string="Datos de la Devolución">
+                        <field name="customer_id" readonly="1"/>
+                        <field name="vehicle_id" readonly="1" force_save="1"/>
+                        <field name="vehicle_license_plate" readonly="1"/>
+                        <field name="return_date"/>
+                    </group>
+                    <group string="Kilometraje y Combustible">
+                        <field name="odometer_start" readonly="1" force_save="1"/>
+                        <!-- Sin required en la vista: bloquearía el guardado del
+                             asistente y con él los botones que abren el editor de
+                             daños. Se exigen igualmente al confirmar. -->
+                        <field name="odometer"/>
+                        <field name="km_driven" readonly="1"/>
+                        <field name="fuel_level_start"/>
+                        <field name="fuel_level"/>
+                    </group>
+                </group>
+
+                <separator string="Inspección de Daños"/>
+                <group>
+                    <group>
+                        <field name="inspection_done"/>
+                        <field name="has_damage" invisible="not inspection_done"/>
+                    </group>
+                    <group invisible="not has_damage or painted_damage_image">
+                        <button name="action_open_damage_painter" type="object"
+                                string="Marcar daños sobre imagen" class="btn-secondary"
+                                icon="fa-paint-brush"/>
+                    </group>
+                </group>
+
+                <!-- Orden de trabajo: marcar sobre la imagen, describir y por último
+                     valorar. El importe no se exige: el peritaje puede ser posterior. -->
+                <!-- La imagen va readonly a propósito: el lápiz del widget abriría un
+                     selector de archivos. Para editar las marcas se reabre el editor,
+                     que carga lo ya pintado. -->
+                <div invisible="not painted_damage_image">
+                    <field name="painted_damage_image" widget="image" readonly="1"
+                           options="{'size': [400, 300]}" nolabel="1"/>
+                    <div class="mt-2 mb-3">
+                        <button name="action_open_damage_painter" type="object"
+                                string="Editar marcas" class="btn-secondary"
+                                icon="fa-pencil"/>
+                        <button name="action_clear_damage_image" type="object"
+                                string="Quitar marcas" class="btn-link text-danger"
+                                icon="fa-trash"/>
+                    </div>
+                </div>
+                <field name="damage_description" invisible="not has_damage"
+                       placeholder="Describa los daños detectados en la inspección..."/>
+                <group invisible="not has_damage">
+                    <group>
+                        <field name="damage_amount"/>
+                        <field name="invoice_damage_now" invisible="damage_amount == 0"/>
+                    </group>
+                    <group>
+                        <div class="text-muted" colspan="2">
+                            El importe puede dejarse a cero si la valoración se hará más
+                            adelante. Podrá facturar los daños después desde la ficha de
+                            la devolución.
+                        </div>
+                    </group>
+                </group>
+
+                <separator string="Firma"/>
+                <group>
+                    <group>
+                        <field name="request_signature"/>
+                    </group>
+                </group>
+                <group invisible="not request_signature">
+                    <group string="Firma del Cliente">
+                        <field name="customer_signature" widget="signature" nolabel="1"/>
+                    </group>
+                    <group string="Firma de la Empresa">
+                        <field name="company_signature" widget="signature" nolabel="1"/>
+                    </group>
+                </group>
+
+                <separator string="Notas"/>
+                <field name="notes" placeholder="Observaciones adicionales sobre la devolución..."/>
+
+                <separator string="Cierre del Proceso"/>
+                <group>
+                    <group>
+                        <field name="send_closing_email"/>
+                        <field name="customer_email" invisible="not send_closing_email"/>
+                    </group>
+                    <group invisible="not send_closing_email">
+                        <div class="text-muted" colspan="2">
+                            Se enviará al cliente un resumen final del alquiler (kilometraje,
+                            combustible, inspección de daños, modificaciones y facturación) con el
+                            acta de devolución adjunta.
+                        </div>
+                    </group>
+                </group>
+                <div class="alert alert-warning" role="alert"
+                     invisible="not send_closing_email or customer_email">
+                    <i class="fa fa-exclamation-triangle"/>
+                    El cliente no tiene email configurado: no se podrá enviar el correo de cierre.
+                </div>
+
+                <footer>
+                    <button name="action_confirm_return" type="object"
+                            string="Confirmar Devolución" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

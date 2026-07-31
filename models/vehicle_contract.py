@@ -9,6 +9,10 @@ import base64
 from ..utils import _display_rental_notification
 from odoo import models, fields, api, _
 
+# Estados en los que el contrato retiene el vehículo. Devuelto y cancelado no
+# entran: en ambos casos el coche ya está de vuelta y puede volver a alquilarse.
+BUSY_CONTRACT_STATES = ('a_draft', 'b_in_progress')
+
 
 class RentalVehicleImage(models.Model):
     """Rental Vehicle Image"""
@@ -41,9 +45,17 @@ class VehicleContract(models.Model):
                                default=lambda self: _('New'), copy=False)
     vehicle_ids = fields.Many2many('fleet.vehicle', string="Vehicles",
                                    compute='_compute_available_vehicles')
+    available_vehicle_ids = fields.Many2many(
+        'fleet.vehicle',
+        'vehicle_contract_available_vehicle_rel',
+        'contract_id', 'vehicle_id',
+        string='Vehículos Disponibles',
+        compute='_compute_contract_available_vehicles',
+        help='Vehículos de la categoría elegida que están libres en las fechas '
+             'indicadas. Se vacía mientras falte la categoría o alguna fecha.')
     vehicle_id = fields.Many2one(
         'fleet.vehicle', string="Vehicle", copy=False,
-        domain="[('id', 'not in', vehicle_ids), ('status', '=', 'available')]")
+        domain="[('id', 'in', available_vehicle_ids)]")
     license_plate = fields.Char(string="License Plate")
 
     is_driver_required = fields.Boolean(string="Driver Required")
@@ -76,7 +88,9 @@ class VehicleContract(models.Model):
     vehicle_category = fields.Char(string="Categoría del Vehículo", compute='_compute_vehicle_category', store=True)
     vehicle_category_id = fields.Many2one(
         'fleet.vehicle.model.category', string='Categoría',
-        related='vehicle_id.category_id', store=True, readonly=True)
+        store=True, index=True,
+        help='Se elige antes que el vehículo: acota la lista a los vehículos de '
+             'esa categoría que estén libres en las fechas indicadas.')
 
     customer_id = fields.Many2one("res.partner")
     customer_phone = fields.Char(string="Phone")
@@ -197,6 +211,25 @@ class VehicleContract(models.Model):
         help='El vehículo actualmente asignado al contrato (considerando sustituciones)'
     )
 
+    # Devoluciones de vehículos
+    return_ids = fields.One2many(
+        'vehicle.contract.return',
+        'contract_id',
+        string='Devoluciones'
+    )
+    return_count = fields.Integer(
+        string='Número de Devoluciones',
+        compute='_compute_return_count'
+    )
+    initial_fuel_level = fields.Selection([
+        ('0', 'Vacío'),
+        ('1', '1/4'),
+        ('2', '2/4 (Medio)'),
+        ('3', '3/4'),
+        ('4', 'Lleno')
+    ], string='Combustible en Entrega',
+        help='Nivel de combustible con el que se entregó el vehículo al cliente')
+
     def open_damage_painter(self):
         """Abrir ventana para pintar daños"""
         self.ensure_one()
@@ -227,6 +260,25 @@ class VehicleContract(models.Model):
         """Compute substitution count"""
         for rec in self:
             rec.substitution_count = len(rec.substitution_ids)
+
+    @api.depends('return_ids')
+    def _compute_return_count(self):
+        """Compute return count"""
+        for rec in self:
+            rec.return_count = len(rec.return_ids)
+
+    def action_view_returns(self):
+        """Ver todas las devoluciones del contrato"""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Devoluciones'),
+            'res_model': 'vehicle.contract.return',
+            'domain': [('contract_id', '=', self.id)],
+            'view_mode': 'list,form',
+            'target': 'current',
+            'context': {'default_contract_id': self.id},
+        }
 
     @api.depends('vehicle_id', 'substitution_ids', 'substitution_ids.new_vehicle_id')
     def _compute_current_vehicle(self):
@@ -484,18 +536,20 @@ class VehicleContract(models.Model):
         for rec in self:
             # Validate if rental type is selected
             if not rec.rent_type:
-                message = _display_rental_notification(
-                    message="""Elija su unidad de alquiler preferida (horas, días, semanas,
-                     meses, años, kilómetros o millas) y proceda en consecuencia.""",
-                    message_type='warning')
-                return message
-            
+                raise UserError(_(
+                    'El contrato %s no tiene unidad de alquiler. Elija una '
+                    '(horas, días, semanas, meses, años, kilómetros o millas) '
+                    'antes de activarlo.',
+                    rec.reference_no,
+                ))
+
             # Validar que las fechas de inicio y fin estén definidas
             if not rec.start_date or not rec.end_date:
-                message = _display_rental_notification(
-                    message="""Debe definir las fechas de recogida y devolución antes de activar el contrato.""",
-                    message_type='warning')
-                return message
+                raise UserError(_(
+                    'El contrato %s no tiene fechas de recogida y devolución. '
+                    'Indíquelas antes de activarlo.',
+                    rec.reference_no,
+                ))
             
             vehicle_id = rec.vehicle_id.id
             
@@ -518,13 +572,15 @@ class VehicleContract(models.Model):
                     end = contract.end_date.strftime('%d/%m/%Y %H:%M')
                     conflict_details += f"\n• {contract.reference_no}: {start} → {end}"
                 
-                message = _display_rental_notification(
-                    message=f"""No se puede activar este contrato porque las fechas se solapan con otro(s) contrato(s) en curso para el mismo vehículo:
-                    {conflict_details}
-                    
-                    Por favor, ajuste las fechas o devuelva el vehículo del contrato anterior.""",
-                    message_type='warning')
-                return message
+                raise UserError(_(
+                    'No se puede activar el contrato %(reference)s: las fechas se '
+                    'solapan con otro(s) contrato(s) en curso del vehículo '
+                    '%(plate)s:\n%(conflicts)s\n\n'
+                    'Ajuste las fechas o registre la devolución del contrato anterior.',
+                    reference=rec.reference_no,
+                    plate=rec.vehicle_id.license_plate or rec.vehicle_id.name,
+                    conflicts=conflict_details,
+                ))
             # Proceed to update status and prepare email context
             rec.ensure_one()
             template_id = self.env.ref("vehicle_rental.vehicle_rental_booking_mail_template").sudo()
@@ -553,8 +609,29 @@ class VehicleContract(models.Model):
         return True
 
     def b_in_progress_to_c_return(self):
-        """In progress to return"""
-        self.status = 'c_return'
+        """Abrir el asistente de devolución en modal.
+
+        El cambio de estado real lo aplica el wizard vía _apply_return() una vez
+        registrados kilometraje, combustible, inspección de daños y firma.
+        """
+        self.ensure_one()
+        wizard = self.env['vehicle.contract.return.wizard'].create({
+            'contract_id': self.id,
+        })
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Devolución de Vehículo'),
+            'res_model': 'vehicle.contract.return.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_contract_id': self.id},
+        }
+
+    def _apply_return(self):
+        """Marcar el contrato como devuelto. Lo llama el wizard de devolución."""
+        for rec in self:
+            rec.status = 'c_return'
 
     def c_return_to_d_cancel(self):
         """Return to cancel"""
@@ -597,10 +674,11 @@ class VehicleContract(models.Model):
     def action_vehicle_rent_deposit(self):
         """Handle vehicle rent deposit process."""
         if self.if_any_deposit and not self.deposit:
-            message = _display_rental_notification(
-                message="""Por favor, tenga en cuenta: Se requiere un depósito para el vehículo alquilado.""",
-                message_type='warning')
-            return message
+            raise UserError(_(
+                'El contrato %s tiene marcado que lleva depósito, pero el importe '
+                'está a cero. Indique el importe del depósito o desmarque la casilla.',
+                self.reference_no,
+            ))
         if self.if_any_deposit and self.deposit:
             invoice_lines = []
             invoice_line_vals = {
@@ -662,10 +740,13 @@ class VehicleContract(models.Model):
         """Update vehicle details"""
         if self.vehicle_id:
             if self.last_odometer <= self.vehicle_id.odometer:
-                message = _display_rental_notification(
-                    message="""Por favor, añada un valor de odómetro final mayor que el valor actual""",
-                    message_type='warning')
-                return message
+                raise UserError(_(
+                    'El kilometraje indicado (%(new)s) no supera al que ya tiene el '
+                    'vehículo %(plate)s (%(current)s). Indique una lectura mayor.',
+                    new=f"{self.last_odometer:,.0f}",
+                    plate=self.vehicle_id.license_plate or self.vehicle_id.name,
+                    current=f"{self.vehicle_id.odometer:,.0f}",
+                ))
             self.vehicle_id.write({
                 'model_year': self.model_year,
                 'transmission': self.transmission,
@@ -830,10 +911,69 @@ class VehicleContract(models.Model):
     def _compute_available_vehicles(self):
         """Compute available vehicles"""
         for rec in self:
+            if not rec.start_date or not rec.end_date:
+                rec.vehicle_ids = False
+                continue
             contract_id = self.env['vehicle.contract'].search(
                 [('start_date', '<=', rec.end_date), ('end_date', '>=', rec.start_date),
                  ('status', '=', 'b_in_progress')]).mapped('vehicle_id').mapped('id')
             rec.vehicle_ids = contract_id
+
+    def _busy_vehicle_ids(self, start_date, end_date):
+        """Vehículos comprometidos entre dos fechas.
+
+        Bloquean los contratos en curso y las reservas sin activar: un vehículo
+        apalabrado en borrador no puede ofrecerse otra vez. No bloquean los
+        devueltos ni los cancelados, porque en ambos casos el coche ya está de
+        vuelta y disponible.
+        """
+        self.ensure_one()
+        overlapping = self.env['vehicle.contract'].search([
+            ('id', '!=', self._origin.id or self.id),
+            ('vehicle_id', '!=', False),
+            ('start_date', '<=', end_date),
+            ('end_date', '>=', start_date),
+            ('status', 'in', BUSY_CONTRACT_STATES),
+        ])
+        return overlapping.mapped('vehicle_id').ids
+
+    @api.depends('vehicle_category_id', 'start_date', 'end_date', 'company_id')
+    def _compute_contract_available_vehicles(self):
+        """Vehículos ofrecibles: misma lógica que el asistente de reserva.
+
+        Sin categoría o sin fechas no se ofrece nada, para no dejar elegir un
+        vehículo antes de saber si estará libre.
+        """
+        for rec in self:
+            if not rec.vehicle_category_id or not rec.start_date or not rec.end_date:
+                rec.available_vehicle_ids = False
+                continue
+
+            busy_ids = rec._busy_vehicle_ids(rec.start_date, rec.end_date)
+            domain = [
+                ('status', '=', 'available'),
+                '|',
+                ('category_id', '=', rec.vehicle_category_id.id),
+                ('model_id.category_id', '=', rec.vehicle_category_id.id),
+                ('id', 'not in', busy_ids),
+            ]
+            if rec.company_id:
+                domain.append(('company_id', 'in', (rec.company_id.id, False)))
+            rec.available_vehicle_ids = self.env['fleet.vehicle'].search(domain)
+
+    @api.onchange('vehicle_id')
+    def _onchange_vehicle_sets_category(self):
+        """La categoría sigue al vehículo elegido, para que no se contradigan."""
+        for rec in self:
+            if rec.vehicle_id and rec.vehicle_id.category_id:
+                rec.vehicle_category_id = rec.vehicle_id.category_id
+
+    @api.onchange('vehicle_category_id', 'start_date', 'end_date')
+    def _onchange_clear_unavailable_vehicle(self):
+        """Soltar el vehículo si deja de estar disponible al cambiar el filtro."""
+        for rec in self:
+            if rec.vehicle_id and rec.vehicle_id not in rec.available_vehicle_ids:
+                rec.vehicle_id = False
 
     @api.constrains('start_date', 'end_date', 'vehicle_id', 'status')
     def _contract_check_dates(self):
@@ -1068,15 +1208,19 @@ class VehicleContract(models.Model):
         for rec in self:
             # Ensure payment type is selected
             if not rec.payment_type:
-                message = _display_rental_notification(
-                    message="""Seleccione su método de pago preferido para continuar.""",
-                    message_type='warning')
-                return message
+                raise UserError(_(
+                    'El contrato %s no tiene forma de pago. Elija una (pago único, '
+                    'diario, semanal, mensual, trimestral o anual) antes de crear '
+                    'la cuota.',
+                    rec.reference_no,
+                ))
             if not rec.total_vehicle_rent:
-                message = _display_rental_notification(
-                    message="""Por favor, totalice los cargos de alquiler que sean mayores que cero.""",
-                    message_type='warning')
-                return message
+                raise UserError(_(
+                    'Los cargos de alquiler del contrato %s suman cero. Revise la '
+                    'tarifa y las fechas para que el total sea mayor que cero antes '
+                    'de crear la cuota.',
+                    rec.reference_no,
+                ))
             # Calculate time differences
             if rec.end_date and rec.start_date:
                 days_diff = rec.end_date - rec.start_date
@@ -1451,17 +1595,17 @@ class VehicleContract(models.Model):
     def create_contract_trip_expense_report(self):
         """Create Trip Expense Reports"""
         all_draft_expenses = self.contract_expense_ids.filtered(lambda e: e.state == 'draft')
+        # Estos dos sí son avisos flotantes: no interrumpen nada que el usuario
+        # tenga que corregir, solo informan del resultado.
         if not all_draft_expenses:
-            message = _display_rental_notification(
-                message="""Todos los gastos ya han sido enviados.""",
-                message_type='warning')
-            return message
+            return _display_rental_notification(
+                message=_('Todos los gastos ya han sido enviados.'),
+                message_type='info')
         # En Odoo 19, action_submit_expenses() se llama action_submit()
         all_draft_expenses.action_submit()
-        message = _display_rental_notification(
-            message="""Borradores de gastos enviados exitosamente.""",
-            message_type='warning')
-        return message
+        return _display_rental_notification(
+            message=_('Borradores de gastos enviados correctamente.'),
+            message_type='success')
 
     @api.model
     def action_create_rent_payment_invoice(self):

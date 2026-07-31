@@ -2,6 +2,8 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 
+from .vehicle_contract import BUSY_CONTRACT_STATES
+
 
 class VehicleContractGroup(models.Model):
     _name = 'vehicle.contract.group'
@@ -164,7 +166,7 @@ class VehicleContractGroup(models.Model):
             overlapping = self.env['vehicle.contract'].search([
                 ('id', '!=', contract.id),
                 ('vehicle_id', '=', contract.vehicle_id.id),
-                ('status', 'in', ['b_in_progress', 'c_return']),
+                ('status', 'in', list(BUSY_CONTRACT_STATES)),
                 ('start_date', '<=', contract.end_date),
                 ('end_date', '>=', contract.start_date),
             ], limit=1)

@@ -4,29 +4,24 @@
 from odoo import models, fields, api, _
 
 
-class VehicleSubstitutionDamagePainter(models.TransientModel):
-    """Wizard para pintar daños en sustituciones de vehículos"""
-    _name = 'vehicle.substitution.damage.painter'
-    _description = 'Editor de Daños para Sustitución'
+class VehicleReturnDamagePainter(models.TransientModel):
+    """Wizard para pintar daños en la devolución de un vehículo"""
+    _name = 'vehicle.contract.return.damage.painter'
+    _description = 'Editor de Daños para Devolución'
 
-    substitution_wizard_id = fields.Many2one(
-        'vehicle.substitution.wizard',
-        string='Wizard de Sustitución',
+    return_wizard_id = fields.Many2one(
+        'vehicle.contract.return.wizard',
+        string='Wizard de Devolución',
         required=True,
         ondelete='cascade'
     )
-    
+
     vehicle_id = fields.Many2one(
         'fleet.vehicle',
         string='Vehículo',
         required=True
     )
-    
-    damage_type = fields.Selection([
-        ('old', 'Vehículo Devuelto'),
-        ('new', 'Vehículo Sustituto')
-    ], string='Tipo de Daño', required=True, default='old')
-    
+
     base_image = fields.Binary(
         string='Imagen Base del Vehículo',
         compute='_compute_base_image'
@@ -44,7 +39,7 @@ class VehicleSubstitutionDamagePainter(models.TransientModel):
     def _compute_painter_ref(self):
         for rec in self:
             rec.painter_ref = '%s,%s' % (rec._name, rec.id or '')
-    
+
     @api.depends('vehicle_id')
     def _compute_base_image(self):
         """Obtener la imagen base del vehículo o una por defecto"""
@@ -52,51 +47,38 @@ class VehicleSubstitutionDamagePainter(models.TransientModel):
             if rec.vehicle_id and rec.vehicle_id.image_128:
                 rec.base_image = rec.vehicle_id.image_128
             else:
-                # Usar imagen por defecto
                 rec.base_image = False
-    
+
     def get_base_image(self):
         """Imagen sobre la que empieza a dibujar el editor.
 
-        Si ya hay marcas guardadas se devuelven, para poder editarlas en vez de
-        empezar de cero cada vez.
+        Si ya hay marcas guardadas se devuelven, para poder editarlas (añadir o
+        borrar) en vez de empezar de cero cada vez. Si no, el JS usa el diagrama
+        del vehículo por defecto.
         """
         self.ensure_one()
-        wizard = self.substitution_wizard_id
-        if self.damage_type == 'old':
-            existing = wizard.old_vehicle_painted_damage_image
-        else:
-            existing = wizard.new_vehicle_painted_damage_image
+        existing = self.return_wizard_id.painted_damage_image
         return existing.decode('utf-8') if existing else False
 
     def get_wizard_id_for_js(self):
-        """Devolver el ID del wizard de sustitución para JavaScript"""
+        """Devolver el ID del wizard de devolución para JavaScript"""
         self.ensure_one()
         return {
-            'wizard_id': self.substitution_wizard_id.id,
-            'damage_type': self.damage_type,
+            'wizard_id': self.return_wizard_id.id,
         }
-    
+
     def save_image_to_wizard(self, image_data):
-        """Guardar la imagen pintada en el wizard de sustitución"""
+        """Guardar la imagen pintada en el wizard de devolución"""
         self.ensure_one()
-        
+
         if not image_data:
             return {'success': False, 'message': _('No se recibió ninguna imagen')}
-        
+
         try:
-            # Guardar en el campo correspondiente del wizard de sustitución
-            if self.damage_type == 'old':
-                self.substitution_wizard_id.write({
-                    'old_vehicle_painted_damage_image': image_data,
-                    'old_vehicle_has_damage': True,
-                })
-            else:  # new
-                self.substitution_wizard_id.write({
-                    'new_vehicle_painted_damage_image': image_data,
-                    'new_vehicle_has_damage': True,
-                })
-            
+            self.return_wizard_id.write({
+                'painted_damage_image': image_data,
+                'has_damage': True,
+            })
             # Sin cr.commit(): Odoo confirma la transacción al terminar la petición.
             # Un commit explícito aquí rompe la transacción y provoca
             # "could not serialize access due to concurrent update".
@@ -110,40 +92,26 @@ class VehicleSubstitutionDamagePainter(models.TransientModel):
                 'success': False,
                 'message': _('Error al guardar la imagen: %s') % str(e)
             }
-    
+
     def save_damage_image(self):
         """Guardar y cerrar el modal (la imagen se guarda desde JavaScript)"""
         self.ensure_one()
         return self.action_back_to_wizard()
 
     def action_back_to_wizard(self):
-        """Volver al asistente de sustitución conservando lo ya introducido."""
+        """Volver al asistente de devolución conservando lo ya introducido.
+
+        Abrir el painter con target 'new' desde el diálogo del wizard lo reemplaza
+        en vez de apilarse, así que cerrar sin más dejaría al usuario sin pantalla
+        y con la sensación de haber perdido la devolución. El registro transitorio
+        conserva los datos: basta con reabrirlo.
+        """
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Sustitución de Vehículo'),
-            'res_model': 'vehicle.substitution.wizard',
-            'res_id': self.substitution_wizard_id.id,
+            'name': _('Devolución de Vehículo'),
+            'res_model': 'vehicle.contract.return.wizard',
+            'res_id': self.return_wizard_id.id,
             'view_mode': 'form',
-            'target': 'current',
+            'target': 'new',
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

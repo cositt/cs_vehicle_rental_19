@@ -248,21 +248,35 @@ class VehicleContractPricing(models.Model):
                     record.calculated_rent = 0.0
                     continue
             
-            # Buscar la regla de pricing aplicable
+            # Buscar la regla de pricing aplicable.
+            # Antes se cogía la primera tarifa estándar de la categoría sin
+            # mirar kilometraje ni duración, así que todos los contratos se
+            # cobraban a la misma tarifa (la de 4 horas) y ampliar los días
+            # no cambiaba el importe.
             pricing_rule_model = self.env['vehicle.pricing.rule']
-            
-            # SIEMPRE buscar tarifa estándar directamente
-            pricing_rule = pricing_rule_model.search([
-                ('vehicle_category_id', '=', record.vehicle_id.category_id.id),
-                ('pricing_type', '=', 'standard'),
-                ('active', '=', True)
-            ], limit=1, order='valid_from desc')
-            
+            pricing_rule = pricing_rule_model.find_pricing_rule(
+                category_id=record.vehicle_id.category_id.id,
+                total_km=record.total_km,
+                total_days=record.total_days,
+                rental_date=(record.start_date.date() if record.start_date
+                             else fields.Date.today()),
+                pricing_type=record.pricing_type or 'standard',
+            )
+
             if pricing_rule:
+                # Valor calculado antes de este recálculo: sirve para saber si la
+                # tarifa que hay puesta la eligió el motor o la pactó el mostrador.
+                previous_calculated = record.calculated_rent
                 record.calculated_rent = pricing_rule.price_per_unit
-                
-                # Solo actualizar rent si no tiene valor o es 0 (no sobrescribir valor del wizard)
-                if not record.rent or record.rent == 0:
+
+                # La tarifa cobrada sigue al tramo mientras nadie la haya
+                # cambiado a mano. Si se pactó un precio distinto (y por eso hay
+                # motivo de descuento), ampliar el contrato no lo pisa.
+                rate_was_automatic = (
+                    previous_calculated
+                    and abs(record.rent - previous_calculated) < 0.01
+                )
+                if not record.rent or rate_was_automatic:
                     record.rent = pricing_rule.price_per_unit
                 if not record.rent_type or record.rent_type == False:
                     record.rent_type = 'days'

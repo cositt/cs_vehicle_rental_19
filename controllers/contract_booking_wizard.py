@@ -5,6 +5,8 @@ from datetime import datetime
 from odoo import http
 from odoo.http import request
 
+from ..models.vehicle_contract import BUSY_CONTRACT_STATES
+
 _logger = logging.getLogger(__name__)
 
 
@@ -42,7 +44,7 @@ class ContractBookingWizardController(http.Controller):
                     end_dt = datetime.strptime(end_date, '%Y-%m-%d')
                     
                     overlapping_contracts = request.env['vehicle.contract'].sudo().search([
-                        ('status', 'in', ['b_in_progress', 'c_return']),
+                        ('status', 'in', list(BUSY_CONTRACT_STATES)),
                         ('start_date', '<=', end_dt),
                         ('end_date', '>=', start_dt),
                         ('vehicle_id.company_id', '=', company_id),

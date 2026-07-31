@@ -4,6 +4,8 @@
 from odoo import fields, api, models, _
 from datetime import datetime
 
+from ..models.vehicle_contract import BUSY_CONTRACT_STATES
+
 
 class RentalContractBooking(models.TransientModel):
     """Rental contract booking"""
@@ -114,36 +116,28 @@ class RentalContractBooking(models.TransientModel):
             self.fleet_vehicle_ids = False
             return
         
-        # 1. Buscar contratos ocupados
+        # 1. Contratos que retienen el vehículo: en curso y reservas sin activar.
+        #    Los devueltos no cuentan, el coche ya volvió.
         occupied_contracts = self.env['vehicle.contract'].search([
             ('start_date', '<=', self.end_date),
             ('end_date', '>=', self.start_date),
-            ('status', 'in', ['b_in_progress', 'c_return']),
-            ('vehicle_id.company_id', '=', self.company_id.id),
-        ])
-        occupied_vehicle_ids = occupied_contracts.mapped('vehicle_id').ids
-        
-        # 2. Buscar contratos reservados (a_draft)
-        reserved_contracts = self.env['vehicle.contract'].search([
-            ('start_date', '<=', self.end_date),
-            ('end_date', '>=', self.start_date),
-            ('status', '=', 'a_draft'),
+            ('status', 'in', list(BUSY_CONTRACT_STATES)),
             ('vehicle_id', '!=', False),
             ('vehicle_id.company_id', '=', self.company_id.id),
         ])
-        reserved_vehicle_ids = reserved_contracts.mapped('vehicle_id').ids
-        
-        # 3. Dominio base
+        occupied_vehicle_ids = occupied_contracts.mapped('vehicle_id').ids
+
+        # 2. Dominio base
         domain = [
             ('status', '=', 'available'),
             ('company_id', '=', self.company_id.id),
             '|',
             ('category_id', '=', self.selected_category_id.id),
             ('model_id.category_id', '=', self.selected_category_id.id),
-            ('id', 'not in', occupied_vehicle_ids + reserved_vehicle_ids),
+            ('id', 'not in', occupied_vehicle_ids),
         ]
-        
-        # 4. Filtro de búsqueda
+
+        # 3. Filtro de búsqueda
         if self.search_vehicle:
             search_term = self.search_vehicle.lower()
             vehicles = self.env['fleet.vehicle'].search(domain)

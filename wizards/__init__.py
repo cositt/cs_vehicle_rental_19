@@ -9,4 +9,6 @@ from . import return_deposit
 from . import damage_painter_wizard
 from . import vehicle_substitution_wizard
 from . import substitution_damage_painter_wizard
+from . import vehicle_return_wizard
+from . import return_damage_painter_wizard
 from . import sale_order_to_vehicle_contract

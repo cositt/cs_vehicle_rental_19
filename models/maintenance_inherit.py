@@ -3,6 +3,7 @@
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 from dateutil.relativedelta import relativedelta
 from odoo import models, fields, api, _
+from odoo.exceptions import ValidationError
 
 
 class VehicleMaintenancePart(models.Model):
@@ -69,6 +70,18 @@ class VehicleMaintenanceRequest(models.Model):
     maintenance_schedule_id = fields.Many2one('maintenance.schedule',
                                               string="Next Maintenance Schedule")
     upcoming_maintenance_date = fields.Date(string="Upcoming Maintenance Date")
+    vehicle_odometer = fields.Float(
+        string="Kilometraje en la Intervención",
+        compute='_compute_vehicle_odometer',
+        store=True,
+        readonly=False,
+        help="Lectura del cuentakilómetros cuando el vehículo entró al taller. "
+             "Se propone la de la ficha del vehículo y puede corregirse. No "
+             "modifica el odómetro del vehículo.")
+    odometer_unit = fields.Selection(
+        related='fleet_vehicle_id.odometer_unit',
+        string="Unidad",
+        readonly=True)
     vehicle_maintenance_part_ids = fields.One2many(
         'vehicle.maintenance.part', 'maintenance_request_id')
     vehicle_maintenance_service_ids = fields.One2many(
@@ -85,6 +98,26 @@ class VehicleMaintenanceRequest(models.Model):
     bill_id = fields.Many2one('account.move', string="Bill")
     bill_count = fields.Integer(compute='_compute_bill_count',
                                 string="Vendor Bill")
+
+    @api.depends('fleet_vehicle_id')
+    def _compute_vehicle_odometer(self):
+        """Propose the vehicle's current reading; the mechanic corrects it."""
+        for rec in self:
+            rec.vehicle_odometer = rec.fleet_vehicle_id.odometer or 0.0
+
+    @api.onchange('fleet_vehicle_id')
+    def _onchange_fleet_vehicle_odometer(self):
+        """Refresh the proposed reading when the vehicle changes."""
+        for rec in self:
+            rec.vehicle_odometer = rec.fleet_vehicle_id.odometer or 0.0
+
+    @api.constrains('vehicle_odometer')
+    def _check_vehicle_odometer(self):
+        """A counter reading is never negative."""
+        for rec in self:
+            if rec.vehicle_odometer < 0:
+                raise ValidationError(
+                    _('El kilometraje de la intervención no puede ser negativo.'))
 
     @api.model
     def action_create_schedule_maintenance(self):
