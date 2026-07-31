@@ -47,11 +47,10 @@ class VehicleContractDamagePainter(models.TransientModel):
                 'painted_damage_image': image_data
             })
             
-            # Hacer commit explícito para asegurar que se guarde
-            self.env.cr.commit()
-            
-            _logger.info('✅ Commit realizado')
-            
+            # Sin cr.commit(): Odoo confirma la transacción al terminar la petición.
+            # Un commit explícito aquí rompe la transacción y provoca
+            # "could not serialize access due to concurrent update".
+
             # Verificar que se guardó
             self.contract_id.invalidate_recordset(['painted_damage_image'])
             if self.contract_id.painted_damage_image:

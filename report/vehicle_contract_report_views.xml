@@ -46,6 +46,64 @@
                             Contrato de Vehículo :
                             <span t-field="contract.reference_no"/>
                         </h2>
+
+                        <!-- Aviso de modificaciones: el contrato tiene anexos -->
+                        <t t-set="has_annexes"
+                           t-value="contract.substitution_ids or contract.extension_ids or contract.return_ids"/>
+                        <div t-if="has_annexes"
+                             style="background-color: #fff3cd; border: 2px solid #ffc107; padding: 12px; margin-bottom: 15px; border-radius: 5px;">
+                            <strong style="font-size: 14px; color: #856404;">
+                                CONTRATO MODIFICADO — VER ANEXOS
+                            </strong>
+                            <p style="margin: 8px 0 10px 0; font-size: 11px; color: #856404;">
+                                Las condiciones originalmente firmadas han sido modificadas mediante los anexos
+                                que se relacionan a continuación. Los datos de vehículo y fechas que figuran en
+                                este documento reflejan la situación actual del contrato.
+                            </p>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                                <tr style="background-color: #ffeeba;">
+                                    <td style="padding: 5px; border: 1px solid #ffc107; font-weight: bold;">Tipo</td>
+                                    <td style="padding: 5px; border: 1px solid #ffc107; font-weight: bold;">Fecha</td>
+                                    <td style="padding: 5px; border: 1px solid #ffc107; font-weight: bold;">Detalle</td>
+                                </tr>
+                                <tr t-foreach="contract.substitution_ids" t-as="sub">
+                                    <td style="padding: 5px; border: 1px solid #ffc107;">Sustitución de vehículo</td>
+                                    <td style="padding: 5px; border: 1px solid #ffc107;">
+                                        <span t-field="sub.substitution_date" t-options="{'widget': 'date'}"/>
+                                    </td>
+                                    <td style="padding: 5px; border: 1px solid #ffc107;">
+                                        <span t-field="sub.old_vehicle_id.license_plate"/> →
+                                        <span t-field="sub.new_vehicle_id.license_plate"/>
+                                    </td>
+                                </tr>
+                                <tr t-foreach="contract.extension_ids" t-as="ext">
+                                    <td style="padding: 5px; border: 1px solid #ffc107;">Ampliación de contrato</td>
+                                    <td style="padding: 5px; border: 1px solid #ffc107;">
+                                        <span t-field="ext.new_end_date" t-options="{'widget': 'date'}"/>
+                                    </td>
+                                    <td style="padding: 5px; border: 1px solid #ffc107;">
+                                        Fin <span t-field="ext.original_end_date" t-options="{'widget': 'date'}"/>
+                                        → <span t-field="ext.new_end_date" t-options="{'widget': 'date'}"/>
+                                        (<span t-esc="'{:,.0f}'.format(ext.extension_days)"/> días)
+                                    </td>
+                                </tr>
+                                <tr t-foreach="contract.return_ids" t-as="ret">
+                                    <td style="padding: 5px; border: 1px solid #ffc107;">Devolución de vehículo</td>
+                                    <td style="padding: 5px; border: 1px solid #ffc107;">
+                                        <span t-field="ret.return_date" t-options="{'widget': 'date'}"/>
+                                    </td>
+                                    <td style="padding: 5px; border: 1px solid #ffc107;">
+                                        <span t-field="ret.vehicle_id.license_plate"/> —
+                                        <span t-esc="'{:,.0f}'.format(ret.odometer)"/>
+                                        <span t-if="ret.odometer_unit == 'kilometers'">km</span>
+                                        <span t-else="">mi</span>
+                                        <span t-if="ret.has_damage"> — con daños</span>
+                                        <span t-else=""> — sin daños</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+
                         <table class="table table-bordered p_table">
                             <!-- Customer Details -->
                             <tr style="border-bottom: 2px solid black;">

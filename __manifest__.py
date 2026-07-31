@@ -47,6 +47,8 @@
         'wizards/damage_painter_wizard_views.xml',
         'wizards/vehicle_substitution_wizard_views.xml',
         'wizards/substitution_damage_painter_wizard_views.xml',
+        'wizards/vehicle_return_wizard_views.xml',
+        'wizards/return_damage_painter_wizard_views.xml',
         'wizards/sale_order_to_vehicle_contract_views.xml',
         'wizards/rental_multi_booking_views.xml',
         # Views
@@ -78,10 +80,12 @@
         'report/scratch_report_views.xml',
         'report/vehicle_substitution_addendum_report.xml',
         'report/vehicle_contract_extension_addendum_report.xml',
+        'report/vehicle_contract_return_report.xml',
         # Email templates (después de reports para que existan los XMLID referenciados)
         'data/email_templates.xml',
-        # Views de sustitución (después del reporte)
+        # Views de sustitución y devolución (después de los reportes)
         'views/vehicle_substitution_views.xml',
+        'views/vehicle_contract_return_views.xml',
         # Web Templates
         'views/templates/web_contract_booking_views.xml',
         'views/templates/booking_enquiry_simple.xml',

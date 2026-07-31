@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
+import base64
 from datetime import datetime
+
+from markupsafe import Markup
+
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 
@@ -30,8 +34,11 @@ class VehicleContractExtension(models.Model):
     )
     original_end_date = fields.Datetime(
         string='Fecha fin original',
-        related='contract_id.end_date',
         readonly=True,
+        copy=False,
+        help='Fecha de fin del contrato en el momento de crear la ampliación. '
+             'Se congela al crear para que la ampliación conserve su histórico '
+             'aunque el contrato se amplíe después.',
     )
     new_end_date = fields.Datetime(
         string='Nueva fecha de fin',
@@ -82,15 +89,18 @@ class VehicleContractExtension(models.Model):
         store=True,
     )
 
-    @api.depends('contract_id.end_date', 'new_end_date')
+    def _get_base_end_date(self):
+        """Fecha de fin de referencia: la congelada al crear, o la del contrato."""
+        self.ensure_one()
+        return self.original_end_date or self.contract_id.end_date
+
+    @api.depends('original_end_date', 'contract_id.end_date', 'new_end_date')
     def _compute_extension_days(self):
         for rec in self:
-            if rec.contract_id and rec.contract_id.end_date and rec.new_end_date:
-                if rec.new_end_date <= rec.contract_id.end_date:
-                    rec.extension_days = 0.0
-                else:
-                    delta = rec.new_end_date - rec.contract_id.end_date
-                    rec.extension_days = delta.total_seconds() / (24.0 * 3600)
+            base_end_date = rec._get_base_end_date()
+            if base_end_date and rec.new_end_date and rec.new_end_date > base_end_date:
+                delta = rec.new_end_date - base_end_date
+                rec.extension_days = delta.total_seconds() / (24.0 * 3600)
             else:
                 rec.extension_days = 0.0
 
@@ -104,16 +114,29 @@ class VehicleContractExtension(models.Model):
         res = super().default_get(fields_list)
         if self.env.context.get('default_contract_id'):
             contract = self.env['vehicle.contract'].browse(self.env.context['default_contract_id'])
-            if contract.exists() and 'daily_rate' in fields_list and not res.get('daily_rate'):
-                res['daily_rate'] = contract.rent or 0.0
+            if contract.exists():
+                if 'daily_rate' in fields_list and not res.get('daily_rate'):
+                    res['daily_rate'] = contract.rent or 0.0
+                if 'original_end_date' in fields_list and not res.get('original_end_date'):
+                    res['original_end_date'] = contract.end_date
         return res
 
-    @api.constrains('contract_id', 'new_end_date')
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Congelar la fecha de fin original del contrato al crear la ampliación."""
+        for vals in vals_list:
+            if not vals.get('original_end_date') and vals.get('contract_id'):
+                contract = self.env['vehicle.contract'].browse(vals['contract_id'])
+                vals['original_end_date'] = contract.end_date
+        return super().create(vals_list)
+
+    @api.constrains('original_end_date', 'contract_id', 'new_end_date')
     def _check_new_end_date(self):
         for rec in self:
-            if not rec.contract_id or not rec.contract_id.end_date or not rec.new_end_date:
+            base_end_date = rec._get_base_end_date()
+            if not base_end_date or not rec.new_end_date:
                 continue
-            if rec.new_end_date <= rec.contract_id.end_date:
+            if rec.new_end_date <= base_end_date:
                 raise ValidationError(
                     _('La nueva fecha de fin debe ser posterior a la fecha de fin original del contrato.')
                 )
@@ -156,6 +179,130 @@ class VehicleContractExtension(models.Model):
         for rec in self:
             if rec.state in ('draft', 'sent'):
                 rec.state = 'signed'
+                rec._post_signed_to_contract()
+
+    def _post_signed_to_contract(self):
+        """Dejar constancia en el chatter del contrato de que la ampliación se firmó."""
+        self.ensure_one()
+        if not self.contract_id:
+            return
+        body = Markup('''
+            <div style="padding: 10px; background-color: #fff3cd; border: 1px solid #ffeeba; border-radius: 5px;">
+                <h4 style="color: #856404; margin: 0 0 10px 0;">
+                    <i class="fa fa-pencil-square-o"></i> Ampliación de Contrato Firmada
+                </h4>
+                <table style="width: 100%%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 5px; font-weight: bold; width: 40%%;">Fecha fin original:</td>
+                        <td style="padding: 5px;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px; font-weight: bold;">Nueva fecha de fin:</td>
+                        <td style="padding: 5px;"><strong>%s</strong></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px; font-weight: bold;">Días de ampliación:</td>
+                        <td style="padding: 5px;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px; font-weight: bold;">Importe:</td>
+                        <td style="padding: 5px;">%s %s</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="padding: 5px; font-size: 11px; color: #856404;">
+                            Pendiente de facturar. La fecha de fin del contrato se actualizará al emitir la factura.
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        ''') % (
+            self.original_end_date or '-',
+            self.new_end_date or '-',
+            f"{self.extension_days:,.1f}",
+            f"{self.extension_amount:,.2f}",
+            self.currency_id.symbol or '',
+        )
+        self.contract_id.message_post(body=body)
+
+    def _generate_addendum_attachment(self):
+        """Renderizar el addendum de ampliación y adjuntarlo al contrato."""
+        self.ensure_one()
+        report = self.env.ref(
+            'vehicle_rental.action_report_vehicle_contract_extension_addendum',
+            raise_if_not_found=False
+        )
+        if not report:
+            return None
+        pdf_content, _dummy = report.sudo()._render_qweb_pdf(
+            report.report_name, res_ids=self.ids
+        )
+        if not pdf_content:
+            return None
+        filename = _('Addendum_Ampliacion_%s.pdf') % self.contract_id.reference_no
+        return self.env['ir.attachment'].create({
+            'name': filename,
+            'type': 'binary',
+            'datas': base64.b64encode(pdf_content),
+            'res_model': 'vehicle.contract',
+            'res_id': self.contract_id.id,
+            'mimetype': 'application/pdf',
+        })
+
+    def _post_invoiced_to_contract(self, invoice, previous_end_date):
+        """Postear el resumen de la ampliación facturada en el chatter del contrato."""
+        self.ensure_one()
+        addendum = self._generate_addendum_attachment()
+
+        body = Markup('''
+            <div style="padding: 10px; background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px;">
+                <h4 style="color: #155724; margin: 0 0 10px 0;">
+                    <i class="fa fa-calendar-plus-o"></i> Ampliación de Contrato Facturada
+                </h4>
+                <table style="width: 100%%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 5px; font-weight: bold; width: 40%%;">Fecha fin:</td>
+                        <td style="padding: 5px;">%s → <strong>%s</strong></td>
+                    </tr>
+                    <tr style="background-color: #f8f9fa;">
+                        <td style="padding: 5px; font-weight: bold;">Días de ampliación:</td>
+                        <td style="padding: 5px;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px; font-weight: bold;">Tarifa por día:</td>
+                        <td style="padding: 5px;">%s %s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px; font-weight: bold;">Importe total:</td>
+                        <td style="padding: 5px;"><strong>%s %s</strong></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px; font-weight: bold;">Factura:</td>
+                        <td style="padding: 5px;">%s</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="padding: 10px 5px; text-align: center;">
+                            <a href="/web#id=%s&amp;model=vehicle.contract.extension&amp;view_type=form"
+                               style="color: #007bff; text-decoration: none; font-weight: bold;">
+                                <i class="fa fa-file-text-o"></i> Ver Addendum/Anexo
+                            </a>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        ''') % (
+            previous_end_date or '-',
+            self.new_end_date or '-',
+            f"{self.extension_days:,.1f}",
+            f"{self.daily_rate:,.2f}", self.currency_id.symbol or '',
+            f"{self.extension_amount:,.2f}", self.currency_id.symbol or '',
+            invoice.name or _('Borrador'),
+            self.id,
+        )
+
+        if addendum:
+            self.contract_id.message_post(body=body, attachment_ids=[addendum.id])
+        else:
+            self.contract_id.message_post(body=body)
 
     def action_cancel(self):
         for rec in self:
@@ -201,11 +348,14 @@ class VehicleContractExtension(models.Model):
             })],
         }
         invoice = self.env['account.move'].sudo().create(invoice_vals)
+        previous_end_date = contract.end_date
         self.write({
             'extension_invoice_id': invoice.id,
             'state': 'invoiced',
         })
         contract.write({'end_date': self.new_end_date})
+        # Dejar constancia en el contrato: resumen + addendum adjunto
+        self._post_invoiced_to_contract(invoice, previous_end_date)
         return {
             'type': 'ir.actions.act_window',
             'name': _('Factura de ampliación'),

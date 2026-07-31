@@ -44,6 +44,199 @@
             </field>
             <field name="auto_delete" eval="False"/>
         </record>
+
+        <!-- Template de email de cierre: devolución del vehículo -->
+        <record id="email_template_vehicle_contract_return" model="mail.template">
+            <field name="name">Devolución de Vehículo - Cierre de Contrato</field>
+            <field name="model_id" ref="model_vehicle_contract_return"/>
+            <field name="subject">Contrato {{ object.contract_id.reference_no }} finalizado - Confirmación de devolución</field>
+            <!-- use_default_to viene a True por defecto en Odoo 19 y haría que se ignorase
+                 partner_to buscando un partner_id/email en el propio modelo, que no existe -->
+            <field name="use_default_to" eval="False"/>
+            <field name="partner_to">{{ object.contract_id.customer_id.id }}</field>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px; font-size: 13px; font-family: Arial, sans-serif;">
+                    <p>Estimado/a <t t-out="object.contract_id.customer_id.name or 'cliente'"/>,</p>
+
+                    <p>
+                        Le confirmamos que el vehículo ha sido <strong>devuelto correctamente</strong> y que su
+                        contrato de alquiler <strong><t t-out="object.contract_id.reference_no"/></strong>
+                        ha quedado <strong>finalizado</strong> con fecha
+                        <t t-out="format_datetime(object.return_date, dt_format='dd/MM/yyyy HH:mm')"/>.
+                    </p>
+
+                    <p>A continuación encontrará el resumen completo del proceso:</p>
+
+                    <!-- Datos del alquiler -->
+                    <h3 style="color: #17a2b8; border-bottom: 2px solid #17a2b8; padding-bottom: 4px;">
+                        Datos del alquiler
+                    </h3>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <tr>
+                            <td style="padding: 5px; font-weight: bold; width: 45%;">Contrato:</td>
+                            <td style="padding: 5px;"><t t-out="object.contract_id.reference_no"/></td>
+                        </tr>
+                        <tr style="background-color: #f8f9fa;">
+                            <td style="padding: 5px; font-weight: bold;">Vehículo devuelto:</td>
+                            <td style="padding: 5px;">
+                                <t t-out="object.vehicle_id.name"/>
+                                (<t t-out="object.vehicle_id.license_plate or '-'"/>)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px; font-weight: bold;">Fecha de recogida:</td>
+                            <td style="padding: 5px;">
+                                <t t-out="format_datetime(object.contract_id.start_date, dt_format='dd/MM/yyyy HH:mm') if object.contract_id.start_date else '-'"/>
+                            </td>
+                        </tr>
+                        <tr style="background-color: #f8f9fa;">
+                            <td style="padding: 5px; font-weight: bold;">Fecha de devolución:</td>
+                            <td style="padding: 5px;">
+                                <t t-out="format_datetime(object.return_date, dt_format='dd/MM/yyyy HH:mm')"/>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Estado del vehículo -->
+                    <h3 style="color: #17a2b8; border-bottom: 2px solid #17a2b8; padding-bottom: 4px;">
+                        Estado del vehículo
+                    </h3>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <tr style="background-color: #e9ecef;">
+                            <td style="padding: 5px; font-weight: bold; width: 45%;"></td>
+                            <td style="padding: 5px; font-weight: bold;">En la entrega</td>
+                            <td style="padding: 5px; font-weight: bold;">En la devolución</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px; font-weight: bold;">Kilometraje:</td>
+                            <td style="padding: 5px;">
+                                <t t-out="'{:,.0f}'.format(object.odometer_start)"/>
+                                <t t-out="'km' if object.odometer_unit == 'kilometers' else 'mi'"/>
+                            </td>
+                            <td style="padding: 5px;">
+                                <strong>
+                                    <t t-out="'{:,.0f}'.format(object.odometer)"/>
+                                    <t t-out="'km' if object.odometer_unit == 'kilometers' else 'mi'"/>
+                                </strong>
+                            </td>
+                        </tr>
+                        <tr style="background-color: #f8f9fa;">
+                            <td style="padding: 5px; font-weight: bold;">Combustible:</td>
+                            <td style="padding: 5px;">
+                                <t t-out="object.fuel_label(object.fuel_level_start) if object.fuel_level_start else 'No registrado'"/>
+                            </td>
+                            <td style="padding: 5px;">
+                                <strong><t t-out="object.fuel_label(object.fuel_level)"/></strong>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px; font-weight: bold;">Kilómetros recorridos:</td>
+                            <td style="padding: 5px;" colspan="2">
+                                <strong>
+                                    <t t-out="'{:,.0f}'.format(object.km_driven)"/>
+                                    <t t-out="'km' if object.odometer_unit == 'kilometers' else 'mi'"/>
+                                </strong>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Inspección -->
+                    <h3 style="color: #17a2b8; border-bottom: 2px solid #17a2b8; padding-bottom: 4px;">
+                        Inspección de daños
+                    </h3>
+                    <div t-if="not object.has_damage"
+                         style="background-color: #d4edda; border: 1px solid #c3e6cb; padding: 10px; border-radius: 4px;">
+                        El vehículo fue inspeccionado en el momento de la devolución y
+                        <strong>no se detectaron daños</strong> más allá del desgaste normal por el uso.
+                    </div>
+                    <div t-if="object.has_damage"
+                         style="background-color: #fff3cd; border: 1px solid #ffeeba; padding: 10px; border-radius: 4px;">
+                        <strong>Se detectaron daños en la inspección.</strong>
+                        <div style="margin-top: 8px;"><t t-out="object.damage_description"/></div>
+                        <div style="margin-top: 8px;">
+                            Importe estimado:
+                            <strong>
+                                <t t-out="'{:,.2f}'.format(object.damage_amount)"/>
+                                <t t-out="object.currency_id.symbol or ''"/>
+                            </strong>
+                        </div>
+                    </div>
+
+                    <!-- Modificaciones del contrato -->
+                    <t t-set="subs" t-value="object.contract_id.substitution_ids"/>
+                    <t t-set="exts" t-value="object.contract_id.extension_ids"/>
+                    <div t-if="subs or exts">
+                        <h3 style="color: #17a2b8; border-bottom: 2px solid #17a2b8; padding-bottom: 4px;">
+                            Modificaciones durante el alquiler
+                        </h3>
+                        <ul style="font-size: 13px;">
+                            <li t-foreach="subs" t-as="sub">
+                                <strong>Sustitución de vehículo</strong>
+                                (<t t-out="format_date(sub.substitution_date)"/>):
+                                <t t-out="sub.old_vehicle_id.license_plate or '-'"/> →
+                                <t t-out="sub.new_vehicle_id.license_plate or '-'"/>
+                            </li>
+                            <li t-foreach="exts" t-as="ext">
+                                <strong>Ampliación de contrato</strong>
+                                (<t t-out="'{:,.0f}'.format(ext.extension_days)"/> días):
+                                fin <t t-out="format_date(ext.original_end_date) if ext.original_end_date else '-'"/>
+                                → <t t-out="format_date(ext.new_end_date) if ext.new_end_date else '-'"/>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Facturación -->
+                    <t t-set="invoices" t-value="object.get_process_invoices()"/>
+                    <div t-if="invoices">
+                        <h3 style="color: #17a2b8; border-bottom: 2px solid #17a2b8; padding-bottom: 4px;">
+                            Resumen de facturación
+                        </h3>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <tr style="background-color: #e9ecef;">
+                                <td style="padding: 5px; font-weight: bold;">Documento</td>
+                                <td style="padding: 5px; font-weight: bold;">Fecha</td>
+                                <td style="padding: 5px; font-weight: bold; text-align: right;">Importe</td>
+                                <td style="padding: 5px; font-weight: bold;">Estado</td>
+                            </tr>
+                            <tr t-foreach="invoices" t-as="inv">
+                                <td style="padding: 5px; border-top: 1px solid #dee2e6;">
+                                    <t t-out="inv.name or 'Borrador'"/>
+                                </td>
+                                <td style="padding: 5px; border-top: 1px solid #dee2e6;">
+                                    <t t-out="format_date(inv.invoice_date) if inv.invoice_date else '-'"/>
+                                </td>
+                                <td style="padding: 5px; border-top: 1px solid #dee2e6; text-align: right;">
+                                    <t t-out="'{:,.2f}'.format(inv.amount_total)"/>
+                                    <t t-out="inv.currency_id.symbol or ''"/>
+                                </td>
+                                <td style="padding: 5px; border-top: 1px solid #dee2e6;">
+                                    <t t-out="'Pagada' if inv.payment_state in ('paid', 'in_payment') else 'Pendiente'"/>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <p style="margin-top: 20px;">
+                        Adjuntamos el <strong>acta de devolución</strong> con el detalle completo y firmado
+                        del estado del vehículo.
+                    </p>
+
+                    <p>Gracias por confiar en nosotros. Esperamos volver a atenderle pronto.</p>
+
+                    <p>Atentamente,<br/>
+                        El equipo de <t t-out="object.company_id.name or 'SUNSET RENT'"/>
+                    </p>
+
+                    <hr style="margin: 16px 0px; border: none; border-top: 1px solid #e1e1e1;"/>
+
+                    <p style="font-size: 11px; color: #666;">
+                        Este es un mensaje automático. Si detecta cualquier discrepancia en este resumen,
+                        por favor contacte con nosotros lo antes posible.
+                    </p>
+                </div>
+            </field>
+            <field name="auto_delete" eval="False"/>
+        </record>
     </data>
 </odoo>
 

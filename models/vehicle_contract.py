@@ -197,6 +197,25 @@ class VehicleContract(models.Model):
         help='El vehículo actualmente asignado al contrato (considerando sustituciones)'
     )
 
+    # Devoluciones de vehículos
+    return_ids = fields.One2many(
+        'vehicle.contract.return',
+        'contract_id',
+        string='Devoluciones'
+    )
+    return_count = fields.Integer(
+        string='Número de Devoluciones',
+        compute='_compute_return_count'
+    )
+    initial_fuel_level = fields.Selection([
+        ('0', 'Vacío'),
+        ('1', '1/4'),
+        ('2', '2/4 (Medio)'),
+        ('3', '3/4'),
+        ('4', 'Lleno')
+    ], string='Combustible en Entrega',
+        help='Nivel de combustible con el que se entregó el vehículo al cliente')
+
     def open_damage_painter(self):
         """Abrir ventana para pintar daños"""
         self.ensure_one()
@@ -227,6 +246,25 @@ class VehicleContract(models.Model):
         """Compute substitution count"""
         for rec in self:
             rec.substitution_count = len(rec.substitution_ids)
+
+    @api.depends('return_ids')
+    def _compute_return_count(self):
+        """Compute return count"""
+        for rec in self:
+            rec.return_count = len(rec.return_ids)
+
+    def action_view_returns(self):
+        """Ver todas las devoluciones del contrato"""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Devoluciones'),
+            'res_model': 'vehicle.contract.return',
+            'domain': [('contract_id', '=', self.id)],
+            'view_mode': 'list,form',
+            'target': 'current',
+            'context': {'default_contract_id': self.id},
+        }
 
     @api.depends('vehicle_id', 'substitution_ids', 'substitution_ids.new_vehicle_id')
     def _compute_current_vehicle(self):
@@ -553,8 +591,29 @@ class VehicleContract(models.Model):
         return True
 
     def b_in_progress_to_c_return(self):
-        """In progress to return"""
-        self.status = 'c_return'
+        """Abrir el asistente de devolución en modal.
+
+        El cambio de estado real lo aplica el wizard vía _apply_return() una vez
+        registrados kilometraje, combustible, inspección de daños y firma.
+        """
+        self.ensure_one()
+        wizard = self.env['vehicle.contract.return.wizard'].create({
+            'contract_id': self.id,
+        })
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Devolución de Vehículo'),
+            'res_model': 'vehicle.contract.return.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_contract_id': self.id},
+        }
+
+    def _apply_return(self):
+        """Marcar el contrato como devuelto. Lo llama el wizard de devolución."""
+        for rec in self:
+            rec.status = 'c_return'
 
     def c_return_to_d_cancel(self):
         """Return to cancel"""
