@@ -9,6 +9,10 @@ import base64
 from ..utils import _display_rental_notification
 from odoo import models, fields, api, _
 
+# Estados en los que el contrato retiene el vehículo. Devuelto y cancelado no
+# entran: en ambos casos el coche ya está de vuelta y puede volver a alquilarse.
+BUSY_CONTRACT_STATES = ('a_draft', 'b_in_progress')
+
 
 class RentalVehicleImage(models.Model):
     """Rental Vehicle Image"""
@@ -41,9 +45,17 @@ class VehicleContract(models.Model):
                                default=lambda self: _('New'), copy=False)
     vehicle_ids = fields.Many2many('fleet.vehicle', string="Vehicles",
                                    compute='_compute_available_vehicles')
+    available_vehicle_ids = fields.Many2many(
+        'fleet.vehicle',
+        'vehicle_contract_available_vehicle_rel',
+        'contract_id', 'vehicle_id',
+        string='Vehículos Disponibles',
+        compute='_compute_contract_available_vehicles',
+        help='Vehículos de la categoría elegida que están libres en las fechas '
+             'indicadas. Se vacía mientras falte la categoría o alguna fecha.')
     vehicle_id = fields.Many2one(
         'fleet.vehicle', string="Vehicle", copy=False,
-        domain="[('id', 'not in', vehicle_ids), ('status', '=', 'available')]")
+        domain="[('id', 'in', available_vehicle_ids)]")
     license_plate = fields.Char(string="License Plate")
 
     is_driver_required = fields.Boolean(string="Driver Required")
@@ -76,7 +88,9 @@ class VehicleContract(models.Model):
     vehicle_category = fields.Char(string="Categoría del Vehículo", compute='_compute_vehicle_category', store=True)
     vehicle_category_id = fields.Many2one(
         'fleet.vehicle.model.category', string='Categoría',
-        related='vehicle_id.category_id', store=True, readonly=True)
+        store=True, index=True,
+        help='Se elige antes que el vehículo: acota la lista a los vehículos de '
+             'esa categoría que estén libres en las fechas indicadas.')
 
     customer_id = fields.Many2one("res.partner")
     customer_phone = fields.Char(string="Phone")
@@ -897,10 +911,69 @@ class VehicleContract(models.Model):
     def _compute_available_vehicles(self):
         """Compute available vehicles"""
         for rec in self:
+            if not rec.start_date or not rec.end_date:
+                rec.vehicle_ids = False
+                continue
             contract_id = self.env['vehicle.contract'].search(
                 [('start_date', '<=', rec.end_date), ('end_date', '>=', rec.start_date),
                  ('status', '=', 'b_in_progress')]).mapped('vehicle_id').mapped('id')
             rec.vehicle_ids = contract_id
+
+    def _busy_vehicle_ids(self, start_date, end_date):
+        """Vehículos comprometidos entre dos fechas.
+
+        Bloquean los contratos en curso y las reservas sin activar: un vehículo
+        apalabrado en borrador no puede ofrecerse otra vez. No bloquean los
+        devueltos ni los cancelados, porque en ambos casos el coche ya está de
+        vuelta y disponible.
+        """
+        self.ensure_one()
+        overlapping = self.env['vehicle.contract'].search([
+            ('id', '!=', self._origin.id or self.id),
+            ('vehicle_id', '!=', False),
+            ('start_date', '<=', end_date),
+            ('end_date', '>=', start_date),
+            ('status', 'in', BUSY_CONTRACT_STATES),
+        ])
+        return overlapping.mapped('vehicle_id').ids
+
+    @api.depends('vehicle_category_id', 'start_date', 'end_date', 'company_id')
+    def _compute_contract_available_vehicles(self):
+        """Vehículos ofrecibles: misma lógica que el asistente de reserva.
+
+        Sin categoría o sin fechas no se ofrece nada, para no dejar elegir un
+        vehículo antes de saber si estará libre.
+        """
+        for rec in self:
+            if not rec.vehicle_category_id or not rec.start_date or not rec.end_date:
+                rec.available_vehicle_ids = False
+                continue
+
+            busy_ids = rec._busy_vehicle_ids(rec.start_date, rec.end_date)
+            domain = [
+                ('status', '=', 'available'),
+                '|',
+                ('category_id', '=', rec.vehicle_category_id.id),
+                ('model_id.category_id', '=', rec.vehicle_category_id.id),
+                ('id', 'not in', busy_ids),
+            ]
+            if rec.company_id:
+                domain.append(('company_id', 'in', (rec.company_id.id, False)))
+            rec.available_vehicle_ids = self.env['fleet.vehicle'].search(domain)
+
+    @api.onchange('vehicle_id')
+    def _onchange_vehicle_sets_category(self):
+        """La categoría sigue al vehículo elegido, para que no se contradigan."""
+        for rec in self:
+            if rec.vehicle_id and rec.vehicle_id.category_id:
+                rec.vehicle_category_id = rec.vehicle_id.category_id
+
+    @api.onchange('vehicle_category_id', 'start_date', 'end_date')
+    def _onchange_clear_unavailable_vehicle(self):
+        """Soltar el vehículo si deja de estar disponible al cambiar el filtro."""
+        for rec in self:
+            if rec.vehicle_id and rec.vehicle_id not in rec.available_vehicle_ids:
+                rec.vehicle_id = False
 
     @api.constrains('start_date', 'end_date', 'vehicle_id', 'status')
     def _contract_check_dates(self):
