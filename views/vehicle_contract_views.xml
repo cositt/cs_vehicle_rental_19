@@ -314,6 +314,32 @@
                                    invisible="pricing_type == 'flexirent'"
                                    string="Tipo de Alquiler"/>
                         </group>
+                        <!-- Los tramos deciden la tarifa, igual que en el asistente
+                             de reserva. Sin ellos el precio sale a cero. -->
+                        <group invisible="pricing_type == 'flexirent'">
+                            <group>
+                                <field name="km_range"
+                                       readonly="invoice_id != False or installment_created != False"/>
+                                <field name="duration_range"
+                                       readonly="invoice_id != False or installment_created != False"/>
+                            </group>
+                            <group>
+                                <field name="needs_flexirent" invisible="1"/>
+                                <div class="text-muted" colspan="2"
+                                     invisible="km_range != False">
+                                    Elija los <strong>kilómetros incluidos</strong> para que se
+                                    aplique la tarifa. El tramo de duración se propone según
+                                    las fechas y puede ajustarse.
+                                </div>
+                            </group>
+                        </group>
+                        <div class="alert alert-warning" role="alert"
+                             invisible="not needs_flexirent or pricing_type == 'flexirent'">
+                            <i class="fa fa-exclamation-triangle" title="Aviso"/>
+                            Este alquiler dura <field name="total_days" readonly="1" class="oe_inline"/>
+                            días y las tarifas estándar llegan hasta 29. Para larga temporada
+                            corresponde una tarifa <strong>FLEXIRENT</strong>.
+                        </div>
                         <group>
                             <group>
                                 <field name="rent" invisible="rent_type != 'days'"

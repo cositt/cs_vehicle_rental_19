@@ -216,3 +216,110 @@ class TestContractCalculatedRent(VehicleRentalCase):
         })
         contract.invalidate_recordset()
         return contract
+
+
+@tagged('post_install', '-at_install', 'vehicle_pricing')
+class TestContractTariffSelectors(VehicleRentalCase):
+    """El contrato elige tarifa igual que el asistente de reserva.
+
+    Antes el tramo de km se deducía de total_km, un campo oculto con valor 1
+    por defecto, así que todos los contratos por días caían en la banda de
+    100 km —donde solo hay tarifas de 4 horas— y el precio salía a cero.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.today = fields.Date.today()
+        rule_model = cls.env['vehicle.pricing.rule']
+        cls.rate_350_3_5 = rule_model.create({
+            'vehicle_category_id': cls.category.id,
+            'pricing_type': 'standard',
+            'km_range': '350',
+            'duration_range': '3-5d',
+            'price_per_unit': 117.0,
+            'valid_from': cls.today - timedelta(days=1),
+        })
+        cls.rate_500_3_5 = rule_model.create({
+            'vehicle_category_id': cls.category.id,
+            'pricing_type': 'standard',
+            'km_range': '500',
+            'duration_range': '3-5d',
+            'price_per_unit': 130.0,
+            'valid_from': cls.today - timedelta(days=1),
+        })
+
+    def _contract(self, days=4, **overrides):
+        values = {
+            'customer_id': self.customer.id,
+            'vehicle_id': self.spare_vehicle.id,
+            'rent_type': 'days',
+            'rent': 117.0,
+            'start_date': self.start_date,
+            'end_date': self.start_date + timedelta(days=days),
+        }
+        values.update(overrides)
+        contract = self.env['vehicle.contract'].create(values)
+        contract.invalidate_recordset()
+        return contract
+
+    def test_the_km_band_is_offered_from_the_tariff_table(self):
+        """Solo se ofrecen los tramos que existen configurados."""
+        options = dict(self.env['vehicle.contract'].fields_get(
+            ['km_range'])['km_range']['selection'])
+
+        self.assertIn('350', options)
+        self.assertIn('500', options)
+        self.assertEqual(options['350'], '350 Km')
+
+    def test_the_duration_band_is_proposed_from_the_dates(self):
+        contract = self._contract(days=4)
+
+        self.assertEqual(contract.duration_range, '3-5d')
+
+    def test_the_km_band_decides_the_price(self):
+        contract = self._contract(days=4)
+        contract.km_range = '350'
+        contract.invalidate_recordset()
+        self.assertEqual(contract.calculated_rent, 117.0)
+
+        contract.km_range = '500'
+        contract.invalidate_recordset()
+
+        self.assertEqual(contract.calculated_rent, 130.0)
+
+    def test_a_days_contract_no_longer_lands_in_the_100km_band(self):
+        """El caso real: contrato por días, sin tocar kilometraje."""
+        contract = self._contract(days=4)
+        contract.km_range = '350'
+        contract.invalidate_recordset()
+
+        self.assertNotEqual(contract.calculated_rent, 0.0)
+
+    def test_overriding_the_duration_band_changes_the_price(self):
+        rule = self.env['vehicle.pricing.rule'].create({
+            'vehicle_category_id': self.category.id,
+            'pricing_type': 'standard',
+            'km_range': '350',
+            'duration_range': '6-10d',
+            'price_per_unit': 105.0,
+            'valid_from': self.today - timedelta(days=1),
+        })
+        contract = self._contract(days=4, discount_reason='Ajuste del test')
+        contract.km_range = '350'
+
+        contract.duration_range = '6-10d'
+        contract.invalidate_recordset()
+
+        self.assertEqual(contract.calculated_rent, rule.price_per_unit)
+
+    def test_a_long_rental_flags_flexirent(self):
+        """Más de 29 días se sale de la tabla estándar."""
+        contract = self._contract(days=57)
+
+        self.assertTrue(contract.needs_flexirent)
+
+    def test_a_normal_rental_does_not_flag_flexirent(self):
+        contract = self._contract(days=4)
+
+        self.assertFalse(contract.needs_flexirent)
