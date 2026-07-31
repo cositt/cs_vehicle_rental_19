@@ -229,7 +229,84 @@ class VehicleContractPricing(models.Model):
     # MÉTODOS COMPUTADOS - PRICING AUTOMÁTICO
     # ============================================
     
-    @api.depends('vehicle_id', 'vehicle_id.category_id', 'total_km', 'total_days', 'start_date', 'pricing_type')
+    # ============================================
+    # TRAMOS DE TARIFA (mismo criterio que el asistente de reserva)
+    # ============================================
+
+    def _tariff_band_options(self, field_name):
+        """Tramos que existen configurados, con las etiquetas de la tarifa.
+
+        Se ofrecen solo los que tienen alguna tarifa dada de alta, para no
+        proponer combinaciones que darían precio cero.
+        """
+        rule_field = self.env['vehicle.pricing.rule']._fields[field_name]
+        labels = dict(rule_field.selection)
+        self.env.cr.execute(
+            'SELECT DISTINCT %s FROM vehicle_pricing_rule '
+            'WHERE active AND %s IS NOT NULL' % (field_name, field_name))
+        existing = {row[0] for row in self.env.cr.fetchall()}
+        return [(value, label) for value, label in labels.items()
+                if value in existing]
+
+    def _selection_km_range(self):
+        return self._tariff_band_options('km_range')
+
+    def _selection_duration_range(self):
+        return self._tariff_band_options('duration_range')
+
+    km_range = fields.Selection(
+        selection='_selection_km_range',
+        string='Kilómetros Incluidos',
+        help='Paquete de kilómetros contratado. Junto con la duración decide '
+             'qué tarifa se aplica.')
+    duration_range = fields.Selection(
+        selection='_selection_duration_range',
+        string='Tramo de Duración',
+        compute='_compute_duration_range',
+        store=True,
+        readonly=False,
+        help='Se propone a partir de las fechas del contrato y puede ajustarse.')
+    needs_flexirent = fields.Boolean(
+        string='Fuera de la tabla estándar',
+        compute='_compute_needs_flexirent',
+        help='Los alquileres de más de 29 días se salen de las tarifas '
+             'estándar: corresponde una tarifa FLEXIRENT.')
+
+    @api.depends('total_days')
+    def _compute_duration_range(self):
+        """Propone el tramo según los días, dejándolo editable."""
+        rule_model = self.env['vehicle.pricing.rule']
+        for record in self:
+            if not record.total_days:
+                record.duration_range = False
+                continue
+            record.duration_range = rule_model._get_duration_range_from_days(
+                record.total_days)
+
+    @api.depends('total_days')
+    def _compute_needs_flexirent(self):
+        for record in self:
+            record.needs_flexirent = bool(record.total_days) and record.total_days > 29
+
+    def _find_rule_by_bands(self):
+        """Tarifa que corresponde a los tramos elegidos en el contrato."""
+        self.ensure_one()
+        if not self.km_range or not self.duration_range:
+            return self.env['vehicle.pricing.rule']
+        rental_date = (self.start_date.date() if self.start_date
+                       else fields.Date.today())
+        return self.env['vehicle.pricing.rule'].search([
+            ('vehicle_category_id', '=', self.vehicle_id.category_id.id),
+            ('pricing_type', '=', self.pricing_type or 'standard'),
+            ('km_range', '=', self.km_range),
+            ('duration_range', '=', self.duration_range),
+            ('valid_from', '<=', rental_date),
+            '|', ('valid_until', '=', False), ('valid_until', '>=', rental_date),
+            ('active', '=', True),
+        ], limit=1, order='valid_from desc')
+
+    @api.depends('vehicle_id', 'vehicle_id.category_id', 'total_km', 'total_days',
+                 'start_date', 'pricing_type', 'km_range', 'duration_range')
     def _compute_rent_from_pricing_rules(self):
         """Calcula automáticamente el precio basándose en las reglas de tarificación"""
         for record in self:
@@ -253,15 +330,18 @@ class VehicleContractPricing(models.Model):
             # mirar kilometraje ni duración, así que todos los contratos se
             # cobraban a la misma tarifa (la de 4 horas) y ampliar los días
             # no cambiaba el importe.
-            pricing_rule_model = self.env['vehicle.pricing.rule']
-            pricing_rule = pricing_rule_model.find_pricing_rule(
-                category_id=record.vehicle_id.category_id.id,
-                total_km=record.total_km,
-                total_days=record.total_days,
-                rental_date=(record.start_date.date() if record.start_date
-                             else fields.Date.today()),
-                pricing_type=record.pricing_type or 'standard',
-            )
+            # Los tramos elegidos mandan, igual que en el asistente de reserva.
+            # Si no se han elegido todavía, se deducen de km y días.
+            pricing_rule = record._find_rule_by_bands()
+            if not pricing_rule:
+                pricing_rule = self.env['vehicle.pricing.rule'].find_pricing_rule(
+                    category_id=record.vehicle_id.category_id.id,
+                    total_km=record.total_km,
+                    total_days=record.total_days,
+                    rental_date=(record.start_date.date() if record.start_date
+                                 else fields.Date.today()),
+                    pricing_type=record.pricing_type or 'standard',
+                )
 
             if pricing_rule:
                 # Valor calculado antes de este recálculo: sirve para saber si la
@@ -308,7 +388,8 @@ class VehicleContractPricing(models.Model):
         for record in self:
             record.calculated_rent_without_vat = record.calculated_rent / 1.21 if record.calculated_rent else 0.0
     
-    @api.depends('vehicle_id', 'vehicle_id.category_id', 'total_km', 'total_days', 'start_date')
+    @api.depends('vehicle_id', 'vehicle_id.category_id', 'total_km', 'total_days',
+                 'start_date', 'km_range', 'duration_range')
     def _compute_applied_pricing_rule(self):
         """Guarda referencia a la tarifa aplicada"""
         for record in self:
@@ -320,14 +401,15 @@ class VehicleContractPricing(models.Model):
                 record.applied_pricing_rule_id = False
                 continue
             
-            pricing_rule_model = self.env['vehicle.pricing.rule']
-            pricing_rule = pricing_rule_model.find_pricing_rule(
-                category_id=record.vehicle_id.category_id.id,
-                total_km=record.total_km,
-                total_days=record.total_days,
-                rental_date=record.start_date.date() if record.start_date else fields.Date.today()
-            )
-            
+            pricing_rule = record._find_rule_by_bands()
+            if not pricing_rule:
+                pricing_rule = self.env['vehicle.pricing.rule'].find_pricing_rule(
+                    category_id=record.vehicle_id.category_id.id,
+                    total_km=record.total_km,
+                    total_days=record.total_days,
+                    rental_date=record.start_date.date() if record.start_date else fields.Date.today()
+                )
+
             record.applied_pricing_rule_id = pricing_rule.id if pricing_rule else False
     
     @api.depends('rent', 'calculated_rent')
