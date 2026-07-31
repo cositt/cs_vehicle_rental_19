@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
-from ..utils import _display_rental_notification
 from odoo import models, fields, api, _
+from odoo.exceptions import UserError
 
 
 class ReturnDeposit(models.TransientModel):
@@ -37,10 +37,11 @@ class ReturnDeposit(models.TransientModel):
         contract = self.contract_id
         invoice_lines = []
         if not self.return_deposit:
-            return _display_rental_notification(
-                message=_("Please note: A return deposit amount is required."),
-                message_type='warning'
-            )
+            raise UserError(_(
+                'Indique el importe de la fianza a devolver del contrato %s. '
+                'Si va a retener la fianza completa, no genere esta factura.',
+                contract.reference_no,
+            ))
         invoice_line_vals = {
             'product_id': self.env.ref('vehicle_rental.vehicle_rent_deposit').id,
             'name': f"Return Deposit for - {contract.reference_no} - {contract.vehicle_id.name}",

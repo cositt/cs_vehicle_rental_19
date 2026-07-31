@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
-from odoo import fields, models
-from ..utils import _display_rental_notification
+from odoo import fields, models, _
+from odoo.exceptions import UserError
 
 
 class VehicleDamage(models.TransientModel):
@@ -24,11 +24,11 @@ class VehicleDamage(models.TransientModel):
         vehicle_contract = self.env["vehicle.contract"].browse(rec)
         for rec in self:
             if not rec.damage_amount:
-                message = _display_rental_notification(
-                    message="""Please add the proper damage amount and ensure accurate
-                    details before proceeding to generate the vehicle damage invoice""",
-                    message_type='warning')
-                return message
+                raise UserError(_(
+                    'Indique el importe de los daños antes de generar la factura. '
+                    'Si la valoración aún no está hecha, puede facturarla más '
+                    'adelante desde la ficha de la devolución.'
+                ))
             vehicle_contract.write({
                 'description': self.description,
                 'damage_amount': self.damage_amount,

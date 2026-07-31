@@ -4,7 +4,6 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError, UserError
 from dateutil.relativedelta import relativedelta
-from ..utils import _display_rental_notification
 
 
 class FleetVehicle(models.Model):
@@ -45,17 +44,24 @@ class FleetVehicle(models.Model):
     fleet_expense_ids = fields.One2many(comodel_name='hr.expense', inverse_name='fleet_vehicle_id')
 
     def available_to_in_maintenance(self):
-        """Mark vehicle as 'In Maintenance' if no active contract is in progress."""
+        """Mark vehicle as 'In Maintenance' if no active contract is in progress.
+
+        A blocking error, not a toast: the notification dismissed itself and the
+        button looked broken instead of explaining the reason.
+        """
         for rec in self:
             existing_contract = self.env['vehicle.contract'].search(
-                [('vehicle_id', '=', rec.id), ('status', '=', 'b_in_progress')]
+                [('vehicle_id', '=', rec.id), ('status', '=', 'b_in_progress')],
+                limit=1,
             )
             if existing_contract:
-                message = _display_rental_notification(
-                    message="""Ya existe un contrato en progreso para este vehículo. Por favor, asegúrese
-                     de que el coche sea devuelto antes de cambiar el estado a 'En Mantenimiento'.""",
-                    message_type='warning')
-                return message
+                raise UserError(_(
+                    'El vehículo %(plate)s está alquilado ahora mismo en el contrato '
+                    '%(contract)s. Registre la devolución antes de pasarlo a '
+                    '"En Mantenimiento".',
+                    plate=rec.license_plate or rec.name,
+                    contract=existing_contract.reference_no,
+                ))
             rec.status = 'in_maintenance'
         return None  # Ensure consistent return values
 
@@ -164,10 +170,13 @@ class FleetVehicle(models.Model):
         """Action create maintenance request"""
         for vehicle in self:
             if not vehicle.maintenance_schedule_id:
-                message = _display_rental_notification(
-                    message="""Por favor, elija un horario de mantenimiento de las opciones disponibles.""",
-                    message_type='warning')
-                return message
+                raise UserError(_(
+                    'El vehículo %(plate)s no tiene Horario de Mantenimiento asignado, '
+                    'y hace falta para calcular la fecha de la próxima revisión. '
+                    'Indíquelo en el campo "Horario de Mantenimiento" de la ficha del '
+                    'vehículo y vuelva a pulsar el botón.',
+                    plate=vehicle.license_plate or vehicle.name,
+                ))
             today_date = fields.Date.today()
             vehicle_brand = vehicle.model_id.brand_id.name
             vehicle_model = vehicle.model_id.name

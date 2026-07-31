@@ -2,7 +2,7 @@
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 from odoo import models, fields, _
-from ..utils import _display_rental_notification
+from odoo.exceptions import UserError
 
 
 class VehiclePaymentOption(models.Model):
@@ -12,6 +12,7 @@ class VehiclePaymentOption(models.Model):
     _rec_name = 'name'
 
     name = fields.Char(string="Name", required=True, translate=True)
+    ref = fields.Char(string="Reference")
     payment_date = fields.Date(string="Payment Date", required=True)
     payment_amount = fields.Monetary(string="Payment Amount")
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
@@ -33,10 +34,11 @@ class VehiclePaymentOption(models.Model):
         
         for rec in self:
             if rec.payment_amount == 0:
-                message = _display_rental_notification(
-                    message="""Please add the proper payment amount""",
-                    message_type='warning')
-                return message
+                raise UserError(_(
+                    'La cuota "%s" tiene el importe a cero. Indique el importe a '
+                    'cobrar antes de generar la factura.',
+                    rec.name or _('sin nombre'),
+                ))
             
             contract = self.vehicle_contract_id
             

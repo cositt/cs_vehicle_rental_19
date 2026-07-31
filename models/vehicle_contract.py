@@ -522,18 +522,20 @@ class VehicleContract(models.Model):
         for rec in self:
             # Validate if rental type is selected
             if not rec.rent_type:
-                message = _display_rental_notification(
-                    message="""Elija su unidad de alquiler preferida (horas, días, semanas,
-                     meses, años, kilómetros o millas) y proceda en consecuencia.""",
-                    message_type='warning')
-                return message
-            
+                raise UserError(_(
+                    'El contrato %s no tiene unidad de alquiler. Elija una '
+                    '(horas, días, semanas, meses, años, kilómetros o millas) '
+                    'antes de activarlo.',
+                    rec.reference_no,
+                ))
+
             # Validar que las fechas de inicio y fin estén definidas
             if not rec.start_date or not rec.end_date:
-                message = _display_rental_notification(
-                    message="""Debe definir las fechas de recogida y devolución antes de activar el contrato.""",
-                    message_type='warning')
-                return message
+                raise UserError(_(
+                    'El contrato %s no tiene fechas de recogida y devolución. '
+                    'Indíquelas antes de activarlo.',
+                    rec.reference_no,
+                ))
             
             vehicle_id = rec.vehicle_id.id
             
@@ -556,13 +558,15 @@ class VehicleContract(models.Model):
                     end = contract.end_date.strftime('%d/%m/%Y %H:%M')
                     conflict_details += f"\n• {contract.reference_no}: {start} → {end}"
                 
-                message = _display_rental_notification(
-                    message=f"""No se puede activar este contrato porque las fechas se solapan con otro(s) contrato(s) en curso para el mismo vehículo:
-                    {conflict_details}
-                    
-                    Por favor, ajuste las fechas o devuelva el vehículo del contrato anterior.""",
-                    message_type='warning')
-                return message
+                raise UserError(_(
+                    'No se puede activar el contrato %(reference)s: las fechas se '
+                    'solapan con otro(s) contrato(s) en curso del vehículo '
+                    '%(plate)s:\n%(conflicts)s\n\n'
+                    'Ajuste las fechas o registre la devolución del contrato anterior.',
+                    reference=rec.reference_no,
+                    plate=rec.vehicle_id.license_plate or rec.vehicle_id.name,
+                    conflicts=conflict_details,
+                ))
             # Proceed to update status and prepare email context
             rec.ensure_one()
             template_id = self.env.ref("vehicle_rental.vehicle_rental_booking_mail_template").sudo()
@@ -656,10 +660,11 @@ class VehicleContract(models.Model):
     def action_vehicle_rent_deposit(self):
         """Handle vehicle rent deposit process."""
         if self.if_any_deposit and not self.deposit:
-            message = _display_rental_notification(
-                message="""Por favor, tenga en cuenta: Se requiere un depósito para el vehículo alquilado.""",
-                message_type='warning')
-            return message
+            raise UserError(_(
+                'El contrato %s tiene marcado que lleva depósito, pero el importe '
+                'está a cero. Indique el importe del depósito o desmarque la casilla.',
+                self.reference_no,
+            ))
         if self.if_any_deposit and self.deposit:
             invoice_lines = []
             invoice_line_vals = {
@@ -721,10 +726,13 @@ class VehicleContract(models.Model):
         """Update vehicle details"""
         if self.vehicle_id:
             if self.last_odometer <= self.vehicle_id.odometer:
-                message = _display_rental_notification(
-                    message="""Por favor, añada un valor de odómetro final mayor que el valor actual""",
-                    message_type='warning')
-                return message
+                raise UserError(_(
+                    'El kilometraje indicado (%(new)s) no supera al que ya tiene el '
+                    'vehículo %(plate)s (%(current)s). Indique una lectura mayor.',
+                    new=f"{self.last_odometer:,.0f}",
+                    plate=self.vehicle_id.license_plate or self.vehicle_id.name,
+                    current=f"{self.vehicle_id.odometer:,.0f}",
+                ))
             self.vehicle_id.write({
                 'model_year': self.model_year,
                 'transmission': self.transmission,
@@ -1127,15 +1135,19 @@ class VehicleContract(models.Model):
         for rec in self:
             # Ensure payment type is selected
             if not rec.payment_type:
-                message = _display_rental_notification(
-                    message="""Seleccione su método de pago preferido para continuar.""",
-                    message_type='warning')
-                return message
+                raise UserError(_(
+                    'El contrato %s no tiene forma de pago. Elija una (pago único, '
+                    'diario, semanal, mensual, trimestral o anual) antes de crear '
+                    'la cuota.',
+                    rec.reference_no,
+                ))
             if not rec.total_vehicle_rent:
-                message = _display_rental_notification(
-                    message="""Por favor, totalice los cargos de alquiler que sean mayores que cero.""",
-                    message_type='warning')
-                return message
+                raise UserError(_(
+                    'Los cargos de alquiler del contrato %s suman cero. Revise la '
+                    'tarifa y las fechas para que el total sea mayor que cero antes '
+                    'de crear la cuota.',
+                    rec.reference_no,
+                ))
             # Calculate time differences
             if rec.end_date and rec.start_date:
                 days_diff = rec.end_date - rec.start_date
@@ -1520,17 +1532,17 @@ class VehicleContract(models.Model):
     def create_contract_trip_expense_report(self):
         """Create Trip Expense Reports"""
         all_draft_expenses = self.contract_expense_ids.filtered(lambda e: e.state == 'draft')
+        # Estos dos sí son avisos flotantes: no interrumpen nada que el usuario
+        # tenga que corregir, solo informan del resultado.
         if not all_draft_expenses:
-            message = _display_rental_notification(
-                message="""Todos los gastos ya han sido enviados.""",
-                message_type='warning')
-            return message
+            return _display_rental_notification(
+                message=_('Todos los gastos ya han sido enviados.'),
+                message_type='info')
         # En Odoo 19, action_submit_expenses() se llama action_submit()
         all_draft_expenses.action_submit()
-        message = _display_rental_notification(
-            message="""Borradores de gastos enviados exitosamente.""",
-            message_type='warning')
-        return message
+        return _display_rental_notification(
+            message=_('Borradores de gastos enviados correctamente.'),
+            message_type='success')
 
     @api.model
     def action_create_rent_payment_invoice(self):
