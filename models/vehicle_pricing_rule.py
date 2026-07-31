@@ -375,22 +375,27 @@ class VehiclePricingRule(models.Model):
             return 'unlimited'
 
     def _get_duration_range_from_days(self, total_days):
-        """Determina el rango de duración según los días totales"""
+        """Determina el rango de duración según los días totales.
+
+        Los valores devueltos son los del campo duration_range. Devolvía
+        '1_2', '3_5'... con guion bajo, que no existen como valor del campo,
+        así que la búsqueda de tarifa no encontraba nada salvo en los
+        alquileres de 4 horas.
+        """
         if total_days <= 0.5:  # 4 horas = 0.5 días
             return '4h'
         elif total_days <= 2:
-            return '1_2'
+            return '1-2d'
         elif total_days <= 5:
-            return '3_5'
+            return '3-5d'
         elif total_days <= 10:
-            return '6_10'
+            return '6-10d'
         elif total_days <= 20:
-            return '11_20'
-        elif total_days <= 29:
-            return '21_29'
+            return '11-20d'
         else:
-            # Para más de 29 días, considerar FLEXIRENT
-            return '21_29'  # O retornar None para forzar FLEXIRENT
+            # A partir de 29 días la tarifa que corresponde es FLEXIRENT;
+            # se devuelve el último tramo estándar como aproximación.
+            return '21-29d'
 
     # ============================================
     # MÉTODOS DE ACCIÓN
