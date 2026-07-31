@@ -179,3 +179,40 @@ class TestContractCalculatedRent(VehicleRentalCase):
         contract = self._contract(days=1)
 
         self.assertEqual(contract.applied_pricing_rule_id, self.rate_1_2d)
+
+    def test_extending_updates_the_charged_rate_too(self):
+        """No basta con recalcular: la tarifa cobrada debe seguir al tramo."""
+        contract = self._auto_priced_contract(days=1)
+        self.assertEqual(contract.rent, self.rate_1_2d.price_per_unit)
+
+        contract.end_date = self.start_date + timedelta(days=8)
+        contract.invalidate_recordset()
+
+        self.assertEqual(contract.rent, self.rate_6_10d.price_per_unit)
+
+    def test_a_negotiated_rate_is_not_overwritten(self):
+        """Si el mostrador pactó un precio, ampliar no lo pisa."""
+        contract = self._auto_priced_contract(days=1)
+        contract.write({
+            'rent': 200.0,
+            'discount_reason': 'Precio pactado con el cliente',
+        })
+
+        contract.end_date = self.start_date + timedelta(days=8)
+        contract.invalidate_recordset()
+
+        self.assertEqual(contract.rent, 200.0)
+
+    def _auto_priced_contract(self, days, total_km=350):
+        """Contrato cuyo importe lo ha puesto el motor de tarifas."""
+        contract = self.env['vehicle.contract'].create({
+            'customer_id': self.customer.id,
+            'vehicle_id': self.spare_vehicle.id,
+            'rent_type': 'days',
+            'rent': self.rate_1_2d.price_per_unit,
+            'start_date': self.start_date,
+            'end_date': self.start_date + timedelta(days=days),
+            'total_km': total_km,
+        })
+        contract.invalidate_recordset()
+        return contract

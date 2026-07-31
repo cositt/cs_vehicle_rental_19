@@ -264,10 +264,19 @@ class VehicleContractPricing(models.Model):
             )
 
             if pricing_rule:
+                # Valor calculado antes de este recálculo: sirve para saber si la
+                # tarifa que hay puesta la eligió el motor o la pactó el mostrador.
+                previous_calculated = record.calculated_rent
                 record.calculated_rent = pricing_rule.price_per_unit
-                
-                # Solo actualizar rent si no tiene valor o es 0 (no sobrescribir valor del wizard)
-                if not record.rent or record.rent == 0:
+
+                # La tarifa cobrada sigue al tramo mientras nadie la haya
+                # cambiado a mano. Si se pactó un precio distinto (y por eso hay
+                # motivo de descuento), ampliar el contrato no lo pisa.
+                rate_was_automatic = (
+                    previous_calculated
+                    and abs(record.rent - previous_calculated) < 0.01
+                )
+                if not record.rent or rate_was_automatic:
                     record.rent = pricing_rule.price_per_unit
                 if not record.rent_type or record.rent_type == False:
                     record.rent_type = 'days'
