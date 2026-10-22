@@ -185,6 +185,29 @@ class VehicleSubstitutionWizard(models.TransientModel):
         readonly=True
     )
     
+    def _overlapping_contracts(self, vehicle=None):
+        """Contratos activos o en borrador que solapan con el periodo del contrato.
+
+        Con sudo: un contrato de la otra compañía también ocupa el vehículo,
+        aunque el usuario no la tenga activa en el selector de compañías.
+        """
+        self.ensure_one()
+        contract = self.contract_id
+        domain = [
+            ('status', 'in', ['a_draft', 'b_in_progress']),
+            ('id', '!=', contract.id),
+            '|',
+            '&', ('start_date', '<=', contract.end_date),
+                 ('end_date', '>=', contract.start_date),
+            '&', ('start_date', '<=', contract.start_date),
+                 ('end_date', '>=', contract.end_date),
+        ]
+        if vehicle:
+            domain.insert(0, ('vehicle_id', '=', vehicle.id))
+        else:
+            domain.insert(0, ('vehicle_id', '!=', False))
+        return self.env['vehicle.contract'].sudo().search(domain)
+
     @api.depends('contract_id')
     def _compute_available_vehicles(self):
         """Calcular vehículos disponibles en el período del contrato"""
@@ -192,28 +215,12 @@ class VehicleSubstitutionWizard(models.TransientModel):
             available_ids = []
             
             if wizard.contract_id and wizard.contract_id.start_date and wizard.contract_id.end_date:
-                # Obtener todos los vehículos operacionales
-                all_vehicles = self.env['fleet.vehicle'].search([
+                busy_ids = wizard._overlapping_contracts().mapped('vehicle_id').ids
+                available_ids = self.env['fleet.vehicle'].search([
                     ('status', '=', 'available'),
-                    ('id', '!=', wizard.old_vehicle_id.id if wizard.old_vehicle_id else False)
-                ])
-                
-                # Filtrar los que NO tienen contratos superpuestos en el período
-                for vehicle in all_vehicles:
-                    overlapping_contracts = self.env['vehicle.contract'].search([
-                        ('vehicle_id', '=', vehicle.id),
-                        ('status', 'in', ['a_draft', 'b_in_progress']),  # Contratos activos o en borrador
-                        ('id', '!=', wizard.contract_id.id),  # Excluir el contrato actual
-                        '|',
-                        '&', ('start_date', '<=', wizard.contract_id.end_date),
-                             ('end_date', '>=', wizard.contract_id.start_date),
-                        '&', ('start_date', '<=', wizard.contract_id.start_date),
-                             ('end_date', '>=', wizard.contract_id.end_date),
-                    ])
-                    
-                    # Si NO hay contratos superpuestos, el vehículo está disponible
-                    if not overlapping_contracts:
-                        available_ids.append(vehicle.id)
+                    ('id', '!=', wizard.old_vehicle_id.id if wizard.old_vehicle_id else False),
+                    ('id', 'not in', busy_ids),
+                ]).ids
             
             wizard.available_vehicle_ids = [(6, 0, available_ids)]
     
@@ -418,16 +425,7 @@ class VehicleSubstitutionWizard(models.TransientModel):
             raise UserError(_('El vehículo sustituto seleccionado no está disponible'))
         
         # Verificar que el vehículo NO tenga contratos superpuestos
-        overlapping_contracts = self.env['vehicle.contract'].search([
-            ('vehicle_id', '=', self.new_vehicle_id.id),
-            ('status', 'in', ['a_draft', 'b_in_progress']),
-            ('id', '!=', self.contract_id.id),
-            '|',
-            '&', ('start_date', '<=', self.contract_id.end_date),
-                 ('end_date', '>=', self.contract_id.start_date),
-            '&', ('start_date', '<=', self.contract_id.start_date),
-                 ('end_date', '>=', self.contract_id.end_date),
-        ])
+        overlapping_contracts = self._overlapping_contracts(self.new_vehicle_id)
         
         if overlapping_contracts:
             conflict_contracts = ', '.join(overlapping_contracts.mapped('reference_no'))

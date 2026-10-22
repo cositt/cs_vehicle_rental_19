@@ -109,3 +109,39 @@ class TestContractOffersEveryCompany(CrossCompanyCase):
 
     def test_busy_vehicle_of_the_other_company_is_not_offered(self):
         self.assertNotIn(self.busy_sister_vehicle.id, self._draft_contract().available_vehicle_ids.ids)
+
+
+@tagged('post_install', '-at_install', 'vehicle_cross_company')
+class TestSubstitutionAcrossCompanies(CrossCompanyCase):
+    """A Sunset contract can swap its vehicle for one of the other company."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.sunset_contract = cls.env['vehicle.contract'].create({
+            'customer_id': cls.customer.id, 'vehicle_id': cls.spare_vehicle.id,
+            'rent_type': 'days', 'rent': 50.0, 'company_id': cls.sunset.id,
+            'start_date': cls.start, 'end_date': cls.start + timedelta(days=3),
+        })
+        cls.sunset_contract.write({'status': 'b_in_progress'})
+
+    def _wizard(self, vehicle):
+        return self._as_sunset_only('vehicle.substitution.wizard').create({
+            'contract_id': self.sunset_contract.id,
+            'new_vehicle_id': vehicle.id,
+            'step': '4_confirm',
+        })
+
+    def test_odometer_of_the_other_company_can_be_recorded(self):
+        odometer = self._as_sunset_only('fleet.vehicle.odometer').create({
+            'vehicle_id': self.sister_vehicle.id, 'value': 1234.0})
+        self.assertEqual(odometer.vehicle_id, self.sister_vehicle)
+
+    def test_vehicle_busy_in_the_other_company_is_not_offered(self):
+        wizard = self._wizard(self.sister_vehicle)
+        self.assertIn(self.sister_vehicle, wizard.available_vehicle_ids)
+        self.assertNotIn(self.busy_sister_vehicle, wizard.available_vehicle_ids)
+
+    def test_substitution_by_a_vehicle_of_the_other_company(self):
+        self._wizard(self.sister_vehicle).action_confirm_substitution()
+        self.assertEqual(self.sunset_contract.vehicle_id, self.sister_vehicle)
