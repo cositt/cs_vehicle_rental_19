@@ -6,13 +6,14 @@
                 <!-- El membrete sale de la compañía del contrato, no de la activa del usuario -->
                 <t t-set="o" t-value="contract"/>
                 <t t-set="company" t-value="contract.company_id.sudo()"/>
-                <!-- FLEXIRENT se cobra por mensualidades de 30 días: cuota = tarifa diaria x 30 -->
+                <!-- FLEXIRENT: rent es la cuota por 30 días; meses completos + días sueltos / 30 -->
                 <t t-set="is_flexirent" t-value="contract.pricing_type == 'flexirent' and contract.start_date and contract.end_date"/>
                 <t t-if="is_flexirent">
-                    <t t-set="fx_start" t-value="context_timestamp(contract.start_date).date()"/>
-                    <t t-set="fx_span" t-value="relativedelta(context_timestamp(contract.end_date).date(), fx_start)"/>
-                    <t t-set="fx_months" t-value="fx_span.years * 12 + fx_span.months + (1 if fx_span.days &gt; 0 else 0)"/>
-                    <t t-set="fx_fee" t-value="round(contract.rent * 30)"/>
+                    <t t-set="fx_span" t-value="contract._flexirent_span()"/>
+                    <t t-set="fx_months" t-value="fx_span[0]"/>
+                    <t t-set="fx_days" t-value="fx_span[1]"/>
+                    <t t-set="fx_fee" t-value="contract.rent"/>
+                    <t t-set="fx_plan" t-value="contract._installment_plan() if contract.payment_type else []"/>
                 </t>
                 <t t-call="web.external_layout">
                     <div class="page">
@@ -392,7 +393,7 @@
                                     <span class="label">Mensualidades:</span>
                                 </td>
                                 <td class="value">
-                                    <t t-esc="fx_months"/>
+                                    <t t-esc="fx_months"/><t t-if="fx_days"> y <t t-esc="fx_days"/> días</t>
                                 </td>
                                 <td>
                                     <span class="label">Si Hay Depósito:</span>
@@ -407,7 +408,7 @@
                                     <span class="label">Total Días:</span>
                                 </td>
                                 <td class="value">
-                                    <t t-esc="fx_months * 30"/>
+                                    <t t-esc="fx_months * 30 + fx_days"/>
                                 </td>
                                 <td>
                                     <span class="label">Depósito:</span>
@@ -556,16 +557,17 @@
                         </table>
                         <p style="page-break-after: always;"/>
 
-                        <!-- Calendario previsto de cuotas FLEXIRENT, mientras no existan cuotas generadas -->
-                        <t t-if="is_flexirent and fx_months and not contract.vehicle_payment_option_ids">
+                        <!-- Calendario previsto de cuotas FLEXIRENT, mientras no existan cuotas generadas.
+                             Sale del mismo cálculo que genera las cuotas. -->
+                        <t t-if="is_flexirent and fx_plan and not contract.vehicle_payment_option_ids">
                             <h6 class="main-heading-record">
                                 <i class="fa fa-calendar me-1 ms-2" aria-hidden="true"/>
-                                Calendario de Cuotas Mensuales
+                                Calendario de Cuotas
                             </h6>
                             <p style="font-size: 12px;" class="ms-2">
-                                <t t-esc="fx_months"/> cuotas mensuales de
+                                <t t-esc="len(fx_plan)"/> cuotas, cuota mensual de
                                 <span t-esc="fx_fee" t-options="{'widget': 'monetary', 'display_currency': contract.currency_id}"/>
-                                (IVA incluido), con cobro fraccionado al inicio de cada mensualidad.
+                                (IVA incluido), con cobro al inicio de cada periodo.
                             </p>
                             <table class="table table-borderless table-sm" style="font-size: 12px;">
                                 <tr style="border-bottom: 1px solid black; font-size: 13px;">
@@ -574,14 +576,13 @@
                                     <td style="padding: 2px;"><strong>Periodo</strong></td>
                                     <td style="padding: 2px; text-align: right;"><strong>Importe</strong></td>
                                 </tr>
-                                <tr t-foreach="range(fx_months)" t-as="fx_i" style="border-bottom: 1px solid #cdc2c2;">
-                                    <t t-set="fx_from" t-value="fx_start + relativedelta(months=fx_i)"/>
-                                    <t t-set="fx_to" t-value="fx_start + relativedelta(months=fx_i + 1, days=-1)"/>
-                                    <td style="padding: 2px;"><t t-esc="fx_i + 1"/> / <t t-esc="fx_months"/></td>
-                                    <td style="padding: 2px;"><t t-esc="fx_from.strftime('%d/%m/%Y')"/></td>
-                                    <td style="padding: 2px;"><t t-esc="fx_from.strftime('%d/%m/%Y')"/> – <t t-esc="fx_to.strftime('%d/%m/%Y')"/></td>
+                                <tr t-foreach="fx_plan" t-as="fx_row" style="border-bottom: 1px solid #cdc2c2;">
+                                    <t t-set="fx_to" t-value="(fx_plan[fx_row_index + 1]['payment_date'] if not fx_row_last else contract.end_date.date()) - relativedelta(days=1)"/>
+                                    <td style="padding: 2px;"><t t-esc="fx_row_index + 1"/> / <t t-esc="len(fx_plan)"/></td>
+                                    <td style="padding: 2px;"><t t-esc="fx_row['payment_date'].strftime('%d/%m/%Y')"/></td>
+                                    <td style="padding: 2px;"><t t-esc="fx_row['payment_date'].strftime('%d/%m/%Y')"/> – <t t-esc="fx_to.strftime('%d/%m/%Y')"/></td>
                                     <td style="padding: 2px; text-align: right;">
-                                        <span t-esc="fx_fee" t-options="{'widget': 'monetary', 'display_currency': contract.currency_id}"/>
+                                        <span t-esc="fx_row['payment_amount']" t-options="{'widget': 'monetary', 'display_currency': contract.currency_id}"/>
                                     </td>
                                 </tr>
                             </table>
