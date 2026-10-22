@@ -27,6 +27,7 @@
                                    readonly="multi_booking_id"
                                    options="{'no_create': True, 'no_create_edit': True}"
                                    string="Compañía"/>
+                            <field name="rental_days"/>
                             <field name="end_date" required="1"/>
                         </group>
                     </group>

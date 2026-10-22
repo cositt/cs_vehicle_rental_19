@@ -2,7 +2,7 @@
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 from odoo import fields, api, models, _
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from ..models.vehicle_contract import BUSY_CONTRACT_STATES
 
@@ -20,6 +20,9 @@ class RentalContractBooking(models.TransientModel):
     # Campos para seleccionar tarifa
     selected_category_id = fields.Many2one('fleet.vehicle.model.category', string="Vehicle Category")
     search_vehicle = fields.Char(string="Search Vehicle")
+    rental_days = fields.Integer(
+        string="Nº de días",
+        help="Inicio + nº de días = fecha de devolución, a la misma hora.")
     duration_range = fields.Selection(string="Duration", selection='_get_duration_options')
     km_range = fields.Selection(string="Km Range", selection='_get_km_options')
     pricing_type = fields.Selection(string="Pricing Type", selection='_get_pricing_type_options', default='standard')
@@ -36,10 +39,8 @@ class RentalContractBooking(models.TransientModel):
         help="Si se indica, el vehículo se añade como línea a la reserva múltiple.")
 
     def _get_duration_options(self):
-        """Get unique duration ranges from vehicle.pricing.rule"""
-        pricing_rules = self.env['vehicle.pricing.rule'].search([('active', '=', True)])
-        durations = list(set(pricing_rules.mapped('duration_range')))
-        return [(d, d) for d in sorted(durations)]
+        """Tramos con tarifa dada de alta, en el orden y con las etiquetas de la tarifa."""
+        return self.env['vehicle.contract']._tariff_band_options('duration_range')
 
     def _get_km_options(self):
         """Get unique km ranges from vehicle.pricing.rule"""
@@ -48,10 +49,8 @@ class RentalContractBooking(models.TransientModel):
         return [(k, k) for k in sorted(km_ranges)]
 
     def _get_pricing_type_options(self):
-        """Get unique pricing types from vehicle.pricing.rule"""
-        pricing_rules = self.env['vehicle.pricing.rule'].search([('active', '=', True)])
-        types = list(set(pricing_rules.mapped('pricing_type')))
-        return [(t, t) for t in sorted(types)]
+        """Estándar o FLEXIRENT, con las etiquetas de la tarifa."""
+        return self.env['vehicle.pricing.rule']._fields['pricing_type'].selection
 
     def _parse_duration_range(self, duration_str):
         """Parse duration string (e.g., '3-5d', '1-2d', '4h') to get min and max days"""
@@ -72,18 +71,38 @@ class RentalContractBooking(models.TransientModel):
                 return 0, 0
         return 0, 0
 
-    @api.onchange('start_date', 'duration_range')
+    @api.onchange('duration_range')
     def _onchange_set_end_date(self):
-        """Auto-fill end_date based on duration_range minimum"""
-        from datetime import timedelta
+        """Elegir un tramo propone sus días mínimos, salvo que los días ya caigan en él."""
         if not self.start_date or not self.duration_range:
             return
-        
         min_days, max_days = self._parse_duration_range(self.duration_range)
+        if min_days <= self.rental_days <= max_days:
+            return
         if min_days > 0:
-            # Set end_date to start_date + min_days
-            end_dt = self.start_date + timedelta(days=min_days)
-            self.end_date = end_dt
+            self.rental_days = min_days
+            self.end_date = self.start_date + timedelta(days=min_days)
+
+    @api.onchange('start_date', 'rental_days')
+    def _onchange_rental_days(self):
+        if self.start_date and self.rental_days > 0:
+            self.end_date = self.start_date + timedelta(days=self.rental_days)
+
+    @api.onchange('start_date', 'end_date')
+    def _onchange_end_date_days(self):
+        """Días, tramo y tipo de tarifa salen de las fechas: >29 días es FLEXIRENT."""
+        if not self.start_date or not self.end_date or self.end_date < self.start_date:
+            return
+        days = (self.end_date.date() - self.start_date.date()).days
+        self.rental_days = days
+        if days > 29:
+            self.pricing_type = 'flexirent'
+            return
+        self.pricing_type = 'standard'
+        if days > 0:
+            band = self.env['vehicle.pricing.rule']._get_duration_range_from_days(days)
+            if band in dict(self._get_duration_options()):
+                self.duration_range = band
 
     @api.depends('selected_category_id', 'duration_range', 'km_range', 'pricing_type')
     def _compute_price(self):
