@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_driver_data" model="ir.ui.view">
+        <field name="name">res.partner.form.driver.data</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Conducción" name="driver_data">
+                    <group>
+                        <group>
+                            <field name="birth_date"/>
+                            <field name="driver_license_number"/>
+                        </group>
+                        <group>
+                            <field name="driver_license_issue_date"/>
+                            <field name="driver_license_expiry_date"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
