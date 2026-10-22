@@ -925,7 +925,8 @@ class VehicleContract(models.Model):
         vuelta y disponible.
         """
         self.ensure_one()
-        overlapping = self.env['vehicle.contract'].search([
+        # De todas las compañías: un contrato de Pinveco también ocupa el coche
+        overlapping = self.env['vehicle.contract'].sudo().search([
             ('id', '!=', self._origin.id or self.id),
             ('vehicle_id', '!=', False),
             ('start_date', '<=', end_date),
@@ -954,8 +955,8 @@ class VehicleContract(models.Model):
                 ('model_id.category_id', '=', rec.vehicle_category_id.id),
                 ('id', 'not in', busy_ids),
             ]
-            if rec.company_id:
-                domain.append(('company_id', 'in', (rec.company_id.id, False)))
+            # Sunset alquila los de Pinveco: todas las compañías del usuario
+            domain.append(('company_id', 'in', self.env.user.company_ids.ids + [False]))
             rec.available_vehicle_ids = self.env['fleet.vehicle'].search(domain)
 
     @api.onchange('vehicle_id')

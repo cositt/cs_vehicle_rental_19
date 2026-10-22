@@ -12,8 +12,7 @@ from odoo.tests.common import new_test_user, tagged
 from .common import VehicleRentalCase
 
 
-@tagged('post_install', '-at_install', 'vehicle_cross_company')
-class TestCrossCompanyBooking(VehicleRentalCase):
+class CrossCompanyCase(VehicleRentalCase):
 
     @classmethod
     def setUpClass(cls):
@@ -37,6 +36,10 @@ class TestCrossCompanyBooking(VehicleRentalCase):
 
     def _as_sunset_only(self, model):
         return self.env[model].with_user(self.user).with_context(allowed_company_ids=[self.sunset.id])
+
+
+@tagged('post_install', '-at_install', 'vehicle_cross_company')
+class TestCrossCompanyBooking(CrossCompanyCase):
 
     def _wizard(self):
         wizard = self._as_sunset_only('rental.contract.booking').new({
@@ -87,3 +90,22 @@ class TestBookingWizardCarriesChoices(VehicleRentalCase):
         self.assertEqual(contract.vehicle_category_id, self.category)
         self.assertEqual(contract.km_range, '350')
         self.assertEqual(contract.rent, 75.0)
+
+
+@tagged('post_install', '-at_install', 'vehicle_cross_company')
+class TestContractOffersEveryCompany(CrossCompanyCase):
+    """The vehicle list of the contract form follows the booking assistant."""
+
+    def _draft_contract(self):
+        Contract = self._as_sunset_only('vehicle.contract')
+        return Contract.new({
+            'customer_id': self.customer.id, 'company_id': self.sunset.id,
+            'vehicle_category_id': self.category.id,
+            'start_date': self.start, 'end_date': self.start + timedelta(days=3),
+        })
+
+    def test_contract_of_sunset_offers_a_vehicle_of_the_other_company(self):
+        self.assertIn(self.sister_vehicle.id, self._draft_contract().available_vehicle_ids.ids)
+
+    def test_busy_vehicle_of_the_other_company_is_not_offered(self):
+        self.assertNotIn(self.busy_sister_vehicle.id, self._draft_contract().available_vehicle_ids.ids)
