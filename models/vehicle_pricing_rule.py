@@ -308,6 +308,19 @@ class VehiclePricingRule(models.Model):
     # MÉTODOS DE BÚSQUEDA
     # ============================================
 
+    @api.model
+    def _in_force_domain(self, on_date=None):
+        """Dominio de las tarifas vigentes en una fecha (hoy por defecto).
+
+        Las tarifas de años anteriores se cierran con valid_until, no se borran:
+        quien lea tarifas debe filtrar con esto y ordenar por valid_from desc.
+        """
+        on_date = on_date or fields.Date.today()
+        return [
+            ('valid_from', '<=', on_date),
+            '|', ('valid_until', '=', False), ('valid_until', '>=', on_date),
+        ]
+
     def find_pricing_rule(self, category_id, total_km, total_days, rental_date=None, pricing_type='standard'):
         """
         Busca la tarifa aplicable para una combinación de parámetros

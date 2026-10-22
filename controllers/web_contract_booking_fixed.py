@@ -2658,11 +2658,12 @@ class WebsiteContractBookingFixed(http.Controller):
             print(f"DEBUG: Getting valid km options for category {category_id}, duration {duration}")
 
             # Buscar todas las tarifas disponibles para esta duración
-            pricing_rules = request.env['vehicle.pricing.rule'].sudo().search([
+            Rule = request.env['vehicle.pricing.rule'].sudo()
+            pricing_rules = Rule.search([
                 ('vehicle_category_id', '=', int(category_id)),
                 ('active', '=', True),
                 ('duration_range', '=', duration)
-            ])
+            ] + Rule._in_force_domain())
 
             # Extraer opciones de kilometraje únicas
             km_options = []
@@ -2853,12 +2854,13 @@ class WebsiteContractBookingFixed(http.Controller):
             print(f"DEBUG: Getting dynamic pricing for category {category_id}, duration {duration}, km {km_range}")
 
             # Buscar tarifas en la base de datos
-            pricing_rules = request.env['vehicle.pricing.rule'].sudo().search([
+            Rule = request.env['vehicle.pricing.rule'].sudo()
+            pricing_rules = Rule.search([
                 ('vehicle_category_id', '=', int(category_id)),
                 ('active', '=', True),
                 ('duration_range', '=', duration),
                 ('km_range', '=', km_range)
-            ])
+            ] + Rule._in_force_domain(), order='valid_from desc')
 
             if pricing_rules:
                 rule = pricing_rules[0]

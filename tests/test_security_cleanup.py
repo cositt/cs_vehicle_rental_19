@@ -20,6 +20,7 @@ REMOVED_ROUTES = (
     '/rental/payment-test',
     '/rental/debug',
     '/rental/payment-form-debug',
+    '/web/rental/payment',
 )
 
 

@@ -100,7 +100,7 @@ class RentalContractBooking(models.TransientModel):
                 ('km_range', '=', record.km_range),
                 ('pricing_type', '=', record.pricing_type),
                 ('active', '=', True),
-            ], limit=1)
+            ] + self.env['vehicle.pricing.rule']._in_force_domain(), limit=1, order='valid_from desc')
             
             if pricing_rule:
                 record.calculated_price = pricing_rule.price_per_unit

@@ -8,5 +8,4 @@ from . import sunset_home_controller
 from . import sunset_contact_controller
 from . import sunset_services_controller
 from . import pinveco_home_controller
-from . import payment_gateway
 from . import rental_payment_fixed
