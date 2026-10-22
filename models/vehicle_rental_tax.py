@@ -10,9 +10,6 @@ VAT_INCLUDED_PRODUCTS = (
     'vehicle_rental.vehicle_mi_wise_rent',
     'vehicle_rental.vehicle_rent_charge',
     'vehicle_rental.vehicle_rent_extra_charge',
-    'vehicle_rental.product_insurance_basic',
-    'vehicle_rental.product_insurance_no_franchise',
-    'vehicle_rental.product_extra_km_flexirent',
 ) + tuple(f'vehicle_rental.product_rental_tipo_{code}' for code in 'acfpgmbsqez')
 
 
@@ -82,7 +79,12 @@ class ResCompany(models.Model):
 
 
 class VehicleContractTax(models.Model):
-    """Rental lines carry the VAT-included tax of the contract's company."""
+    """Rental lines carry the VAT-included tax of the contract's company.
+
+    Rent, insurance and extra km are priced with VAT included in the tariff,
+    so they all take the contract tax; other products bring their own taxes,
+    filtered by the company of the contract.
+    """
     _inherit = 'vehicle.contract'
 
     @api.model_create_multi

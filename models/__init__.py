@@ -42,3 +42,4 @@ from . import vehicle_contract_delegation
 from . import vehicle_contract_driver
 from . import vehicle_rental_tax
 from . import vehicle_deposit_conditions
+from . import vehicle_insurance_tariff

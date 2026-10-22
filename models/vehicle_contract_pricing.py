@@ -82,12 +82,12 @@ class VehicleContractPricing(models.Model):
     # ============================================
     
     insurance_type = fields.Selection([
-        ('basic', 'Seguro Básico - Franquicia 300€'),
+        ('basic', 'Seguro Básico - Franquicia 750 € + IVA'),
         ('no_franchise', 'Seguro Sin Franquicia'),
     ], string='Tipo de Seguro',
         required=True,
         default='basic',
-        help='El seguro es obligatorio. Por defecto se aplica el básico con franquicia de 300€'
+        help='El seguro es obligatorio. Por defecto se aplica el básico con franquicia de 750 € + IVA'
     )
     
     driver_special = fields.Boolean(
@@ -864,7 +864,7 @@ class VehicleContractPricing(models.Model):
         _logger.info(f"DEBUG SEGURO - Tipo: {self.insurance_type}, Producto: {insurance_product}, Precio: {insurance_price}")
         
         if insurance_product:
-            insurance_name = "Seguro Básico - Franquicia 300€" if self.insurance_type == 'basic' else "Seguro Sin Franquicia"
+            insurance_name = "Seguro Básico - Franquicia 750 € + IVA" if self.insurance_type == 'basic' else "Seguro Sin Franquicia"
             if self.driver_special:
                 insurance_name += " (Conductor Especial)"
             
@@ -873,7 +873,7 @@ class VehicleContractPricing(models.Model):
                 'name': insurance_name,
                 'quantity': self.total_days,
                 'price_unit': insurance_price,
-                'tax_ids': [(6, 0, self._taxes_for(insurance_product).ids)],
+                'tax_ids': [(6, 0, self.tax_ids.ids)],
             }
             invoice_lines.append((0, 0, insurance_line))
         else:
@@ -892,7 +892,7 @@ class VehicleContractPricing(models.Model):
                     'name': f"Kilómetros Extra - FLEXIRENT\n{self.extra_km_used:.0f} km × {self.extra_km_price_unit:.2f}€",
                     'quantity': self.extra_km_used,
                     'price_unit': self.extra_km_price_unit,
-                    'tax_ids': [(6, 0, self._taxes_for(extra_km_product).ids)],
+                    'tax_ids': [(6, 0, self.tax_ids.ids)],
                 }
                 invoice_lines.append((0, 0, extra_km_line))
         

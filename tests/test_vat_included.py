@@ -76,3 +76,15 @@ class TestVatIncluded(VehicleRentalCase):
                          'damages stay as they are')
         self.assertEqual(open_contract.tax_ids, self.tax)
         self.assertFalse(returned.tax_ids, 'closed contracts are left alone')
+
+    def test_insurance_line_carries_the_vat_included_tax(self):
+        self.company._vehicle_rental_load_insurance_pricing()
+        contract = self._create_contract(self.spare_vehicle, self.customer, status='a_draft')
+        contract.write({'payment_type': 'full_payment', 'insurance_type': 'no_franchise'})
+        contract.action_create_vehicle_payment()
+        option = contract.vehicle_payment_option_ids[0]
+        option.action_create_payment_invoice()
+        insurance = option.invoice_id.invoice_line_ids.filtered(lambda l: 'Seguro' in (l.name or ''))
+        self.assertTrue(insurance)
+        self.assertEqual(insurance.tax_ids, self.tax)
+        self.assertEqual(insurance.price_total, round(insurance.quantity * 27.0, 2))

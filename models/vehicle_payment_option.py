@@ -97,7 +97,7 @@ class VehiclePaymentOption(models.Model):
     def _insurance_lines(self, contract, share):
         if not (contract.insurance_type and contract.insurance_price_per_day > 0):
             return []
-        name = ("Seguro Básico - Franquicia 300€" if contract.insurance_type == 'basic'
+        name = ("Seguro Básico - Franquicia 750 € + IVA" if contract.insurance_type == 'basic'
                 else "Seguro Sin Franquicia")
         if contract.driver_special:
             name += " (Conductor Especial)"
@@ -107,7 +107,7 @@ class VehiclePaymentOption(models.Model):
             'name': name,
             'quantity': round((contract.total_days or 1) * share, 2),
             'price_unit': contract.insurance_price_per_day,
-            'tax_ids': [(6, 0, contract._taxes_for(product).ids)],
+            'tax_ids': [(6, 0, contract.tax_ids.ids)],
         })]
 
     def _one_off_lines(self, contract, tax):
@@ -158,5 +158,5 @@ class VehiclePaymentOption(models.Model):
                     f"{contract.extra_km_price_unit:.2f}€",
             'quantity': contract.extra_km_used,
             'price_unit': contract.extra_km_price_unit,
-            'tax_ids': [(6, 0, contract._taxes_for(product).ids)],
+            'tax_ids': [(6, 0, contract.tax_ids.ids)],
         })]

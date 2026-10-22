@@ -8,7 +8,8 @@ and logged: it needs its chart installed first.
 
 Deposit rules are loaded from the general conditions: credit card 300 EUR,
 debit card and cash 750 EUR, one rule per category and company. The test
-rules already there are corrected.
+rules already there are corrected. The no-excess insurance tariff 2026 (V3)
+is loaded per day, VAT included, by duration and driver type.
 """
 import logging
 
@@ -30,4 +31,5 @@ def migrate(cr, version):
         company._vehicle_rental_load_deposit_rules()
         _logger.info("vehicle_rental: company %s has %s deposit rules", company.name,
                      env['vehicle.deposit.rule'].search_count([('company_id', '=', company.id)]))
+        company._vehicle_rental_load_insurance_pricing()
     env.flush_all()

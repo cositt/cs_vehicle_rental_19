@@ -253,7 +253,7 @@ class VehicleContractGroup(models.Model):
                     contract.insurance_price_per_day and
                     contract.insurance_price_per_day > 0):
                 insurance_name = (
-                    "Seguro Básico - Franquicia 300€"
+                    "Seguro Básico - Franquicia 750 € + IVA"
                     if contract.insurance_type == 'basic'
                     else "Seguro Sin Franquicia")
                 if contract.driver_special:
@@ -264,7 +264,7 @@ class VehicleContractGroup(models.Model):
                     'name': f'[{vehicle_label}] {insurance_name}',
                     'quantity': contract.total_days or 1,
                     'price_unit': contract.insurance_price_per_day,
-                    'tax_ids': [(6, 0, contract._taxes_for(contract.insurance_product_id).ids)],
+                    'tax_ids': tax,
                 }
                 invoice_lines.append((0, 0, insurance_line))
 
