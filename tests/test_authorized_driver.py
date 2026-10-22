@@ -143,3 +143,17 @@ class TestDriverInContractPdf(DriverCase):
         html = self._html(self._draft())
         self.assertIn('Conductor autorizado', html)
         self.assertIn('Sin asignar', html)
+
+    def test_self_declaration_is_signed_by_the_driver(self):
+        html = self._html(self._draft(authorized_driver_id=self.driver.id))
+        declaration = html[html.index('Yo,'):][:400]
+        self.assertIn('Pedro Conductor', declaration)
+        self.assertNotIn('Construcciones Prueba SL', declaration)
+
+    def test_rent_labels_are_in_spanish(self):
+        contract = self._draft()
+        html, _type = self.env['ir.actions.report'].with_context(lang='es_ES')._render_qweb_html(
+            'vehicle_rental.vehicle_contract_report_template', contract.ids)
+        html = html.decode()
+        self.assertNotIn('Days', html)
+        self.assertIn('Total Días', html)

@@ -412,12 +412,11 @@
                                     <span t-field="contract.payment_type"/>
                                 </td>
                             </tr>
+                            <t t-set="rent_unit" t-value="dict(contract._fields['rent_type']._description_selection(contract.env)).get(contract.rent_type, '')"/>
                             <tr t-if="contract.rent">
                                 <td>
                                     <span class="label" t-if="is_flexirent">Cuota Mensual:</span>
-                                    <span class="label" t-else="">Alquiler por
-                                        <t t-esc="contract.rent_type.capitalize() if contract.rent_type else ''"/>:
-                                    </span>
+                                    <span class="label" t-else="">Precio (<t t-esc="rent_unit"/>):</span>
                                 </td>
                                 <td class="value">
                                     <t t-if="is_flexirent"><span t-esc="fx_fee" t-options="{'widget': 'monetary', 'display_currency': contract.currency_id}"/> (IVA incluido)</t>
@@ -461,9 +460,7 @@
                             </tr>
                             <tr t-if="not is_flexirent">
                                 <td>
-                                    <span class="label">Total
-                                        <t t-esc="contract.rent_type.capitalize() if contract.rent_type else ''"/>:
-                                    </span>
+                                    <span class="label">Total <t t-esc="rent_unit"/>:</span>
                                 </td>
                                 <td class="value">
                                     <span t-if="contract.rent_type in ('hour', 'days')" t-field="contract.total_days"/>
@@ -908,7 +905,7 @@
                             <tr>
                                 <td style="padding: 2px !important;">
                                     <strong>Nombre Completo:</strong>
-                                    <span t-field="contract.customer_id"/>
+                                    <span t-esc="(contract.authorized_driver_id or contract.customer_id).name"/>
                                 </td>
                             </tr>
                             <tr style="border-bottom: 2px solid black;">
@@ -920,7 +917,7 @@
                                 <td style="padding: 2px !important;">
                                     Yo,
                                     <strong>
-                                        <span t-field="contract.customer_id"/>
+                                        <span t-esc="(contract.authorized_driver_id or contract.customer_id).name"/>
                                     </strong>
                                     ,
                                     por la presente declaro que:
