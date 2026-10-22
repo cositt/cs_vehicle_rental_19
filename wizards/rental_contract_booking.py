@@ -45,7 +45,8 @@ class RentalContractBooking(models.TransientModel):
     def _get_km_options(self):
         """Get unique km ranges from vehicle.pricing.rule"""
         pricing_rules = self.env['vehicle.pricing.rule'].search([('active', '=', True)])
-        km_ranges = list(set(pricing_rules.mapped('km_range')))
+        # Las tarifas FLEXIRENT no tienen tramo de km: sin filtrar, sorted() falla con False
+        km_ranges = list(set(pricing_rules.mapped('km_range')) - {False})
         return [(k, k) for k in sorted(km_ranges)]
 
     def _get_pricing_type_options(self):
