@@ -24,3 +24,4 @@ from . import test_installments
 from . import test_delegations
 from . import test_website_delegations
 from . import test_authorized_driver
+from . import test_website_all_companies

@@ -623,10 +623,10 @@ class WebsiteContractBookingFixed(http.Controller):
                 company_id = 1  # Sunset
 
             # Ubicaciones: las delegaciones activas. Mientras no haya ninguna,
-            # las ubicaciones escritas en los vehículos de la compañía.
+            # las ubicaciones escritas en los vehículos (de todas las compañías).
             available_locations = request.env['vehicle.rental.delegation'].sudo().search([]).mapped('name')
-            if not available_locations and company_id:
-                vehicles = request.env['fleet.vehicle'].sudo().search([('company_id', '=', company_id)])
+            if not available_locations:
+                vehicles = request.env['fleet.vehicle'].sudo().search([])
                 locations_set = set()
                 for vehicle in vehicles:
                     if hasattr(vehicle, 'location') and vehicle.location:
@@ -2709,20 +2709,14 @@ class WebsiteContractBookingFixed(http.Controller):
             end_date = kw.get('end_date')
             location = kw.get('location', '').strip()
 
-            # Detectar la compañía según el dominio
-            current_domain = request.httprequest.headers.get('X-Forwarded-Host', request.httprequest.host)
-            is_pinveco = 'pinveco' in current_domain.lower()
-            company_id = 2 if is_pinveco else 1  # Pinveco=2, Sunset=1
-
-            # Log de parámetros recibidos
-            _logger.warning(f"GET_AVAILABLE_VEHICLES: category_id={category_id}, start_date={start_date}, end_date={end_date}, location='{location}', company_id={company_id}")
+            # Las dos webs ofrecen los vehículos de todas las compañías
+            _logger.warning(f"GET_AVAILABLE_VEHICLES: category_id={category_id}, start_date={start_date}, end_date={end_date}, location='{location}'")
 
             # 1. TOTAL: Buscar todos los vehículos en la categoría con status='available'
             total_domain = [
                 '|',
                 ('category_id', '=', category_id),
                 ('model_id.category_id', '=', category_id),
-                ('company_id', '=', company_id),
                 ('status', '=', 'available')
             ]
             
@@ -2766,7 +2760,7 @@ class WebsiteContractBookingFixed(http.Controller):
                     end_dt = datetime.strptime(end_date, '%Y-%m-%d')
                     
                     overlapping_contracts = request.env['vehicle.contract'].sudo().search([
-                        ('company_id', '=', company_id),
+                        ('vehicle_id', 'in', total_vehicles.ids),
                         ('status', 'in', ['a_draft', 'b_in_progress']),
                         ('start_date', '<=', end_dt),
                         ('end_date', '>=', start_dt),
@@ -2794,7 +2788,6 @@ class WebsiteContractBookingFixed(http.Controller):
                         ('type', '=', 'opportunity'),
                         ('start_date', '<=', end_dt),
                         ('end_date', '>=', start_dt),
-                        ('company_id', '=', company_id),
                         ('contract_id', '=', False),  # ya convertido a contrato no reserva slot
                         ('probability', '<', 100),  # ganadas (100) no reservan: ya tienen contrato o están cerradas
                     ]
