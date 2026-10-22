@@ -35,11 +35,3 @@ class SunsetHomeController(http.Controller):
     @http.route('/sunset/seguros', type='http', auth='public', website=True)
     def sunset_seguros(self, **kw):
         return request.render('vehicle_rental.sunset_home_basic', {})
-
-    @http.route('/test/flota', type='http', auth='public', website=True)
-    def test_fleet(self, **kw):
-        return request.render('vehicle_rental.sunset_fleet_page', {})
-
-    @http.route('/simple/flota', type='http', auth='public', website=True)
-    def simple_fleet(self, **kw):
-        return request.render('vehicle_rental.sunset_fleet_page', {})

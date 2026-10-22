@@ -238,6 +238,7 @@ class RentalPaymentController(http.Controller):
             }
             
             payment_tx = request.env['payment.transaction'].sudo().create(tx_vals)
+            request.session['rental_tx_id'] = payment_tx.id
             _logger.info(f"RENTAL_PAYMENT: Created transaction ID {payment_tx.id} with reference {order_number}, amount={total_with_deposit}EUR")
             
             merchant_code = redsys_provider.redsys_merchant_code
@@ -352,132 +353,6 @@ class RentalPaymentController(http.Controller):
             _logger.error(f"ERROR en rental_payment: {str(e)}", exc_info=True)
             return f"Error: {str(e)}"
     
-    @http.route('/rental/success', auth='public', website=True, type='http', methods=['GET', 'POST'])
-    def rental_payment_success(self, **kw):
-        try:
-            _logger.info(f"RENTAL_PAYMENT SUCCESS: Parametros recibidos = {kw}")
-            booking_data = request.session.get('booking_data')
-            # Si la sesión se perdió al volver de Redsys, usar booking_data de la última transacción
-            if not booking_data:
-                payment_tx = request.env['payment.transaction'].sudo().search([
-                    ('provider_code', '=', 'redsys'),
-                    ('booking_created', '=', False),
-                ], limit=1, order='create_date desc')
-                if payment_tx and getattr(payment_tx, 'booking_data_json', None):
-                    try:
-                        booking_data = json.loads(payment_tx.booking_data_json)
-                        _logger.info(f"RENTAL_PAYMENT SUCCESS: Booking data tomado de TX {payment_tx.id} (sesión vacía)")
-                        if booking_data:
-                            payment_tx._create_lead_from_payment(booking_data)
-                            payment_tx.booking_created = True
-                            _logger.info(f"RENTAL_PAYMENT SUCCESS: Lead creado vía _create_lead_from_payment TX:{payment_tx.id}")
-                    except Exception as e:
-                        _logger.warning(f"RENTAL_PAYMENT SUCCESS: Error con booking_data_json o _create_lead_from_payment: {e}")
-                    booking_data = None  # para no entrar al bloque de abajo y duplicar lead
-            if booking_data:
-                try:
-                    # Crear lead automáticamente desde los datos de booking
-                    customer_dni_exp = booking_data.get('customer_dni_expiry_date')
-                    if customer_dni_exp and len(customer_dni_exp) == 7:
-                        customer_dni_exp = customer_dni_exp + '-01'
-                    lead_vals = {
-                        'name': f"Reserva: {booking_data.get('customer_name', 'N/A')} ({booking_data.get('start_date', 'N/A')})",
-                        'partner_name': booking_data.get('customer_name', ''),
-                        'email_from': booking_data.get('customer_email', ''),
-                        'phone': booking_data.get('customer_phone', ''),
-                        'description': f"""
-Reserva de vehículo completada:
-- Categoría: {booking_data.get('category_id', 'N/A')}
-- Fechas: {booking_data.get('start_date', 'N/A')} a {booking_data.get('end_date', 'N/A')}
-- Ubicación: {booking_data.get('location', 'N/A')}
-- Dirección: {booking_data.get('street', '')} {booking_data.get('street2', '') or ''}, {booking_data.get('zip', '')} {booking_data.get('city', '')}
-- DNI: {booking_data.get('customer_dni', 'N/A')} (exp: {booking_data.get('customer_dni_expiry_date', 'N/A')})
-- Carnet conducir: {booking_data.get('driver_license_number', 'N/A')} (exped: {booking_data.get('driver_license_issue_date', 'N/A')} - cad: {booking_data.get('driver_license_expiry_date', 'N/A')})
-- Fecha nacimiento: {booking_data.get('birth_date', 'N/A')}
-- Precio alquiler: {booking_data.get('total_price', 0)}€
-- Depósito: {booking_data.get('deposit_amount', 0)}€
-- Total pagado: {booking_data.get('total_with_deposit', 0)}€
-- Tipo tarjeta: {booking_data.get('card_type', 'N/A')}
-                        """,
-                        'type': 'opportunity',
-                        'start_date': booking_data.get('start_date') or False,
-                        'end_date': booking_data.get('end_date') or False,
-                        'selected_category_id': int(booking_data.get('category_id')) if booking_data.get('category_id') else False,
-                        'customer_dni': booking_data.get('customer_dni') or False,
-                        'customer_dni_expiry_date': customer_dni_exp or False,
-                        'customer_address': ', '.join(filter(None, [booking_data.get('street'), booking_data.get('city'), booking_data.get('zip')])) or False,
-                        'driver_license_number': booking_data.get('driver_license_number') or False,
-                        'driver_license_issue_date': booking_data.get('driver_license_issue_date') or False,
-                        'driver_license_expiry_date': booking_data.get('driver_license_expiry_date') or False,
-                        'birth_date': booking_data.get('birth_date') or False,
-                        'location': booking_data.get('location') or False,
-                        'start_time': booking_data.get('start_time') or False,
-                        'end_time': booking_data.get('end_time') or False,
-                    }
-                    
-                    lead = request.env['crm.lead'].sudo().create(lead_vals)
-                    _logger.info(f"RENTAL_PAYMENT SUCCESS: Lead creado exitosamente - ID {lead.id}")
-                    
-                except Exception as e:
-                    _logger.warning(f"RENTAL_PAYMENT SUCCESS: Error creando lead: {e}")
-                    # Continuar incluso si falla la creación del lead
-            
-            success_html = """
-            <html>
-                <head>
-                    <title>Pago Exitoso</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-                        .success { color: green; font-size: 24px; }
-                        .info { margin-top: 20px; }
-                    </style>
-                </head>
-                <body>
-                    <div class="success">OK Pago realizado correctamente</div>
-                    <div class="info">
-                        <p>Tu reserva ha sido procesada exitosamente.</p>
-                        <p>Pronto recibiras un correo de confirmacion.</p>
-                        <a href="/">Volver a inicio</a>
-                    </div>
-                </body>
-            </html>
-            """
-            
-            return success_html
-        except Exception as e:
-            _logger.error(f"ERROR en rental_payment_success: {str(e)}", exc_info=True)
-            return f"Error: {str(e)}"
-    
-    @http.route('/rental/error', auth='public', website=True, type='http', methods=['GET', 'POST'])
-    def rental_payment_error(self, **kw):
-        try:
-            _logger.error(f"RENTAL_PAYMENT ERROR: Parametros de error recibidos = {kw}")
-            
-            error_html = """
-            <html>
-                <head>
-                    <title>Pago Cancelado</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-                        .error { color: red; font-size: 24px; }
-                        .info { margin-top: 20px; }
-                    </style>
-                </head>
-                <body>
-                    <div class="error">X El pago ha sido cancelado o ha fallado</div>
-                    <div class="info">
-                        <p>Puedes intentar de nuevo.</p>
-                        <a href="/web/booking-enquiry">Volver a reservar</a>
-                    </div>
-                </body>
-            </html>
-            """
-            
-            return error_html
-        except Exception as e:
-            _logger.error(f"ERROR en rental_payment_error: {str(e)}", exc_info=True)
-            return f"Error: {str(e)}"
-
     @http.route('/rental/validate-bin', auth='public', type='http', methods=['POST'], csrf=False)
     def validate_bin(self):
         """Valida un BIN de tarjeta usando binlist.net (5 solicitudes/hora) con cache indefinido"""
