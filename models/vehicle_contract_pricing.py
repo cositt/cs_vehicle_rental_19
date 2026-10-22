@@ -4,8 +4,14 @@
 
 from datetime import timedelta
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
+
+# Campos que cambian la tarifa que corresponde al contrato
+PRICING_FIELDS = {'vehicle_id', 'start_date', 'end_date', 'pricing_type', 'km_range',
+                  'duration_range', 'flexirent_km_package', 'total_km'}
 
 
 class VehicleContractPricing(models.Model):
@@ -171,6 +177,20 @@ class VehicleContractPricing(models.Model):
         string='Km Incluidos (FLEXIRENT)',
         help='Kilómetros incluidos en el paquete FLEXIRENT'
     )
+
+    flexirent_km_package = fields.Selection(
+        [('3000', '3.000 km / mes'), ('5000', '5.000 km / mes'), ('7500', '7.500 km / mes')],
+        string='Paquete de km',
+        default='3000',
+        help='Kilómetros incluidos por cada 30 días. Decide la cuota FLEXIRENT; '
+             'los km de más se cobran aparte.')
+
+    flexirent_months = fields.Float(
+        string='Mensualidades',
+        compute='_compute_flexirent_months',
+        digits=(16, 4),
+        help='Meses completos del contrato más los días sueltos / 30. '
+             'Total del alquiler = cuota mensual x mensualidades.')
     
     extra_km_used = fields.Float(
         string='Km Extra Utilizados',
@@ -327,6 +347,65 @@ class VehicleContractPricing(models.Model):
         if not self.needs_flexirent and self.pricing_type == 'flexirent':
             self.pricing_type = 'standard'
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._apply_tariff()
+        return records
+
+    def write(self, vals):
+        result = super().write(vals)
+        if PRICING_FIELDS.intersection(vals):
+            self._apply_tariff()
+        return result
+
+    def _apply_tariff(self):
+        """Recalcula ya la tarifa: es su cálculo el que pone la cuota en `rent`.
+
+        Al ser perezoso, quien leyera `rent` o el total justo después de
+        guardar vería todavía la tarifa anterior.
+        """
+        self.mapped('calculated_rent')
+
+    def _flexirent_span(self):
+        """(meses completos, días sueltos) entre recogida y devolución."""
+        self.ensure_one()
+        if not self.start_date or not self.end_date or self.end_date < self.start_date:
+            return 0, 0
+        span = relativedelta(self.end_date.date(), self.start_date.date())
+        return span.years * 12 + span.months, span.days
+
+    @api.depends('pricing_type', 'start_date', 'end_date')
+    def _compute_flexirent_months(self):
+        for record in self:
+            if record.pricing_type != 'flexirent':
+                record.flexirent_months = 0.0
+                continue
+            months, days = record._flexirent_span()
+            record.flexirent_months = months + days / 30
+
+    def _rental_charge(self):
+        """Importe del alquiler sin extras: FLEXIRENT por mensualidades, resto por unidades."""
+        self.ensure_one()
+        if self.pricing_type == 'flexirent':
+            # Desde meses y días exactos: flexirent_months va redondeado a 4 decimales
+            months, days = self._flexirent_span()
+            return round(self.rent * months + self.rent * days / 30, 2)
+        return (self.rent * self.total_days) if self.rent and self.total_days else 0.0
+
+    def _find_flexirent_rule(self):
+        """Tarifa FLEXIRENT de la categoría para el paquete de km elegido."""
+        self.ensure_one()
+        rental_date = (self.start_date.date() if self.start_date
+                       else fields.Date.today())
+        return self.env['vehicle.pricing.rule'].search([
+            ('vehicle_category_id', '=', self.vehicle_id.category_id.id),
+            ('pricing_type', '=', 'flexirent'),
+            ('flexirent_km_total', '=', int(self.flexirent_km_package or 3000)),
+            ('active', '=', True),
+        ] + self.env['vehicle.pricing.rule']._in_force_domain(rental_date),
+            limit=1, order='valid_from desc')
+
     def _find_rule_by_bands(self):
         """Tarifa que corresponde a los tramos elegidos en el contrato."""
         self.ensure_one()
@@ -345,7 +424,8 @@ class VehicleContractPricing(models.Model):
         ], limit=1, order='valid_from desc')
 
     @api.depends('vehicle_id', 'vehicle_id.category_id', 'total_km', 'total_days',
-                 'start_date', 'pricing_type', 'km_range', 'duration_range')
+                 'start_date', 'pricing_type', 'km_range', 'duration_range',
+                 'flexirent_km_package')
     def _compute_rent_from_pricing_rules(self):
         """Calcula automáticamente el precio basándose en las reglas de tarificación"""
         for record in self:
@@ -371,8 +451,12 @@ class VehicleContractPricing(models.Model):
             # no cambiaba el importe.
             # Los tramos elegidos mandan, igual que en el asistente de reserva.
             # Si no se han elegido todavía, se deducen de km y días.
-            pricing_rule = record._find_rule_by_bands()
-            if not pricing_rule:
+            # FLEXIRENT: cuota por 30 días según el paquete de km elegido.
+            if record.pricing_type == 'flexirent':
+                pricing_rule = record._find_flexirent_rule()
+            else:
+                pricing_rule = record._find_rule_by_bands()
+            if not pricing_rule and record.pricing_type != 'flexirent':
                 pricing_rule = self.env['vehicle.pricing.rule'].find_pricing_rule(
                     category_id=record.vehicle_id.category_id.id,
                     total_km=record.total_km,
@@ -391,9 +475,12 @@ class VehicleContractPricing(models.Model):
                 # La tarifa cobrada sigue al tramo mientras nadie la haya
                 # cambiado a mano. Si se pactó un precio distinto (y por eso hay
                 # motivo de descuento), ampliar el contrato no lo pisa.
+                # En FLEXIRENT sin tarifa previa, lo que hubiera era un precio
+                # por día puesto a mano: la cuota mensual lo sustituye.
                 rate_was_automatic = (
-                    previous_calculated
-                    and abs(record.rent - previous_calculated) < 0.01
+                    (previous_calculated
+                     and abs(record.rent - previous_calculated) < 0.01)
+                    or (record.pricing_type == 'flexirent' and not previous_calculated)
                 )
                 if not record.rent or rate_was_automatic:
                     record.rent = pricing_rule.price_per_unit
@@ -428,14 +515,19 @@ class VehicleContractPricing(models.Model):
             record.calculated_rent_without_vat = record.calculated_rent / 1.21 if record.calculated_rent else 0.0
     
     @api.depends('vehicle_id', 'vehicle_id.category_id', 'total_km', 'total_days',
-                 'start_date', 'km_range', 'duration_range')
+                 'start_date', 'km_range', 'duration_range', 'pricing_type',
+                 'flexirent_km_package')
     def _compute_applied_pricing_rule(self):
         """Guarda referencia a la tarifa aplicada"""
         for record in self:
             if not record.vehicle_id or not record.vehicle_id.category_id:
                 record.applied_pricing_rule_id = False
                 continue
-            
+
+            if record.pricing_type == 'flexirent':
+                record.applied_pricing_rule_id = record._find_flexirent_rule().id or False
+                continue
+
             if not record.total_km or not record.total_days:
                 record.applied_pricing_rule_id = False
                 continue
@@ -544,12 +636,13 @@ class VehicleContractPricing(models.Model):
     # MÉTODOS COMPUTADOS - KM EXTRA
     # ============================================
     
-    @api.depends('is_flexirent', 'flexirent_km_included', 'total_km')
+    @api.depends('is_flexirent', 'flexirent_km_included', 'total_km', 'flexirent_months')
     def _compute_extra_km_used(self):
-        """Calcula los km extra utilizados en FLEXIRENT"""
+        """Km por encima del paquete: km/mes incluidos x mensualidades."""
         for record in self:
             if record.is_flexirent and record.flexirent_km_included:
-                extra = record.total_km - record.flexirent_km_included
+                included = record.flexirent_km_included * record.flexirent_months
+                extra = round(record.total_km - included, 2)
                 record.extra_km_used = extra if extra > 0 else 0.0
             else:
                 record.extra_km_used = 0.0
@@ -564,12 +657,11 @@ class VehicleContractPricing(models.Model):
     # MÉTODOS COMPUTADOS - TOTALES
     # ============================================
     
-    @api.depends('rent', 'total_days', 'extra_km_cost')
+    @api.depends('rent', 'total_days', 'extra_km_cost', 'pricing_type', 'flexirent_months')
     def _compute_subtotal_vehicle_rent(self):
         """Calcula el subtotal del alquiler del vehículo (con km extra si aplica)"""
         for record in self:
-            base_rent = (record.rent * record.total_days) if record.rent and record.total_days else 0.0
-            record.subtotal_vehicle_rent = base_rent + record.extra_km_cost
+            record.subtotal_vehicle_rent = record._rental_charge() + record.extra_km_cost
     
     @api.depends('subtotal_vehicle_rent')
     def _compute_subtotal_vehicle_rent_without_vat(self):
@@ -742,9 +834,13 @@ class VehicleContractPricing(models.Model):
                     f"Fecha recogida: {recogida}\n"
                     f"Fecha entrega: {entrega}\n"
                     f"Período: {(self.start_date.strftime('%d/%m/%Y') if self.start_date else '')} - {(self.end_date.strftime('%d/%m/%Y') if self.end_date else '')}\n"
-                    f"Días: {self.total_days:.0f} | Km: {self.total_km:.0f}",
-            'quantity': self.total_days,
-            'price_unit': self.rent,
+                    + (f"FLEXIRENT: {self.flexirent_months:g} mensualidades | Km: {self.total_km:.0f}"
+                       if self.pricing_type == 'flexirent'
+                       else f"Días: {self.total_days:.0f} | Km: {self.total_km:.0f}"),
+            # FLEXIRENT va en una línea por el total: las mensualidades con
+            # decimales no caben en la precisión de la cantidad.
+            'quantity': 1 if self.pricing_type == 'flexirent' else self.total_days,
+            'price_unit': self._rental_charge() if self.pricing_type == 'flexirent' else self.rent,
             'tax_ids': [(6, 0, self.pricing_product_id.taxes_id.ids)],
         }
         invoice_lines.append((0, 0, vehicle_line))

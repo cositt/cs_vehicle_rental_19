@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
-import calendar
-from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from odoo.exceptions import ValidationError, UserError
 import base64
@@ -12,6 +10,15 @@ from odoo import models, fields, api, _
 # Estados en los que el contrato retiene el vehículo. Devuelto y cancelado no
 # entran: en ambos casos el coche ya está de vuelta y puede volver a alquilarse.
 BUSY_CONTRACT_STATES = ('a_draft', 'b_in_progress')
+
+# payment_type -> (days, months) per instalment period
+INSTALLMENT_PERIODS = {
+    'daily': (1, 0),
+    'weekly': (7, 0),
+    'monthly': (0, 1),
+    'quarterly': (0, 3),
+    'yearly': (0, 12),
+}
 
 
 class RentalVehicleImage(models.Model):
@@ -1068,11 +1075,18 @@ class VehicleContract(models.Model):
 
     @api.depends('total_vehicle_rent', 'rent_type', 'rent', 'total_days', 'driver_charge',
                  'total_km',
-                 'driver_charge_type', 'total_mi')
+                 'driver_charge_type', 'total_mi', 'pricing_type', 'flexirent_months')
     def _compute_total_vehicle_rent(self):
         """Compute total vehicle rent"""
         for rec in self:
             total_vehicle_rent = 0.0
+            # FLEXIRENT: rent is the fee per 30 days, charged per monthly period
+            if rec.pricing_type == 'flexirent':
+                total_vehicle_rent = rec._rental_charge()
+                if rec.driver_charge_type == 'excluding':
+                    total_vehicle_rent += rec.driver_charge
+                rec.total_vehicle_rent = round(total_vehicle_rent, 2)
+                continue
             # Calculate rent based on rent type
             rent_mapping = {
                 'days': rec.total_days,
@@ -1221,162 +1235,56 @@ class VehicleContract(models.Model):
                     'de crear la cuota.',
                     rec.reference_no,
                 ))
-            # Calculate time differences
-            if rec.end_date and rec.start_date:
-                days_diff = rec.end_date - rec.start_date
-                diff = relativedelta(rec.end_date, rec.start_date)
-                total_days = days_diff.days
-                total_months = (diff.years * 12) + diff.months
-                total_weeks = total_days // 7
-                quarter = (
-                        (rec.end_date.year - rec.start_date.year) * 12
-                        + rec.end_date.month - rec.start_date.month
-                )
-                total_quarters = quarter // 3
-                year_diff = relativedelta(rec.end_date, rec.start_date)
-                total_years = year_diff.years + year_diff.months / 12 + year_diff.days / 365
-                amount = self.total_vehicle_rent
-                # Create payment options based on the payment type
-                if self.payment_type == 'full_payment':
-                    payment_data = {
-                        'invoice_item_id': self.invoice_item_id.id,
-                        'name': 'Full Payment Invoice',
-                        'payment_date': fields.Date.today(),
-                        'payment_amount': amount,
-                        'vehicle_contract_id': self.id,
-                    }
-                    self.env['vehicle.payment.option'].create(payment_data)
-                elif self.payment_type == 'daily':
-                    day_amount = amount / total_days if total_days else 0
-                    invoice_date = self.start_date.date()
-                    for i in range(total_days):
-                        payment_data = {
-                            'invoice_item_id': self.invoice_item_id.id,
-                            'name': f'Installment {i + 1}',
-                            'payment_date': invoice_date,
-                            'payment_amount': day_amount,
-                            'vehicle_contract_id': self.id,
-                        }
-                        self.env['vehicle.payment.option'].create(payment_data)
-                        invoice_date = invoice_date + relativedelta(days=1)
-                elif self.payment_type == 'monthly':
-                    day_amount = amount / total_days
-                    remain_amount = amount
-                    invoice_date = self.start_date.date()
-                    for i in range(total_months):
-                        current_month_days = \
-                            calendar.monthrange(invoice_date.year, invoice_date.month)[1]
-                        monthly_payment_amount = current_month_days * day_amount
-                        payment_data = {
-                            'invoice_item_id': self.invoice_item_id.id,
-                            'name': f'Installment {i + 1}',
-                            'payment_date': invoice_date,
-                            'payment_amount': monthly_payment_amount,
-                            'vehicle_contract_id': self.id,
-                        }
-                        self.env['vehicle.payment.option'].create(payment_data)
-                        invoice_date = invoice_date + relativedelta(months=1)
-                        remain_amount -= monthly_payment_amount
-                    # If there's remaining amount, create a last payment for the remaining balance
-                    if remain_amount > 0:
-                        payment_data = {
-                            'invoice_item_id': self.invoice_item_id.id,
-                            'name': 'Remain Days',
-                            'payment_date': invoice_date,
-                            'payment_amount': remain_amount,
-                            'vehicle_contract_id': self.id,
-                        }
-                        self.env['vehicle.payment.option'].create(payment_data)
-                elif self.payment_type == 'weekly':
-                    day_amount = amount / total_days
-                    remain_amount = amount
-                    invoice_date = self.start_date.date()
-                    for i in range(total_weeks):
-                        q_end_date = invoice_date + relativedelta(days=7)
-                        q_days = (q_end_date - invoice_date).days
-                        weekly_payment_amount = q_days * day_amount
-                        payment_data = {
-                            'invoice_item_id': self.invoice_item_id.id,
-                            'name': f'Installment {i + 1}',
-                            'payment_date': invoice_date,
-                            'payment_amount': weekly_payment_amount,
-                            'vehicle_contract_id': self.id,
-                        }
-                        self.env['vehicle.payment.option'].create(payment_data)
-                        invoice_date = invoice_date + relativedelta(days=7)
-                        remain_amount -= weekly_payment_amount
-                    # If there's remaining amount, create a last payment for the remaining balance
-                    if remain_amount > 0:
-                        payment_data = {
-                            'invoice_item_id': self.invoice_item_id.id,
-                            'name': 'Remain Days',
-                            'payment_date': invoice_date,
-                            'payment_amount': remain_amount,
-                            'vehicle_contract_id': self.id,
-                        }
-                        self.env['vehicle.payment.option'].create(payment_data)
-                elif self.payment_type == 'quarterly':
-                    day_amount = amount / total_days
-                    remain_amount = amount
-                    start_date = self.start_date
-                    for i in range(total_quarters):
-                        q_end_date = start_date + relativedelta(months=3)
-                        q_days = (q_end_date - start_date).days
-                        quarterly_payment_amount = q_days * day_amount
-                        payment_data = {
-                            'invoice_item_id': self.invoice_item_id.id,
-                            'name': f'Installment {i + 1}',
-                            'payment_date': start_date,
-                            'payment_amount': quarterly_payment_amount,
-                            'vehicle_contract_id': self.id,
-                        }
-                        self.env['vehicle.payment.option'].create(payment_data)
-                        start_date = q_end_date + relativedelta(days=1)
-                        remain_amount -= quarterly_payment_amount
-                    # If there's remaining amount, create a last payment for the remaining balance
-                    if remain_amount > 0:
-                        payment_data = {
-                            'invoice_item_id': self.invoice_item_id.id,
-                            'name': 'Remain Days',
-                            'payment_date': start_date,
-                            'payment_amount': remain_amount,
-                            'vehicle_contract_id': self.id,
-                        }
-                        self.env['vehicle.payment.option'].create(payment_data)
-                elif self.payment_type == 'yearly':
-                    day_amount = amount / total_days
-                    current_year = self.start_date.year
-                    current_year_start_date = datetime(current_year, 1, 1)
-                    current_year_end_date = datetime(current_year + 1, 1, 1)
-                    number_of_days_in_current_year = (
-                            current_year_end_date - current_year_start_date).days
-                    full_year_amount = round(number_of_days_in_current_year * day_amount, 2)
-                    remain_amount = amount
-                    start_date = self.start_date
-                    for i in range(int(total_years)):
-                        payment_data = {
-                            'invoice_item_id': self.invoice_item_id.id,
-                            'name': f'Installment {i + 1}',
-                            'payment_date': start_date,
-                            'payment_amount': full_year_amount,
-                            'vehicle_contract_id': self.id,
-                        }
-                        self.env['vehicle.payment.option'].create(payment_data)
-                        start_date = start_date + relativedelta(years=1)
-                        remain_amount -= full_year_amount
-                    # If there's remaining amount, create a last payment for the remaining balance
-                    if remain_amount > 0:
-                        payment_data = {
-                            'invoice_item_id': self.invoice_item_id.id,
-                            'name': 'Remain Days',
-                            'payment_date': start_date,
-                            'payment_amount': remain_amount,
-                            'vehicle_contract_id': self.id,
-                        }
-                        self.env['vehicle.payment.option'].create(payment_data)
-            # Mark installment creation as complete
-            self.installment_created = True
+            if rec.vehicle_payment_option_ids.filtered('invoice_id'):
+                raise UserError(_(
+                    'El contrato %s ya tiene cuotas facturadas: no se puede rehacer '
+                    'el calendario de pagos.',
+                    rec.reference_no,
+                ))
+            rec.vehicle_payment_option_ids.unlink()
+            self.env['vehicle.payment.option'].create([
+                dict(values, invoice_item_id=rec.invoice_item_id.id, vehicle_contract_id=rec.id)
+                for values in rec._installment_plan()
+            ])
+            rec.installment_created = True
         return True
+
+    def _installment_plan(self):
+        """Fixed instalments: one per period from the pick-up date, last one prorated.
+
+        Every full period costs the same (total / periods); the leftover part of
+        the last period is charged in proportion and absorbs the rounding, so the
+        schedule always adds up to the rental total. Month-based periods count
+        whole calendar months plus leftover days / 30, like FLEXIRENT.
+        """
+        self.ensure_one()
+        total = self.total_vehicle_rent
+        if self.payment_type == 'full_payment' or not (self.start_date and self.end_date):
+            return [{'name': _('Pago único'), 'payment_date': fields.Date.today(),
+                     'payment_amount': total}]
+        step_days, step_months = INSTALLMENT_PERIODS[self.payment_type]
+        start = self.start_date.date()
+        if step_days:
+            periods = (self.end_date.date() - start).days / step_days
+        else:
+            span = relativedelta(self.end_date.date(), start)
+            periods = (span.years * 12 + span.months + span.days / 30) / step_months
+        full_periods = int(periods + 1e-9)
+        if not full_periods:
+            return [{'name': _('Cuota 1/1'), 'payment_date': start, 'payment_amount': total}]
+        amount = round(total / periods, 2)
+        amounts = [amount] * full_periods
+        leftover = round(total - amount * full_periods, 2)
+        if periods - full_periods > 1e-9 and leftover > 0:
+            amounts.append(leftover)
+        else:
+            amounts[-1] = round(amounts[-1] + leftover, 2)
+        return [{
+            'name': _('Cuota %(number)s/%(count)s', number=index + 1, count=len(amounts)),
+            'payment_date': start + relativedelta(days=step_days * index,
+                                                  months=step_months * index),
+            'payment_amount': value,
+        } for index, value in enumerate(amounts)]
 
     # -----------------------
     # Acciones: imprimir / enviar contrato
@@ -1609,11 +1517,15 @@ class VehicleContract(models.Model):
 
     @api.model
     def action_create_rent_payment_invoice(self):
-        """Action create rent payment invoice"""
-        rental_contract = self.env['vehicle.contract'].sudo().search(
-            [('status', '=', 'b_in_progress')])
-        today_date = fields.Date.today()
-        for data in rental_contract:
-            for rec in data.vehicle_payment_option_ids:
-                if rec.payment_date == today_date:
-                    rec.action_create_payment_invoice()
+        """Daily cron: invoice today's instalments of contracts in progress.
+
+        Only today's: a schedule created late must not bill past months in one
+        go. An instalment already invoiced is skipped, so running twice is safe.
+        """
+        due = self.env['vehicle.payment.option'].sudo().search([
+            ('payment_date', '=', fields.Date.today()),
+            ('invoice_id', '=', False),
+            ('vehicle_contract_id.status', '=', 'b_in_progress'),
+        ])
+        for option in due:
+            option.action_create_payment_invoice()

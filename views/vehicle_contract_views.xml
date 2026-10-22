@@ -341,7 +341,23 @@
                             días y las tarifas estándar llegan hasta 29. Para larga temporada
                             corresponde una tarifa <strong>FLEXIRENT</strong>.
                         </div>
-                        <group>
+                        <!-- FLEXIRENT: cuota por cada 30 días según el paquete de km -->
+                        <group invisible="pricing_type != 'flexirent'">
+                            <group>
+                                <field name="flexirent_km_package"
+                                       readonly="invoice_id != False or installment_created != False"/>
+                                <field name="rent" string="Cuota Mensual (30 días)"
+                                       readonly="installment_created != False"/>
+                            </group>
+                            <group>
+                                <field name="flexirent_months"/>
+                                <field name="total_vehicle_rent" string="Total Renta del Vehículo"/>
+                                <field name="tax_ids" widget='many2many_tags'
+                                       options="{'no_create': True, 'no_create_edit': True}"
+                                       readonly="installment_created != False" string="Impuestos"/>
+                            </group>
+                        </group>
+                        <group invisible="pricing_type == 'flexirent'">
                             <group>
                                 <field name="rent" invisible="rent_type != 'days'"
                                        readonly="installment_created != False" string="Alquiler por Día"/>
