@@ -2,7 +2,7 @@
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 from odoo import models, fields, api, _
-from odoo.exceptions import ValidationError, UserError
+from odoo.exceptions import UserError
 from dateutil.relativedelta import relativedelta
 
 
@@ -263,14 +263,6 @@ class FleetVehicle(models.Model):
                 'create': False,
             }
         }
-
-    @api.constrains('driver_id')
-    def _check_driver_is_employees(self):
-        """Check driver is also employee"""
-        for record in self:
-            if record.driver_id and not record.driver_id.employee_ids:
-                raise ValidationError(_(
-                    "The selected driver must be one of the allowed employees."))
 
 
 class FleetVehicleLogContract(models.Model):

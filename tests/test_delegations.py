@@ -143,14 +143,14 @@ class TestDelegationHandOverAndReturn(DelegationCase):
                           'drop_off_delegation_id': self.malaga.id})
 
     def test_hand_over_gives_company_and_delegation(self):
-        self.draft.a_draft_to_b_in_progress()
+        self.draft.with_context(hand_over_without_driver=True).a_draft_to_b_in_progress()
         self.assertEqual(self.draft.status, 'b_in_progress')
         self.assertEqual(self.bare.company_id, self.draft.company_id)
         self.assertEqual(self.bare.delegation_id, self.cordoba)
 
     def test_hand_over_keeps_what_the_vehicle_already_has(self):
         self.bare.write({'company_id': self.other_company.id, 'delegation_id': self.malaga.id})
-        self.draft.a_draft_to_b_in_progress()
+        self.draft.with_context(hand_over_without_driver=True).a_draft_to_b_in_progress()
         self.assertEqual(self.bare.company_id, self.other_company)
         self.assertEqual(self.bare.delegation_id, self.malaga)
 

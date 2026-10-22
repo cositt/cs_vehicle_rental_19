@@ -9,6 +9,7 @@
                 <page string="Conducción" name="driver_data">
                     <group>
                         <group>
+                            <field name="driver_identity_number"/>
                             <field name="birth_date"/>
                             <field name="driver_license_number"/>
                         </group>

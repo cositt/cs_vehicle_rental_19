@@ -8,6 +8,10 @@ class ResPartner(models.Model):
     _inherit = 'res.partner'
 
     birth_date = fields.Date(string="Fecha de Nacimiento")
+    driver_identity_number = fields.Char(
+        string="DNI/NIE del conductor",
+        help="Documento de la persona que conduce. Un contacto de empresa hereda el NIF "
+             "de la empresa, por eso el DNI del conductor va aparte.")
     driver_license_number = fields.Char(string="Carnet de Conducir", help="Número del permiso de conducir")
     driver_license_issue_date = fields.Date(string="Fecha Expedición Carnet")
     driver_license_expiry_date = fields.Date(string="Fecha Caducidad Carnet")

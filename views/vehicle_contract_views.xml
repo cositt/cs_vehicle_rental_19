@@ -204,8 +204,14 @@
                                 <field name="customer_address" string="Domicilio" readonly="status != 'a_draft'" colspan="2"/>
                             </group>
                         </group>
-                        <group string="Carnet de Conducir">
+                        <group string="Conductor autorizado">
                             <group>
+                                <field name="customer_commercial_partner_id" invisible="1"/>
+                                <field name="authorized_driver_id" string="Conductor"
+                                       readonly="status in ('c_return', 'd_cancel')"
+                                       placeholder="Opcional: se avisa al entregar si falta"
+                                       context="{'default_parent_id': customer_commercial_partner_id, 'default_type': 'contact', 'default_is_company': False}"
+                                       options="{'no_quick_create': True}"/>
                                 <field name="driver_license_number" readonly="status != 'a_draft'"/>
                                 <field name="driver_license_issue_date" string="Fecha Expedición" readonly="status != 'a_draft'"/>
                                 <field name="driver_license_expiry_date" string="Fecha Caducidad" readonly="status != 'a_draft'"/>

@@ -14,6 +14,7 @@ class TestWebsiteDelegations(HttpCase):
     def setUp(self):
         super().setUp()
         Delegation = self.env['vehicle.rental.delegation']
+        Delegation.search([]).write({'active': False})  # only the delegations of the test
         self.cordoba = Delegation.create({
             'name': 'Córdoba', 'street': 'Pol. Ind. Las Quemadas, nave 2', 'zip': '14014',
             'city': 'Córdoba', 'phone': '957 322 664', 'email': 'cordoba@empresa.test',
@@ -54,6 +55,7 @@ class TestWebsiteAvailabilityByDelegation(HttpCase):
         model = self.env['fleet.vehicle.model'].create({
             'name': 'WebDelegModel', 'brand_id': brand.id, 'category_id': self.category.id})
         Delegation = self.env['vehicle.rental.delegation']
+        Delegation.search([]).write({'active': False})  # only the delegations of the test
         self.cordoba = Delegation.create({'name': 'Córdoba', 'city': 'Córdoba'})
         self.malaga = Delegation.create({'name': 'Málaga', 'city': 'Málaga'})
         for plate, delegation in (('WEB-C1', self.cordoba), ('WEB-C2', self.cordoba),
