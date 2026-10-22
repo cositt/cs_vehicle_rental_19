@@ -145,3 +145,36 @@ class TestSubstitutionAcrossCompanies(CrossCompanyCase):
     def test_substitution_by_a_vehicle_of_the_other_company(self):
         self._wizard(self.sister_vehicle).action_confirm_substitution()
         self.assertEqual(self.sunset_contract.vehicle_id, self.sister_vehicle)
+
+
+@tagged('post_install', '-at_install', 'vehicle_cross_company')
+class TestMultiBookingCarriesChoices(VehicleRentalCase):
+    """The contracts of a multi-booking keep what was chosen for each line."""
+
+    def test_contracts_keep_category_and_km_band(self):
+        start = self.now + timedelta(days=80)
+        booking = self.env['rental.multi.booking'].create({
+            'customer_id': self.customer.id,
+            'line_ids': [(0, 0, {
+                'vehicle_id': self.spare_vehicle.id, 'start_date': start,
+                'end_date': start + timedelta(days=3), 'rent': 75.0,
+                'selected_category_id': self.category.id,
+                'duration_range': '3-5d', 'km_range': '350',
+            })],
+        })
+        booking.action_create_group()
+        contract = booking.group_id.contract_ids
+        self.assertEqual(contract.vehicle_category_id, self.category)
+        self.assertEqual(contract.km_range, '350')
+
+    def test_completed_booking_takes_the_group_reference(self):
+        start = self.now + timedelta(days=85)
+        booking = self.env['rental.multi.booking'].create({
+            'customer_id': self.customer.id,
+            'line_ids': [(0, 0, {
+                'vehicle_id': self.spare_vehicle.id, 'start_date': start,
+                'end_date': start + timedelta(days=3), 'rent': 75.0,
+            })],
+        })
+        booking.action_create_group()
+        self.assertEqual(booking.name, booking.group_id.name)
