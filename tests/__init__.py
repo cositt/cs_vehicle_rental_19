@@ -21,3 +21,5 @@ from . import test_partner_driver_data
 from . import test_rental_days
 from . import test_flexirent
 from . import test_installments
+from . import test_delegations
+from . import test_website_delegations

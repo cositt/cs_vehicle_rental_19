@@ -26,7 +26,9 @@ class SunsetHomeController(http.Controller):
 
     @http.route('/sunset/delegacion/<string:city>', type='http', auth='public', website=True)
     def sunset_delegation(self, city, **kw):
-        return request.render('vehicle_rental.sunset_contact_page', {})
+        return request.render('vehicle_rental.sunset_contact_page', {
+            'delegations': request.env['vehicle.rental.delegation']._website_delegations(),
+        })
 
     @http.route('/sunset/servicios/<string:service>', type='http', auth='public', website=True)
     def sunset_services(self, service, **kw):

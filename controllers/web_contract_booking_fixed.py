@@ -622,9 +622,10 @@ class WebsiteContractBookingFixed(http.Controller):
                 secondary_color = '#FFA500'
                 company_id = 1  # Sunset
 
-            # Obtener ubicaciones disponibles según la compañía
-            available_locations = []
-            if company_id:
+            # Ubicaciones: las delegaciones activas. Mientras no haya ninguna,
+            # las ubicaciones escritas en los vehículos de la compañía.
+            available_locations = request.env['vehicle.rental.delegation'].sudo().search([]).mapped('name')
+            if not available_locations and company_id:
                 vehicles = request.env['fleet.vehicle'].sudo().search([('company_id', '=', company_id)])
                 locations_set = set()
                 for vehicle in vehicles:
@@ -2727,7 +2728,12 @@ class WebsiteContractBookingFixed(http.Controller):
             
             _logger.warning(f"GET_AVAILABLE_VEHICLES: Dominio ANTES de location: {total_domain}")
             
-            if location and location != 'Todas las ubicaciones':
+            delegation = request.env['vehicle.rental.delegation'].sudo().search(
+                [('name', '=', location)], limit=1) if location else False
+            if delegation:
+                # Los vehículos sin delegación todavía se ofrecen en todas
+                total_domain.append(('delegation_id', 'in', [delegation.id, False]))
+            elif location and location != 'Todas las ubicaciones':
                 location_variations = [location]
                 if location == 'Málaga':
                     location_variations.append('Malaga')

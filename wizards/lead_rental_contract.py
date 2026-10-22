@@ -269,6 +269,9 @@ class LeadRentalContract(models.TransientModel):
             if state:
                 state_id = state.id
         
+        delegation = self.env['vehicle.rental.delegation'].search(
+            [('name', '=ilike', location)], limit=1) if location else self.env['vehicle.rental.delegation']
+
         # España por defecto
         spain = self.env['res.country'].search([('code', '=', 'ES')], limit=1)
         
@@ -296,6 +299,9 @@ class LeadRentalContract(models.TransientModel):
             'pick_up_country_id': spain.id if spain else False,
             'drop_off_state_id': state_id,
             'drop_off_country_id': spain.id if spain else False,
+            # La ubicación elegida en la web es el nombre de una delegación
+            'pick_up_delegation_id': delegation.id,
+            'drop_off_delegation_id': delegation.id,
             'rent': daily_rate,  # Precio por día
             'rent_type': 'days',  # Tipo de alquiler: días
             'discount_reason': 'Precio de reserva web',  # Auto-rellenado para evitar validación

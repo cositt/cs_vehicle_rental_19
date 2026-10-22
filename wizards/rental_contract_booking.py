@@ -14,6 +14,13 @@ class RentalContractBooking(models.TransientModel):
 
     customer_id = fields.Many2one("res.partner")
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
+    delegation_id = fields.Many2one(
+        'vehicle.rental.delegation', string="Delegación",
+        help="Dónde quiere el cliente recoger y entregar. Se buscan vehículos de "
+             "todas las delegaciones: si el elegido está en otra, la recogida pasa a la suya.")
+    only_delegation = fields.Boolean(
+        string="Solo esta delegación",
+        help="Mostrar solo los vehículos de la delegación elegida (y los que aún no tienen).")
     start_date = fields.Datetime(string="Pick-up Date")
     end_date = fields.Datetime(string="Drop-off Date")
     
@@ -129,7 +136,8 @@ class RentalContractBooking(models.TransientModel):
                 record.calculated_price = 0.0
                 record.stored_calculated_price = 0.0
 
-    @api.onchange('selected_category_id', 'start_date', 'end_date', 'search_vehicle', 'company_id', 'duration_range', 'km_range', 'pricing_type')
+    @api.onchange('selected_category_id', 'start_date', 'end_date', 'search_vehicle', 'company_id',
+                  'duration_range', 'km_range', 'pricing_type', 'delegation_id', 'only_delegation')
     def _onchange_available_vehicle(self):
         """Update available vehicles based on category, dates, search and filters"""
         if not self.selected_category_id or not self.start_date or not self.end_date:
@@ -143,19 +151,21 @@ class RentalContractBooking(models.TransientModel):
             ('end_date', '>=', self.start_date),
             ('status', 'in', list(BUSY_CONTRACT_STATES)),
             ('vehicle_id', '!=', False),
-            ('vehicle_id.company_id', '=', self.company_id.id),
         ])
         occupied_vehicle_ids = occupied_contracts.mapped('vehicle_id').ids
 
-        # 2. Dominio base
+        # 2. Dominio base: vehículos de todas las compañías con las que trabaja
+        #    el usuario (Sunset alquila los de Pinveco) y los que aún no tienen.
         domain = [
             ('status', '=', 'available'),
-            ('company_id', '=', self.company_id.id),
+            ('company_id', 'in', self.env.companies.ids + [False]),
             '|',
             ('category_id', '=', self.selected_category_id.id),
             ('model_id.category_id', '=', self.selected_category_id.id),
             ('id', 'not in', occupied_vehicle_ids),
         ]
+        if self.only_delegation and self.delegation_id:
+            domain.append(('delegation_id', 'in', [self.delegation_id.id, False]))
 
         # 3. Filtro de búsqueda
         if self.search_vehicle:
@@ -199,6 +209,9 @@ class RentalContractBooking(models.TransientModel):
             'rent': self.calculated_price,  # This is the computed value
             'rent_type': 'days',
             'pricing_type': self.pricing_type,
+            # Se recoge donde está el vehículo; se entrega donde pidió el cliente
+            'pick_up_delegation_id': (vehicle.delegation_id or self.delegation_id).id,
+            'drop_off_delegation_id': (self.delegation_id or vehicle.delegation_id).id,
         }
         
         if self.group_id:

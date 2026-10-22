@@ -31,6 +31,7 @@ class PinvecoHomeController(http.Controller):
             'available_vehicles': 25,
             'total_contracts': 800,
             'company_id': pinveco_company.id if pinveco_company else False,
+            'delegations': request.env['vehicle.rental.delegation']._website_delegations(),
         }
         
         return request.render('vehicle_rental.pinveco_home_basic', values)
@@ -157,49 +158,8 @@ class PinvecoHomeController(http.Controller):
 
     @http.route('/pinveco/delegacion/<string:city>', type='http', auth='public', website=True)
     def pinveco_delegation(self, city, **kw):
-        """Página de delegación específica de Pinveco"""
-        delegations = {
-            'madrid': {
-                'name': 'Delegación Madrid',
-                'address': 'C/ Alcalá, 200',
-                'city': '28028 Madrid',
-                'phone': '+34 913 221 100',
-                'email': 'madrid@pinveco.com',
-                'hours': 'L-V: 7:00-21:00, S: 8:00-15:00',
-                'rating': 4.8,
-                'description': 'Nuestra delegación principal en Madrid, especializada en alquiler de furgonetas profesionales.',
-            },
-            'barcelona': {
-                'name': 'Delegación Barcelona',
-                'address': 'Av. Diagonal, 500',
-                'city': '08006 Barcelona',
-                'phone': '+34 933 445 566',
-                'email': 'barcelona@pinveco.com',
-                'hours': 'L-V: 7:00-21:00, S: 8:00-15:00',
-                'rating': 4.9,
-                'description': 'Delegación estratégica en Barcelona, con amplia flota de furgonetas para empresas.',
-            },
-            'valencia': {
-                'name': 'Delegación Valencia',
-                'address': 'C/ Colón, 85',
-                'city': '46004 Valencia',
-                'phone': '+34 963 778 899',
-                'email': 'valencia@pinveco.com',
-                'hours': 'L-V: 7:00-21:00, S: 8:00-15:00',
-                'rating': 4.7,
-                'description': 'Nuestra delegación en Valencia, perfectamente ubicada para servicios de transporte profesional.',
-            }
-        }
-        
-        delegation = delegations.get(city.lower())
-        if not delegation:
-            return request.not_found()
-        
-        values = {
-            'delegation': delegation,
-            'city': city,
-        }
-        
-        return request.render('vehicle_rental.pinveco_delegation_page', values)
+        """Enlaces antiguos a delegaciones: las delegaciones están en la portada.
 
-
+        Antes había aquí Madrid, Barcelona y Valencia escritas a mano (no existen).
+        """
+        return request.redirect('/pinveco#delegaciones')

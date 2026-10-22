@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="vehicle_rental_delegation_view_list" model="ir.ui.view">
+        <field name="name">vehicle.rental.delegation.list</field>
+        <field name="model">vehicle.rental.delegation</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="city"/>
+                <field name="phone"/>
+                <field name="email"/>
+                <field name="vehicle_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="vehicle_rental_delegation_view_form" model="ir.ui.view">
+        <field name="name">vehicle.rental.delegation.form</field>
+        <field name="model">vehicle.rental.delegation</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="p. ej. Málaga"/></h1>
+                    </div>
+                    <group>
+                        <group string="Dirección">
+                            <field name="street"/>
+                            <field name="street2"/>
+                            <field name="zip"/>
+                            <field name="city"/>
+                            <field name="state_id" options="{'no_create': True}"/>
+                            <field name="country_id" options="{'no_create': True}"/>
+                        </group>
+                        <group string="Contacto">
+                            <field name="phone" widget="phone"/>
+                            <field name="email" widget="email"/>
+                            <field name="schedule" placeholder="L-V 8–14 y 16–19 · S 9–13"/>
+                            <field name="vehicle_count"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="vehicle_rental_delegation_view_search" model="ir.ui.view">
+        <field name="name">vehicle.rental.delegation.search</field>
+        <field name="model">vehicle.rental.delegation</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="city"/>
+                <filter string="Archivadas" name="archived" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_vehicle_rental_delegation" model="ir.actions.act_window">
+        <field name="name">Delegaciones</field>
+        <field name="res_model">vehicle.rental.delegation</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Crea la primera delegación</p>
+            <p>Las delegaciones son los puntos de recogida y entrega. Se eligen en
+                el contrato y en la reserva, y se muestran en la web.</p>
+        </field>
+    </record>
+</odoo>

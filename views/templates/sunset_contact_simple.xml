@@ -64,6 +64,29 @@
                                 </form>
                             </div>
                         </div>
+
+                        <!-- Delegaciones activas del modelo vehicle.rental.delegation -->
+                        <div class="mt-5" t-if="delegations">
+                            <h2 class="h4 text-dark mb-3">
+                                <i class="fa fa-map-marker me-2"></i>
+                                Nuestras Delegaciones
+                            </h2>
+                            <div class="row g-3">
+                                <div class="col-md-4" t-foreach="delegations" t-as="delegation">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <h5 class="card-title text-dark" t-esc="delegation['name']"/>
+                                            <p class="card-text small mb-0">
+                                                <t t-if="delegation['address']"><i class="fa fa-map-marker me-1"></i> <span t-esc="delegation['address']"/><br/></t>
+                                                <t t-if="delegation['phone']"><i class="fa fa-phone me-1"></i> <span t-esc="delegation['phone']"/><br/></t>
+                                                <t t-if="delegation['email']"><i class="fa fa-envelope me-1"></i> <span t-esc="delegation['email']"/><br/></t>
+                                                <t t-if="delegation['schedule']"><i class="fa fa-clock-o me-1"></i> <span t-esc="delegation['schedule']"/></t>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
