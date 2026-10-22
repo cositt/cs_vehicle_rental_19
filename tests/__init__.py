@@ -28,3 +28,4 @@ from . import test_website_all_companies
 from . import test_cross_company_booking
 from . import test_form_chatter
 from . import test_vat_included
+from . import test_deposit_rules

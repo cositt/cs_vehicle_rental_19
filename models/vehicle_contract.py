@@ -893,7 +893,8 @@ class VehicleContract(models.Model):
         
         # Después de escribir, sincronizar depósito si es necesario
         # Esto se ejecuta después de que los campos computed se hayan actualizado
-        if any(field in vals for field in ['vehicle_id', 'deposit_card_type', 'use_deposit_from_rule']):
+        if any(field in vals for field in ['vehicle_id', 'deposit_card_type', 'use_deposit_from_rule',
+                                           'insurance_type', 'pricing_type', 'company_id']):
             self._sync_deposit_from_calculated()
         
         return result
