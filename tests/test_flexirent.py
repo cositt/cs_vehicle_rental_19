@@ -8,6 +8,7 @@ package are charged at 0,29 EUR + VAT for every package.
 """
 from datetime import datetime
 
+from odoo.tests import Form
 from odoo.tests.common import tagged
 
 from .common import VehicleRentalCase
@@ -109,3 +110,13 @@ class TestFlexirentReport(FlexirentCase):
         html = self._render(contract)
         self.assertIn('12 y 13 días', html)
         self.assertIn('13 / 13', html)
+
+
+@tagged('post_install', '-at_install', 'vehicle_flexirent')
+class TestFlexirentBookingWizard(FlexirentCase):
+
+    def test_booking_wizard_opens_with_flexirent_tariffs(self):
+        """FLEXIRENT tariffs have no km band: the wizard km options must skip it."""
+        options = self.env['rental.contract.booking']._get_km_options()
+        self.assertNotIn(False, [value for value, _label in options])
+        Form(self.env['rental.contract.booking'])
