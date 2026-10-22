@@ -3,6 +3,17 @@
     <template id="vehicle_contract_report_template">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="contract">
+                <!-- El membrete sale de la compañía del contrato, no de la activa del usuario -->
+                <t t-set="o" t-value="contract"/>
+                <t t-set="company" t-value="contract.company_id.sudo()"/>
+                <!-- FLEXIRENT se cobra por mensualidades de 30 días: cuota = tarifa diaria x 30 -->
+                <t t-set="is_flexirent" t-value="contract.pricing_type == 'flexirent' and contract.start_date and contract.end_date"/>
+                <t t-if="is_flexirent">
+                    <t t-set="fx_start" t-value="context_timestamp(contract.start_date).date()"/>
+                    <t t-set="fx_span" t-value="relativedelta(context_timestamp(contract.end_date).date(), fx_start)"/>
+                    <t t-set="fx_months" t-value="fx_span.years * 12 + fx_span.months + (1 if fx_span.days &gt; 0 else 0)"/>
+                    <t t-set="fx_fee" t-value="round(contract.rent * 30)"/>
+                </t>
                 <t t-call="web.external_layout">
                     <div class="page">
                         <style>
@@ -136,9 +147,19 @@
                                     <span t-field="contract.customer_email"/>
                                 </td>
                                 <td>
-
+                                    <span class="label">CIF/NIF:</span>
                                 </td>
                                 <td class="value">
+                                    <t t-esc="contract.customer_dni or contract.customer_id.vat or ''"/>
+                                </td>
+                            </tr>
+                            <t t-set="customer" t-value="contract.customer_id"/>
+                            <tr t-if="customer.street or customer.city">
+                                <td>
+                                    <span class="label">Dirección:</span>
+                                </td>
+                                <td class="value" colspan="3">
+                                    <t t-esc="', '.join(part for part in [customer.street, customer.street2, ' '.join(p for p in [customer.zip, customer.city] if p), customer.state_id.name] if part)"/>
                                 </td>
                             </tr>
 
@@ -338,7 +359,8 @@
                                     <span class="label">Tipo de Alquiler:</span>
                                 </td>
                                 <td class="value">
-                                    <span t-field="contract.rent_type"/>
+                                    <t t-if="is_flexirent">FLEXIRENT – 30 días<t t-if="contract.flexirent_km_included"> / <t t-esc="'{:,.0f}'.format(contract.flexirent_km_included).replace(',', '.')"/> km</t></t>
+                                    <span t-else="" t-field="contract.rent_type"/>
                                 </td>
                                 <td>
                                     <span class="label">Tipo de Pago:</span>
@@ -349,12 +371,14 @@
                             </tr>
                             <tr t-if="contract.rent">
                                 <td>
-                                    <span class="label">Alquiler por
+                                    <span class="label" t-if="is_flexirent">Cuota Mensual:</span>
+                                    <span class="label" t-else="">Alquiler por
                                         <t t-esc="contract.rent_type.capitalize() if contract.rent_type else ''"/>:
                                     </span>
                                 </td>
                                 <td class="value">
-                                    <span t-field="contract.rent"/>
+                                    <t t-if="is_flexirent"><span t-esc="fx_fee" t-options="{'widget': 'monetary', 'display_currency': contract.currency_id}"/> (IVA incluido)</t>
+                                    <span t-else="" t-field="contract.rent"/>
                                 </td>
                                 <td>
                                     <span class="label">Artículo de Factura:</span>
@@ -363,7 +387,36 @@
                                     <span t-field="contract.invoice_item_id"/>
                                 </td>
                             </tr>
-                            <tr>
+                            <tr t-if="is_flexirent">
+                                <td>
+                                    <span class="label">Mensualidades:</span>
+                                </td>
+                                <td class="value">
+                                    <t t-esc="fx_months"/>
+                                </td>
+                                <td>
+                                    <span class="label">Si Hay Depósito:</span>
+                                </td>
+                                <td class="value">
+                                    <t t-if="contract.if_any_deposit">Sí</t>
+                                    <t t-else="">No</t>
+                                </td>
+                            </tr>
+                            <tr t-if="is_flexirent">
+                                <td>
+                                    <span class="label">Total Días:</span>
+                                </td>
+                                <td class="value">
+                                    <t t-esc="fx_months * 30"/>
+                                </td>
+                                <td>
+                                    <span class="label">Depósito:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.deposit" t-if="contract.deposit"/>
+                                </td>
+                            </tr>
+                            <tr t-if="not is_flexirent">
                                 <td>
                                     <span class="label">Total
                                         <t t-esc="contract.rent_type.capitalize() if contract.rent_type else ''"/>:
@@ -384,7 +437,7 @@
                                     <t t-else="">No</t>
                                 </td>
                             </tr>
-                            <tr>
+                            <tr t-if="not is_flexirent">
                                 <td>
                                     <span class="label">Total:</span>
                                 </td>
@@ -502,6 +555,37 @@
                             </tr>
                         </table>
                         <p style="page-break-after: always;"/>
+
+                        <!-- Calendario previsto de cuotas FLEXIRENT, mientras no existan cuotas generadas -->
+                        <t t-if="is_flexirent and fx_months and not contract.vehicle_payment_option_ids">
+                            <h6 class="main-heading-record">
+                                <i class="fa fa-calendar me-1 ms-2" aria-hidden="true"/>
+                                Calendario de Cuotas Mensuales
+                            </h6>
+                            <p style="font-size: 12px;" class="ms-2">
+                                <t t-esc="fx_months"/> cuotas mensuales de
+                                <span t-esc="fx_fee" t-options="{'widget': 'monetary', 'display_currency': contract.currency_id}"/>
+                                (IVA incluido), con cobro fraccionado al inicio de cada mensualidad.
+                            </p>
+                            <table class="table table-borderless table-sm" style="font-size: 12px;">
+                                <tr style="border-bottom: 1px solid black; font-size: 13px;">
+                                    <td style="padding: 2px;"><strong>Cuota</strong></td>
+                                    <td style="padding: 2px;"><strong>Fecha de Cobro</strong></td>
+                                    <td style="padding: 2px;"><strong>Periodo</strong></td>
+                                    <td style="padding: 2px; text-align: right;"><strong>Importe</strong></td>
+                                </tr>
+                                <tr t-foreach="range(fx_months)" t-as="fx_i" style="border-bottom: 1px solid #cdc2c2;">
+                                    <t t-set="fx_from" t-value="fx_start + relativedelta(months=fx_i)"/>
+                                    <t t-set="fx_to" t-value="fx_start + relativedelta(months=fx_i + 1, days=-1)"/>
+                                    <td style="padding: 2px;"><t t-esc="fx_i + 1"/> / <t t-esc="fx_months"/></td>
+                                    <td style="padding: 2px;"><t t-esc="fx_from.strftime('%d/%m/%Y')"/></td>
+                                    <td style="padding: 2px;"><t t-esc="fx_from.strftime('%d/%m/%Y')"/> – <t t-esc="fx_to.strftime('%d/%m/%Y')"/></td>
+                                    <td style="padding: 2px; text-align: right;">
+                                        <span t-esc="fx_fee" t-options="{'widget': 'monetary', 'display_currency': contract.currency_id}"/>
+                                    </td>
+                                </tr>
+                            </table>
+                        </t>
 
                         <h6 class="main-heading-record" t-if="contract.vehicle_payment_option_ids">
                             <i class="fa fa-paypal me-1 ms-2" aria-hidden="true"/>
