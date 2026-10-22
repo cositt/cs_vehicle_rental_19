@@ -88,11 +88,11 @@
                                 <div class="mt-4">
                                     <p class="text-muted mb-2">
                                         <i class="fa fa-phone me-2"></i>
-                                        ¿Necesitas ayuda inmediata? Llámanos al <strong>+34 91 123 45 67</strong>
+                                        ¿Necesitas ayuda inmediata? Llámanos al <strong t-esc="contact_info['phone']"/>
                                     </p>
                                     <p class="text-muted">
                                         <i class="fa fa-envelope me-2"></i>
-                                        O escríbenos a <strong>info@sunsetrentacar.com</strong>
+                                        O escríbenos a <strong t-esc="contact_info['email']"/>
                                     </p>
                                 </div>
                             </div>

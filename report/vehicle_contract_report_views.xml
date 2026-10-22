@@ -1225,13 +1225,14 @@
             </t>
         </t>
     </template>
+    <!-- Usada al enviar el contrato por email; sin binding para no duplicar
+         "Contrato de Vehículo" en el menú Imprimir (ya lo ofrece vehicle_contract_report) -->
     <record id="action_vehicle_contract_report" model="ir.actions.report">
         <field name="name">Contrato de Vehículo</field>
         <field name="model">vehicle.contract</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">vehicle_rental.vehicle_contract_report_template</field>
         <field name="report_file">vehicle_rental.vehicle_contract_report_template</field>
-        <field name="binding_model_id" ref="model_vehicle_contract"/>
-        <field name="binding_type">report</field>
+        <field name="binding_model_id" eval="False"/>
     </record>
 </odoo>

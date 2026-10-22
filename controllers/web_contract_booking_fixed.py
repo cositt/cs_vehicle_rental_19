@@ -2899,103 +2899,6 @@ class WebsiteContractBookingFixed(http.Controller):
             )
             return response
 
-    @http.route('/web/test-lead-creation', auth='public', website=True, type='http', methods=['POST'], csrf=False)
-    def test_lead_creation(self, **kw):
-        """Test method to create a simple lead"""
-        try:
-            customer_name = kw.get('customer_name', 'Test Customer')
-            customer_email = kw.get('customer_email', 'test@test.com')
-
-            print(f"DEBUG: Test lead creation for {customer_name}")
-
-            # Crear lead básico
-            lead_vals = {
-                'name': f'Test Lead - {customer_name}',
-                'contact_name': customer_name,
-                'email_from': customer_email,
-                'type': 'lead',
-            }
-
-            lead = request.env['crm.lead'].sudo().create(lead_vals)
-            print(f"DEBUG: Test lead creado con ID {lead.id}")
-
-            # Forzar commit
-            request.env.cr.commit()
-            print(f"DEBUG: Test lead commit exitoso")
-
-            # Verificar inmediatamente si se guardó
-            lead_check = request.env['crm.lead'].sudo().browse(lead.id)
-            print(f"DEBUG: Verificación inmediata - Lead ID {lead_check.id} existe: {lead_check.exists()}")
-
-            return f"<h1>Test Lead creado con ID: {lead.id}</h1>"
-
-        except Exception as e:
-            print(f"DEBUG: Error en test lead: {e}")
-            import traceback
-            print(f"DEBUG: Traceback completo: {traceback.format_exc()}")
-            return f"<h1>Error: {str(e)}</h1>"
-
-    @http.route('/web/test-lead-no-html', auth='public', website=True, type='http', methods=['POST'], csrf=False)
-    def test_lead_no_html(self, **kw):
-        """Test method to create lead without HTML generation"""
-        try:
-            customer_name = kw.get('customer_name', 'Test Customer')
-            customer_email = kw.get('customer_email', 'test@test.com')
-
-            print(f"DEBUG: Test lead NO HTML for {customer_name}")
-
-            # Crear lead básico
-            lead_vals = {
-                'name': f'Test Lead NO HTML - {customer_name}',
-                'contact_name': customer_name,
-                'email_from': customer_email,
-                'type': 'lead',
-            }
-
-            lead = request.env['crm.lead'].sudo().create(lead_vals)
-            print(f"DEBUG: Test lead NO HTML creado con ID {lead.id}")
-
-            # Forzar commit
-            request.env.cr.commit()
-            print(f"DEBUG: Test lead NO HTML commit exitoso")
-
-            # Verificar inmediatamente si se guardó
-            lead_check = request.env['crm.lead'].sudo().browse(lead.id)
-            print(f"DEBUG: Verificación NO HTML - Lead ID {lead_check.id} existe: {lead_check.exists()}")
-
-            # Devolver solo texto plano
-            return f"Test Lead NO HTML creado con ID: {lead.id}"
-
-        except Exception as e:
-            print(f"DEBUG: Error en test lead NO HTML: {e}")
-            import traceback
-            print(f"DEBUG: Traceback NO HTML: {traceback.format_exc()}")
-            return f"Error: {str(e)}"
-
-    @http.route('/web/test-direct-sql', auth='public', website=True, type='http', methods=['POST'], csrf=False)
-    def test_direct_sql(self, **kw):
-        """Test method using direct SQL to create lead"""
-        try:
-            customer_name = kw.get('customer_name', 'Test Customer')
-            customer_email = kw.get('customer_email', 'test@test.com')
-
-            print(f"DEBUG: Test DIRECT SQL for {customer_name}")
-
-            # [DISABLED] Usar SQL directo para insertar - CAUSABA MEMORY LEAK
-            # Código comentado para evitar conexiones no cerradas a PostgreSQL
-            # import psycopg2
-            # from odoo import sql_db
-            # db = sql_db.db_connect('odoo-dev')
-            # with db.cursor() as cr: ...
-            # [END DISABLED BLOCK]
-            return "Test DIRECT SQL DISABLED - Memory leak fix"
-
-        except Exception as e:
-            print(f"DEBUG: Error en test DIRECT SQL: {e}")
-            import traceback
-            print(f"DEBUG: Traceback DIRECT SQL: {traceback.format_exc()}")
-            return f"Error: {str(e)}"
-
     def _find_or_create_partner(self, name, email, phone, company):
         """Find existing partner or create new one from customer data"""
         Partner = request.env['res.partner']
@@ -3074,75 +2977,6 @@ class WebsiteContractBookingFixed(http.Controller):
             print(f"DEBUG: Error en _find_available_vehicle: {e}")
             return False
 
-    # ===== ENDPOINT REDSYS PAGO =====
-#     @http.route('/web/booking-confirmation', auth='public', website=True, type='http', methods=['POST'], csrf=False)
-#     def booking_confirmation(self, **kw):
-#         """Booking Confirmation - Redsys Payment"""
-#         import base64, json, hmac, hashlib, binascii, subprocess, tempfile, os, time
-#         
-#         def derive_key_3des(secret_b64, order):
-#             secret = base64.b64decode(secret_b64)
-#             order_bytes = order.encode('ascii')
-#             pad = (-len(order_bytes)) % 8
-#             order_padded = order_bytes + b'\x00'*pad
-#             with tempfile.NamedTemporaryFile(delete=False) as f:
-#                 f.write(order_padded)
-#                 f.flush()
-#                 key_hex = binascii.hexlify(secret).decode('ascii')
-#             out_path = tempfile.mktemp()
-#             try:
-#                 subprocess.check_call(['openssl','enc','-des-ede3-cbc','-K', key_hex, '-iv','0000000000000000','-nopad','-in', f.name, '-out', out_path])
-#                 return open(out_path,'rb').read()
-#             finally:
-#                 os.unlink(f.name)
-#                 if os.path.exists(out_path): os.unlink(out_path)
-#         
-#         try:
-#             merchant_code = '369056973'
-#             terminal = '1'
-#             secret_key = 'sq7HjrUOBfKmC576ILgskD5srU870gJ7'
-#             
-#             amount_cents = int(float(kw.get('selected_price', 0)) * 100)
-#             if amount_cents < 1: amount_cents = 1
-#             order_number = kw.get('order_number', f'ORD{int(time.time())}')
-#             
-#             merchant_data = {
-#                 'DS_MERCHANT_AMOUNT': str(amount_cents),
-#                 'DS_MERCHANT_ORDER': order_number,
-#                 'DS_MERCHANT_MERCHANTCODE': merchant_code,
-#                 'DS_MERCHANT_CURRENCY': '978',
-#                 'DS_MERCHANT_TRANSACTIONTYPE': '0',
-#                 'DS_MERCHANT_TERMINAL': terminal,
-#                 'DS_MERCHANT_MERCHANTURL': 'https://sunsetrent.es/web/redsys-webhook',
-#             }
-#             
-#             merchant_json = json.dumps(merchant_data, separators=(',', ':'))
-#             merchant_params = base64.b64encode(merchant_json.encode('utf-8')).decode('utf-8')
-#             
-#             K = derive_key_3des(secret_key, order_number)
-#             signature_bytes = hmac.new(K, merchant_params.encode('utf-8'), hashlib.sha256).digest()
-#             signature = base64.b64encode(signature_bytes).decode('utf-8')
-#             
-#             # Devolver HTML directo con los valores interpolados
-#             print(f"DEBUG HTML: merchant_params={merchant_params[:50]}... signature={signature}")
-#             html = '<html><body onload="document.forms[0].submit()"><h2>Procesando pago...</h2><form id="f" method="POST" action="https://sis-t.redsys.es:25443/sis/realizarPago"><input type="hidden" name="Ds_SignVersion" value="HMAC_SHA256_V1"/><input type="hidden" name="Ds_MerchantParameters" value="' + merchant_params + '"/><input type="hidden" name="Ds_Signature" value="' + signature + '"/></form></body></html>'
-#             return html
-# 
-#         except Exception as e:
-#             return f"<h1>Error en booking_confirmation</h1><pre>{str(e)}</pre>"
-
-    # ===== NUEVO FLUJO: Usar payment_redsys nativo =====
-    # @http.route('/rental/payment', auth='public', website=True, type='http', methods=['POST'], csrf=False)
-    # def rental_payment_gateway(self, **kw):
-    #     """Create payment transaction for vehicle rental"""
-    #     import logging
-    #     import json
-    #     import time
-    #     _logger = logging.getLogger(__name__)
-
-    #     try:
-    #         # Obtener datos de la reserva
-    #         category_id = int(kw.get('category_id', 0))
             _logger.warning(f"RENTAL_PAYMENT_PARAMS: {kw}")
     #         selected_price_str = kw.get('selected_price', '').strip()
             selected_price = float(selected_price_str) if selected_price_str else 0
@@ -3224,196 +3058,41 @@ class WebsiteContractBookingFixed(http.Controller):
     #         _logger.error(f"ERROR en rental_payment_gateway: {error_detail}")
     #         return f"<h1>Error</h1><p>{str(e)}</p><pre>{error_detail}</pre>", 500
 
-    @http.route('/test/rental-endpoint', auth='public', website=True, type='http')
-    def test_rental_endpoint(self):
-        return "TEST RENTAL ENDPOINT WORKS"
-
-    @http.route('/rental/payment/test', auth='public', website=False, type='http', methods=['POST'], csrf=False)
-    def test_rental_payment(self):
-        return "TEST RENTAL PAYMENT OK"
-
-    @http.route('/rental/payment-test', auth='public', website=True, type='http', methods=['POST'], csrf=False)
-    def rental_payment_test(self, **kw):
-        return "RENTAL PAYMENT TEST OK"
-
-    @http.route('/rental/debug', auth='public', website=True, type='http', methods=['POST'], csrf=False)
-    def rental_debug(self, **kw):
-        import logging
-        _logger = logging.getLogger(__name__)
-        try:
-            _logger.info("DEBUG: rental_debug START")
-            _logger.info(f"DEBUG: kw={kw}")
-            _logger.info("DEBUG: Creating response")
-            return ("OK", 200)
-        except Exception as e:
-            _logger.error(f"DEBUG ERROR: {e}")
-            return (str(e), 500)
-
-    @http.route('/rental/payment-form-debug', auth='public', website=True, type='http', methods=['GET'], csrf=False)
-    def rental_payment_form_debug(self, **kw):
-        """Debug endpoint to show the form that will be sent to Redsys"""
-        import logging
-        import json
-        import base64
-        import hmac
-        import hashlib
-        from werkzeug.wrappers import Response
-        
-        _logger = logging.getLogger(__name__)
-        
-        # Test data
-        merchant_code = '369056973'
-        terminal = '1'
-        order_number = 'TESTORD123456'
-        selected_price = 150.00
-        tx_id = 999
-        secret_key = 'sq7HjrUOBfKmC576ILgskD5srU870gJ7'
-        
-        amount_cents = int(selected_price * 100)
-        currency = '978'
-        
-        merchant_data = {
-            'Ds_Merchant_Amount': str(amount_cents),
-            'Ds_Merchant_Currency': str(currency),
-            'Ds_Merchant_Order': order_number.zfill(12),
-            'Ds_Merchant_MerchantCode': merchant_code,
-            'Ds_Merchant_Terminal': terminal,
-            'Ds_Merchant_TransactionType': '0',
-            'Ds_Merchant_MerchantURL': f'https://sunsetrent.es/payment/redsys/webhook',
-            'Ds_Merchant_UrlOK': f'https://sunsetrent.es/rental/success',
-            'Ds_Merchant_UrlKO': f'https://sunsetrent.es/rental/error',
-        }
-        
-        merchant_json = json.dumps(merchant_data, separators=(",", ":"))
-        merchant_params = base64.b64encode(merchant_json.encode()).decode()
-        
-        signature = hmac.new(secret_key.encode(), merchant_params.encode(), hashlib.sha256).digest()
-        signature_b64 = base64.b64encode(signature).decode()
-        
-        _logger.warning(f"=== REDSYS DEBUG ===")
-        _logger.warning(f"Merchant Data: {merchant_data}")
-        _logger.warning(f"Merchant Params: {merchant_params}")
-        _logger.warning(f"Signature: {signature_b64}")
-        
-        redsys_url = 'https://sis-t.redsys.es:25443/sis/realizarPago'
-        
-        html_debug = f'''<!DOCTYPE html>
-<html>
-<head>
-    <title>DEBUG Redsys Form</title>
-    <style>
-        body {{ font-family: monospace; padding: 20px; }}
-        .field {{ margin: 10px 0; padding: 10px; background: #f0f0f0; }}
-        .label {{ font-weight: bold; }}
-    </style>
-</head>
-<body>
-    <h1>Redsys Form Debug</h1>
-    <div class="field">
-        <div class="label">Ds_SignatureVersion:</div>
-        <div>HMAC_SHA256_V1</div>
-    </div>
-    <div class="field">
-        <div class="label">Ds_MerchantParameters:</div>
-        <div style="word-break: break-all;">{merchant_params}</div>
-    </div>
-    <div class="field">
-        <div class="label">Ds_Signature:</div>
-        <div>{signature_b64}</div>
-    </div>
-    
-    <h2>Decoded Merchant Data:</h2>
-    <pre>{json.dumps(merchant_data, indent=2)}</pre>
-    
-    <hr>
-    <p>
-        <a href="#" onclick="document.redsysForm.submit(); return false;">Click here to submit to Redsys</a>
-        or
-        <button onclick="document.redsysForm.submit();">Submit Form</button>
-    </p>
-    
-    <form name="redsysForm" action="{redsys_url}" method="POST" style="display:none;">
-        <input type="hidden" name="Ds_SignatureVersion" value="HMAC_SHA256_V1"/>
-        <input type="hidden" name="Ds_MerchantParameters" value="{merchant_params}"/>
-        <input type="hidden" name="Ds_Signature" value="{signature_b64}"/>
-    </form>
-</body>
-</html>'''
-        
-        return Response(html_debug, mimetype='text/html')
-
     @http.route('/rental/success', auth='public', website=True, type='http', methods=['GET', 'POST'], csrf=False)
     def rental_payment_success(self, **kw):
-        """Payment success page after Redsys redirect"""
-        import logging
-        _logger = logging.getLogger(__name__)
-        
-        try:
-            _logger.warning(f"RENTAL_PAYMENT SUCCESS: Endpoint llamado con parámetros: {kw}")
-            
-            # Buscar la transacción de pago más reciente SIN booking creado
-            payment_tx = request.env['payment.transaction'].sudo().search([
-                ('provider_code', '=', 'redsys'),
-                ('booking_created', '=', False),
-            ], limit=1, order='create_date desc')
-            
-            _logger.warning(f"RENTAL_PAYMENT SUCCESS: Payment TX encontrada: {payment_tx}")
-            
-            if payment_tx:
-                _logger.info(f"RENTAL_PAYMENT SUCCESS: Transacción encontrada TX:{payment_tx.id}")
-                
-                # Marcar como done si aún no lo está
-                if payment_tx.state != 'done':
-                    payment_tx.write({'state': 'done'})
-                    _logger.info(f"RENTAL_PAYMENT SUCCESS: Transacción marcada como done TX:{payment_tx.id}")
-                
-                # Obtener booking_data: primero sesión; si no (p. ej. sesión perdida al volver de Redsys), desde la transacción
-                booking_data = request.session.get('booking_data')
-                if not booking_data and getattr(payment_tx, 'booking_data_json', None):
-                    try:
-                        import json as _json
-                        booking_data = _json.loads(payment_tx.booking_data_json)
-                        _logger.info(f"RENTAL_PAYMENT SUCCESS: Booking data tomado de TX.booking_data_json (sesión vacía)")
-                    except Exception as je:
-                        _logger.warning(f"RENTAL_PAYMENT SUCCESS: No se pudo parsear booking_data_json: {je}")
-                _logger.info(f"RENTAL_PAYMENT SUCCESS: Booking data presente: {bool(booking_data)}")
-                
-                # Llamar directamente a _create_lead_from_payment sin pasar por _apply_updates
-                try:
-                    if booking_data:
-                        payment_tx._create_lead_from_payment(booking_data)
-                        payment_tx.booking_created = True
-                        _logger.info(f"RENTAL_PAYMENT SUCCESS: Lead creado exitosamente TX:{payment_tx.id}")
-                    else:
-                        _logger.warning("RENTAL_PAYMENT SUCCESS: No hay booking_data (ni sesión ni TX) para crear lead")
-                except Exception as e:
-                    _logger.error(f"RENTAL_PAYMENT SUCCESS: Error en _create_lead_from_payment: {str(e)}", exc_info=True)
-            else:
-                _logger.warning("RENTAL_PAYMENT SUCCESS: No se encontró transacción de pago")
-                
-        except Exception as e:
-            _logger.error(f"ERROR en rental_payment_success: {str(e)}", exc_info=True)
-        
-        return """
+        """Page the customer lands on after paying at Redsys.
+
+        It only reads the state of the visitor's own transaction. Confirming
+        the payment and creating the booking belong to the Redsys notification
+        (/payment/redsys/webhook, signature checked by payment_redsys), never
+        to this page: anyone can open it.
+        """
+        tx_id = request.session.get('rental_tx_id')
+        payment_tx = request.env['payment.transaction'].sudo().browse(tx_id).exists() if tx_id else None
+        if payment_tx and payment_tx.state == 'done':
+            title, message = '✓ Pago confirmado', 'Tu reserva está confirmada. Recibirás un correo con los detalles.'
+        else:
+            title, message = 'Estamos confirmando tu pago', 'En cuanto el banco lo confirme recibirás un correo con tu reserva.'
+        return f"""
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Pago Exitoso</title>
+            <title>{title}</title>
             <meta charset="utf-8">
             <style>
-                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-                .success { color: green; font-size: 24px; margin-bottom: 20px; }
-                .message { color: #333; font-size: 16px; }
+                body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                .success {{ color: green; font-size: 24px; margin-bottom: 20px; }}
+                .message {{ color: #333; font-size: 16px; }}
             </style>
         </head>
         <body>
-            <div class="success">✓ ¡Pago realizado exitosamente!</div>
-            <div class="message">Tu reserva ha sido confirmada. Serás redirigido en breve...</div>
-            <script>setTimeout(function() { window.location.href = '/'; }, 3000);</script>
+            <div class="success">{title}</div>
+            <div class="message">{message}</div>
+            <p><a href="/">Volver a inicio</a></p>
         </body>
         </html>
         """
-    
+
     @http.route('/rental/error', auth='public', website=True, type='http', methods=['GET', 'POST'], csrf=False)
     def rental_payment_error(self, **kw):
         """Payment error page after Redsys redirect"""

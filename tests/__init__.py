@@ -12,3 +12,6 @@ from . import test_blocking_errors
 from . import test_pricing_rules
 from . import test_contract_availability
 from . import test_return_ui_tour
+from . import test_security_cleanup
+from . import test_website_contact
+from . import test_payment_return

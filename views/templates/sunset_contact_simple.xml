@@ -31,6 +31,7 @@
                                 </p>
                                 
                                 <form action="/contactus/enviar" method="post">
+                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                     <div class="mb-3">
                                         <label for="name" class="form-label">Nombre Completo *</label>
                                         <input type="text" class="form-control" id="name" name="name" required="required" t-att-value="form_data.get('name', '') if form_data else ''"/>
