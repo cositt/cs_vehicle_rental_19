@@ -2,6 +2,8 @@
 # Copyright 2025
 # Extensión de Vehicle Contract para Sistema de Pricing Automático
 
+from datetime import timedelta
+
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 
@@ -287,6 +289,43 @@ class VehicleContractPricing(models.Model):
     def _compute_needs_flexirent(self):
         for record in self:
             record.needs_flexirent = bool(record.total_days) and record.total_days > 29
+
+    rental_days = fields.Integer(
+        string='Nº de días',
+        compute='_compute_rental_days',
+        inverse='_inverse_rental_days',
+        help='Inicio + nº de días = fecha de devolución, a la misma hora. '
+             'Si se cambia la fecha de devolución, se recalcula.')
+
+    @api.depends('start_date', 'end_date')
+    def _compute_rental_days(self):
+        for record in self:
+            if record.start_date and record.end_date and record.end_date >= record.start_date:
+                record.rental_days = (record.end_date.date() - record.start_date.date()).days
+            else:
+                record.rental_days = 0
+
+    def _inverse_rental_days(self):
+        for record in self:
+            if record.start_date and record.rental_days > 0:
+                record.end_date = record.start_date + timedelta(days=record.rental_days)
+
+    @api.onchange('rental_days')
+    def _onchange_rental_days(self):
+        if self.start_date and self.rental_days > 0:
+            self.end_date = self.start_date + timedelta(days=self.rental_days)
+
+    @api.onchange('start_date', 'end_date', 'rental_days')
+    def _onchange_days_pricing_type(self):
+        """Más de 29 días se sale de la tabla estándar: pasa a FLEXIRENT."""
+        if self.needs_flexirent and self.pricing_type != 'flexirent':
+            self.pricing_type = 'flexirent'
+            return {'warning': {
+                'title': _('Alquiler de larga duración'),
+                'message': _('Más de 29 días: se aplica la tarifa FLEXIRENT.'),
+            }}
+        if not self.needs_flexirent and self.pricing_type == 'flexirent':
+            self.pricing_type = 'standard'
 
     def _find_rule_by_bands(self):
         """Tarifa que corresponde a los tramos elegidos en el contrato."""
