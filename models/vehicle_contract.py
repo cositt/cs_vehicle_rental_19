@@ -969,8 +969,10 @@ class VehicleContract(models.Model):
     @api.onchange('vehicle_category_id', 'start_date', 'end_date')
     def _onchange_clear_unavailable_vehicle(self):
         """Soltar el vehículo si deja de estar disponible al cambiar el filtro."""
+        # En el formulario la lista son registros nuevos (NewId) y el vehículo
+        # uno real: se comparan por su registro de origen.
         for rec in self:
-            if rec.vehicle_id and rec.vehicle_id not in rec.available_vehicle_ids:
+            if rec.vehicle_id and rec.vehicle_id._origin not in rec.available_vehicle_ids._origin:
                 rec.vehicle_id = False
 
     @api.constrains('start_date', 'end_date', 'vehicle_id', 'status')
