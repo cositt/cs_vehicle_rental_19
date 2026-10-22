@@ -26,3 +26,4 @@ from . import test_website_delegations
 from . import test_authorized_driver
 from . import test_website_all_companies
 from . import test_cross_company_booking
+from . import test_form_chatter
