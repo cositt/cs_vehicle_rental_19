@@ -211,6 +211,8 @@ class RentalContractBooking(models.TransientModel):
             'rent': self.calculated_price,  # This is the computed value
             'rent_type': 'days',
             'pricing_type': self.pricing_type,
+            'vehicle_category_id': (self.selected_category_id or vehicle.category_id).id,
+            'km_range': self.km_range,
             # Se recoge donde está el vehículo; se entrega donde pidió el cliente
             'pick_up_delegation_id': (vehicle.delegation_id or self.delegation_id).id,
             'drop_off_delegation_id': (self.delegation_id or vehicle.delegation_id).id,

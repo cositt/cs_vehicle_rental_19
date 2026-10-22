@@ -64,3 +64,26 @@ class TestCrossCompanyBooking(VehicleRentalCase):
         hidden.company_id = foreign
         found = self._as_sunset_only('fleet.vehicle').search([('license_plate', '=', 'AJE-0001')])
         self.assertFalse(found)
+
+
+@tagged('post_install', '-at_install', 'vehicle_cross_company')
+class TestBookingWizardCarriesChoices(VehicleRentalCase):
+    """What is chosen in the booking assistant reaches the contract."""
+
+    def test_contract_keeps_category_and_km_band(self):
+        start = self.now + timedelta(days=70)
+        self.env['vehicle.pricing.rule'].create({
+            'vehicle_category_id': self.category.id, 'pricing_type': 'standard',
+            'km_range': '350', 'duration_range': '3-5d', 'price_per_unit': 75.0,
+            'valid_from': start.date() - timedelta(days=100),
+        })
+        wizard = self.env['rental.contract.booking'].create({
+            'customer_id': self.customer.id, 'selected_category_id': self.category.id,
+            'start_date': start, 'end_date': start + timedelta(days=3),
+            'duration_range': '3-5d', 'km_range': '350', 'pricing_type': 'standard',
+        })
+        action = wizard.action_create_contract_for_vehicle(self.spare_vehicle.id)
+        contract = self.env['vehicle.contract'].browse(action['res_id'])
+        self.assertEqual(contract.vehicle_category_id, self.category)
+        self.assertEqual(contract.km_range, '350')
+        self.assertEqual(contract.rent, 75.0)
