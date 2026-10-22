@@ -683,6 +683,7 @@ class VehicleContract(models.Model):
                 'name': f"Deposit for - {self.reference_no} - {self.vehicle_id.name}",
                 'quantity': 1,
                 'price_unit': self.deposit,
+                'tax_ids': [],
             }
             invoice_lines.append((0, 0, invoice_line_vals))
             # Obtener journal de ventas
@@ -892,7 +893,8 @@ class VehicleContract(models.Model):
         
         # Después de escribir, sincronizar depósito si es necesario
         # Esto se ejecuta después de que los campos computed se hayan actualizado
-        if any(field in vals for field in ['vehicle_id', 'deposit_card_type', 'use_deposit_from_rule']):
+        if any(field in vals for field in ['vehicle_id', 'deposit_card_type', 'use_deposit_from_rule',
+                                           'insurance_type', 'pricing_type', 'company_id']):
             self._sync_deposit_from_calculated()
         
         return result
@@ -925,7 +927,8 @@ class VehicleContract(models.Model):
         vuelta y disponible.
         """
         self.ensure_one()
-        overlapping = self.env['vehicle.contract'].search([
+        # De todas las compañías: un contrato de Pinveco también ocupa el coche
+        overlapping = self.env['vehicle.contract'].sudo().search([
             ('id', '!=', self._origin.id or self.id),
             ('vehicle_id', '!=', False),
             ('start_date', '<=', end_date),
@@ -954,8 +957,8 @@ class VehicleContract(models.Model):
                 ('model_id.category_id', '=', rec.vehicle_category_id.id),
                 ('id', 'not in', busy_ids),
             ]
-            if rec.company_id:
-                domain.append(('company_id', 'in', (rec.company_id.id, False)))
+            # Sunset alquila los de Pinveco: todas las compañías del usuario
+            domain.append(('company_id', 'in', self.env.user.company_ids.ids + [False]))
             rec.available_vehicle_ids = self.env['fleet.vehicle'].search(domain)
 
     @api.onchange('vehicle_id')
@@ -968,8 +971,10 @@ class VehicleContract(models.Model):
     @api.onchange('vehicle_category_id', 'start_date', 'end_date')
     def _onchange_clear_unavailable_vehicle(self):
         """Soltar el vehículo si deja de estar disponible al cambiar el filtro."""
+        # En el formulario la lista son registros nuevos (NewId) y el vehículo
+        # uno real: se comparan por su registro de origen.
         for rec in self:
-            if rec.vehicle_id and rec.vehicle_id not in rec.available_vehicle_ids:
+            if rec.vehicle_id and rec.vehicle_id._origin not in rec.available_vehicle_ids._origin:
                 rec.vehicle_id = False
 
     @api.constrains('start_date', 'end_date', 'vehicle_id', 'status')

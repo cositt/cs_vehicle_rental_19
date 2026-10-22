@@ -31,12 +31,12 @@ class VehicleInsurancePricing(models.Model):
     # TIPO DE SEGURO Y PRODUCTO
     # ============================================
     insurance_type = fields.Selection([
-        ('basic', 'Seguro Básico - Franquicia 300€'),
+        ('basic', 'Seguro Básico - Franquicia 750 € + IVA'),
         ('no_franchise', 'Seguro Sin Franquicia'),
     ], string='Tipo de Seguro',
         required=True,
         default='basic',
-        help='Básico: franquicia de 300€. Sin Franquicia: cobertura total'
+        help='Básico: franquicia de 750 € + IVA por impacto. Sin Franquicia: cobertura total'
     )
     
     product_id = fields.Many2one(
@@ -155,7 +155,7 @@ class VehicleInsurancePricing(models.Model):
             duration_label = dict(record._fields['duration_range'].selection).get(record.duration_range, '')
             
             # Buscar producto por nombre similar
-            # Ej: "Seguro Básico - Franquicia 300€ - 1-3 días"
+            # Ej: "Seguro Básico - Franquicia 750 € + IVA - 1-3 días"
             search_name = f"{insurance_label} - {duration_label}"
             
             product = self.env['product.product'].search([

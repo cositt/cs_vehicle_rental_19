@@ -89,6 +89,8 @@ class RentalMultiBooking(models.Model):
                 'transmission': line.vehicle_id.transmission,
                 'fuel_type': line.vehicle_id.fuel_type,
                 'license_plate': line.license_plate,
+                'vehicle_category_id': (line.selected_category_id or line.vehicle_id.category_id).id,
+                'km_range': line.km_range,
                 'customer_id': self.customer_id.id,
                 'customer_phone': self.customer_id.phone,
                 'customer_email': self.customer_id.email,
@@ -104,7 +106,7 @@ class RentalMultiBooking(models.Model):
                 'discount_reason': 'Reserva múltiple %s' % group.name,
             })
 
-        self.write({'state': 'done', 'group_id': group.id})
+        self.write({'state': 'done', 'group_id': group.id, 'name': group.name})
 
         return {
             'type': 'ir.actions.act_window',

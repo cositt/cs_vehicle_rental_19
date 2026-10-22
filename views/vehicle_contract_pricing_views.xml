@@ -58,7 +58,7 @@
                 
                 <div class="alert alert-info" role="alert" invisible="insurance_type != 'basic'">
                     <i class="fa fa-info-circle"/> 
-                    <strong>Seguro Básico:</strong> Franquicia de 300€ en caso de daños
+                    <strong>Seguro Básico:</strong> Franquicia de 750 € + IVA por impacto
                 </div>
                 <div class="alert alert-success" role="alert" invisible="insurance_type != 'no_franchise'">
                     <i class="fa fa-check-circle"/> 

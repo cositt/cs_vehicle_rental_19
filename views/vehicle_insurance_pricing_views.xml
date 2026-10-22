@@ -90,10 +90,10 @@
                             <field name="notes" placeholder="Coberturas incluidas, condiciones especiales, exclusiones..."/>
                             
                             <div class="alert alert-info mt-3" role="alert" invisible="insurance_type != 'basic'">
-                                <h4><i class="fa fa-shield"/> Seguro Básico - Franquicia 300€</h4>
+                                <h4><i class="fa fa-shield"/> Seguro Básico - Franquicia 750 € + IVA</h4>
                                 <ul>
-                                    <li>Cobertura de daños con franquicia de 300€</li>
-                                    <li>El cliente paga los primeros 300€ en caso de daño</li>
+                                    <li>Cobertura de daños con franquicia de 750 € + IVA por impacto</li>
+                                    <li>El cliente paga los primeros 750 € + IVA en caso de daño</li>
                                     <li>Tarifa más económica</li>
                                 </ul>
                             </div>
@@ -140,7 +140,7 @@
                 <filter name="active" string="Activas" domain="[('active', '=', True)]"/>
                 <filter name="inactive" string="Inactivas" domain="[('active', '=', False)]"/>
                 <separator/>
-                <filter name="basic" string="Seguro Básico (300€)" domain="[('insurance_type', '=', 'basic')]"/>
+                <filter name="basic" string="Seguro Básico (franquicia 750 € + IVA)" domain="[('insurance_type', '=', 'basic')]"/>
                 <filter name="no_franchise" string="Sin Franquicia" domain="[('insurance_type', '=', 'no_franchise')]"/>
                 <separator/>
                 <filter name="normal_driver" string="Conductor Normal" domain="[('driver_type', '=', 'normal')]"/>
@@ -172,7 +172,7 @@
                 Las tarifas de seguro definen el precio diario del seguro según:
             </p>
             <ul>
-                <li><strong>Tipo:</strong> Básico (franquicia 300€) o Sin Franquicia</li>
+                <li><strong>Tipo:</strong> Básico (franquicia 750 € + IVA) o Sin Franquicia</li>
                 <li><strong>Duración:</strong> Rango de días del alquiler</li>
                 <li><strong>Conductor:</strong> Normal o Especial (&lt;25 o &gt;60 años)</li>
             </ul>

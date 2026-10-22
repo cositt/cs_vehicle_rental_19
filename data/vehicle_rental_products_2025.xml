@@ -88,7 +88,7 @@
 
         <!-- Seguro Básico -->
         <record id="product_insurance_basic" model="product.template">
-            <field name="name">Seguro Básico - Franquicia 300€</field>
+            <field name="name">Seguro Básico - Franquicia 750 € + IVA</field>
             <field name="type">service</field>
             <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
             <field name="active">True</field>
@@ -99,7 +99,7 @@
             <field name="invoice_policy">order</field>
             <field name="taxes_id" eval="[(6, 0, [ref('l10n_es.1_sale_tax_21s')])]"/>
             <field name="supplier_taxes_id" eval="[(6, 0, [])]"/>
-            <field name="description">Seguro básico con franquicia de 300€ en caso de daños</field>
+            <field name="description">Seguro básico con franquicia de 750 € + IVA por impacto</field>
         </record>
 
         <!-- Seguro Sin Franquicia -->

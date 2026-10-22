@@ -184,3 +184,14 @@ class TestContractVehicleAvailability(VehicleRentalCase):
             ['id'], ['vehicle_category_id'])
 
         self.assertEqual(groups[0]['vehicle_category_id'][0], self.category.id)
+
+    def test_setting_the_category_keeps_a_vehicle_of_that_category(self):
+        """A contract saved without category keeps its vehicle when the category is set."""
+        from odoo.tests import Form
+        contract = self._draft(vehicle_category_id=False, vehicle_id=self.spare_vehicle.id)
+        contract.vehicle_category_id = False
+        form = Form(contract)
+        form.vehicle_category_id = self.category
+        self.assertEqual(form.vehicle_id, self.spare_vehicle)
+        form.vehicle_category_id = self.other_category
+        self.assertFalse(form.vehicle_id, 'a vehicle of another category is dropped')

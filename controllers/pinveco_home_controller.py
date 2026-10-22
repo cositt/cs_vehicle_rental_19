@@ -40,16 +40,8 @@ class PinvecoHomeController(http.Controller):
     def pinveco_fleet(self, **kw):
         """Página de catálogo de flota de Pinveco"""
         try:
-            # Obtener la compañía Pinveco
-            pinveco_company = request.env['res.company'].sudo().search([('name', '=', 'Pinveco')], limit=1)
-            
-            # Obtener vehículos de Pinveco solamente
-            if pinveco_company:
-                vehicles = request.env['fleet.vehicle'].sudo().search([
-                    ('company_id', '=', pinveco_company.id)
-                ])
-            else:
-                vehicles = request.env['fleet.vehicle'].sudo().search([])
+            # La web ofrece los vehículos de todas las compañías
+            vehicles = request.env['fleet.vehicle'].sudo().search([])
             
             # Convertir a formato para el template
             vehicle_list = []
@@ -134,20 +126,13 @@ class PinvecoHomeController(http.Controller):
     @http.route('/pinveco/categoria/<int:category_id>', type='http', auth='public', website=True)
     def pinveco_category(self, category_id, **kw):
         """Página de categoría específica para Pinveco"""
-        # Obtener la compañía Pinveco
-        pinveco_company = request.env['res.company'].sudo().search([('name', '=', 'Pinveco')], limit=1)
-        
         category = request.env['fleet.vehicle.model.category'].sudo().browse(category_id)
         
         if not category.exists():
             return request.not_found()
         
-        # Obtener vehículos de esta categoría de Pinveco
-        domain = [('category_id', '=', category_id)]
-        if pinveco_company:
-            domain.append(('company_id', '=', pinveco_company.id))
-        
-        vehicles = request.env['fleet.vehicle'].sudo().search(domain)
+        # Vehículos de esta categoría, de todas las compañías
+        vehicles = request.env['fleet.vehicle'].sudo().search([('category_id', '=', category_id)])
         
         values = {
             'category': category,
