@@ -40,3 +40,4 @@ from . import res_partner
 from . import vehicle_rental_delegation
 from . import vehicle_contract_delegation
 from . import vehicle_contract_driver
+from . import vehicle_rental_tax

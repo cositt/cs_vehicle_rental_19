@@ -683,6 +683,7 @@ class VehicleContract(models.Model):
                 'name': f"Deposit for - {self.reference_no} - {self.vehicle_id.name}",
                 'quantity': 1,
                 'price_unit': self.deposit,
+                'tax_ids': [],
             }
             invoice_lines.append((0, 0, invoice_line_vals))
             # Obtener journal de ventas

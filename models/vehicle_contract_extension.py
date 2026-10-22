@@ -344,7 +344,7 @@ class VehicleContractExtension(models.Model):
                 'name': name_line,
                 'quantity': self.extension_days,
                 'price_unit': self.daily_rate,
-                'tax_ids': [(6, 0, product.taxes_id.ids)],
+                'tax_ids': [(6, 0, contract.tax_ids.ids)],
             })],
         }
         invoice = self.env['account.move'].sudo().create(invoice_vals)

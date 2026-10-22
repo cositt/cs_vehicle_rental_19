@@ -107,7 +107,7 @@ class VehiclePaymentOption(models.Model):
             'name': name,
             'quantity': round((contract.total_days or 1) * share, 2),
             'price_unit': contract.insurance_price_per_day,
-            'tax_ids': [(6, 0, product.taxes_id.ids)] if product.taxes_id else [],
+            'tax_ids': [(6, 0, contract._taxes_for(product).ids)],
         })]
 
     def _one_off_lines(self, contract, tax):
@@ -124,7 +124,8 @@ class VehiclePaymentOption(models.Model):
                 'name': f"Depósito de Seguridad - {contract.reference_no}",
                 'quantity': 1,
                 'price_unit': deposit,
-                'tax_ids': tax,
+                # La fianza no es una venta: sin IVA
+                'tax_ids': [],
             }))
         for extra_service in contract.extra_service_ids.filtered('product_id'):
             lines.append((0, 0, {
@@ -157,5 +158,5 @@ class VehiclePaymentOption(models.Model):
                     f"{contract.extra_km_price_unit:.2f}€",
             'quantity': contract.extra_km_used,
             'price_unit': contract.extra_km_price_unit,
-            'tax_ids': [(6, 0, product.taxes_id.ids)],
+            'tax_ids': [(6, 0, contract._taxes_for(product).ids)],
         })]

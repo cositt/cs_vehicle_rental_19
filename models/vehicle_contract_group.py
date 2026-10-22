@@ -245,7 +245,8 @@ class VehicleContractGroup(models.Model):
                         'name': f'[{vehicle_label}] Depósito de Seguridad',
                         'quantity': 1,
                         'price_unit': deposit_amount,
-                        'tax_ids': tax,
+                        # La fianza no es una venta: sin IVA
+                        'tax_ids': [],
                     }))
 
             if (contract.insurance_type and
@@ -263,9 +264,7 @@ class VehicleContractGroup(models.Model):
                     'name': f'[{vehicle_label}] {insurance_name}',
                     'quantity': contract.total_days or 1,
                     'price_unit': contract.insurance_price_per_day,
-                    'tax_ids': ([(6, 0, contract.insurance_product_id.taxes_id.ids)]
-                                if contract.insurance_product_id and contract.insurance_product_id.taxes_id
-                                else []),
+                    'tax_ids': [(6, 0, contract._taxes_for(contract.insurance_product_id).ids)],
                 }
                 invoice_lines.append((0, 0, insurance_line))
 
