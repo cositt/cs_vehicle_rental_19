@@ -146,7 +146,8 @@ class RentalContractBooking(models.TransientModel):
         
         # 1. Contratos que retienen el vehículo: en curso y reservas sin activar.
         #    Los devueltos no cuentan, el coche ya volvió.
-        occupied_contracts = self.env['vehicle.contract'].search([
+        #    De todas las compañías: un contrato de Pinveco también ocupa el coche.
+        occupied_contracts = self.env['vehicle.contract'].sudo().search([
             ('start_date', '<=', self.end_date),
             ('end_date', '>=', self.start_date),
             ('status', 'in', list(BUSY_CONTRACT_STATES)),
@@ -155,10 +156,11 @@ class RentalContractBooking(models.TransientModel):
         occupied_vehicle_ids = occupied_contracts.mapped('vehicle_id').ids
 
         # 2. Dominio base: vehículos de todas las compañías con las que trabaja
-        #    el usuario (Sunset alquila los de Pinveco) y los que aún no tienen.
+        #    el usuario (Sunset alquila los de Pinveco), estén o no activas en el
+        #    selector de compañías, y los que aún no tienen.
         domain = [
             ('status', '=', 'available'),
-            ('company_id', 'in', self.env.companies.ids + [False]),
+            ('company_id', 'in', self.env.user.company_ids.ids + [False]),
             '|',
             ('category_id', '=', self.selected_category_id.id),
             ('model_id.category_id', '=', self.selected_category_id.id),

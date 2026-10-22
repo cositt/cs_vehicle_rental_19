@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Sunset rents Pinveco vehicles and the other way round: a vehicle is
+         visible in every company the user works with, not only the ones
+         selected in the company switcher. Companies outside the user stay hidden. -->
+    <function model="ir.rule" name="write">
+        <value eval="[ref('fleet.ir_rule_fleet_vehicle')]"/>
+        <value eval="{'domain_force': &quot;[('company_id', 'in', user.company_ids.ids + [False])]&quot;}"/>
+    </function>
+</odoo>
