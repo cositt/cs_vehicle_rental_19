@@ -25,8 +25,7 @@ class SunsetContactController(http.Controller):
                 'phone': partner.phone or '',
                 'email': (partner.email or '').lower(),
             },
-            # Se llenarán con el modelo de delegaciones (Fase 4 del plan)
-            'delegations': [],
+            'delegations': request.env['vehicle.rental.delegation']._website_delegations(),
         }
         values.update(extra)
         return values

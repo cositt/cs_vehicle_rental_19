@@ -41,6 +41,7 @@
                             invisible="status == 'available'"/>
                 </xpath>
                 <xpath expr="//field[@name='location']" position="after">
+                    <field name="delegation_id" options="{'no_create': True}"/>
                     <field name="maintenance_schedule_id" options="{'no_create': True, 'no_create_edit': True}"/>
                 </xpath>
                 <xpath expr="//form/sheet/group" position="inside">

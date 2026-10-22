@@ -11,6 +11,10 @@ class FleetVehicle(models.Model):
     _inherit = 'fleet.vehicle'
     _description = __doc__
 
+    delegation_id = fields.Many2one(
+        'vehicle.rental.delegation', string='Delegación', index=True, tracking=True,
+        help='Dónde está el vehículo. Al devolverlo pasa a la delegación de entrega.')
+
     rent_day = fields.Monetary(string="Alquiler por Día")
     rent_week = fields.Monetary(string="Rent per Week")
     rent_month = fields.Monetary(string="Rent per Month")
@@ -137,8 +141,13 @@ class FleetVehicle(models.Model):
             'rent_type': 'days',
             'pricing_type': wizard.pricing_type,
             'discount_reason': 'Tarifa del sistema de reservas',  # Set reason to bypass validation
+            # Se recoge donde está el vehículo; se entrega donde pidió el cliente
+            'pick_up_delegation_id': (self.delegation_id or wizard.delegation_id).id,
+            'drop_off_delegation_id': (wizard.delegation_id or self.delegation_id).id,
         }
-        
+        if data['pick_up_delegation_id']:
+            data.pop('pick_up_city')  # la dirección sale de la delegación
+
         vehicle_contract = self.env['vehicle.contract'].create(data)
         return {
             'type': 'ir.actions.act_window',

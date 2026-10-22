@@ -215,6 +215,8 @@
                         <group>
                             <group>
                                 <field name="start_date" required="1" readonly="status != 'a_draft'"/>
+                                <field name="pick_up_delegation_id" string="Recogida"
+                                       readonly="status != 'a_draft'" options="{'no_create': True}"/>
                                 <span class="o_form_label o_td_label" name="address_name">Levantar Ubicación</span>
                                 <div class="o_address_format">
                                     <field name="pick_up_street" placeholder="Dirección..." class="o_address_street" required="1"/>
@@ -230,6 +232,8 @@
                             <group>
                                 <field name="rental_days" readonly="status != 'a_draft'"/>
                                 <field name="end_date" required="1" readonly="status != 'a_draft'"/>
+                                <field name="drop_off_delegation_id" string="Entrega"
+                                       readonly="status in ('c_return', 'd_cancel')" options="{'no_create': True}"/>
                                 <span class="o_form_label o_td_label" name="address_name">Dejar Ubicación</span>
                                 <div class="o_address_format">
                                     <field name="drop_off_street" placeholder="Dirección..." class="o_address_street" required="1"/>

@@ -485,24 +485,9 @@ class VehicleContract(models.Model):
                 record.reference_no = self.env['ir.sequence'].next_by_code('vehicle.contract') or _(
                     'New')
 
-            if record.drop_off_city and record.vehicle_id:
-                record.vehicle_id.location = record.drop_off_city
 
         records._sync_deposit_from_calculated()
         return records
-
-    def write(self, vals):
-        """Update vehicle location when drop_off_city is modified"""
-        result = super().write(vals)
-        
-        # Si se modifica drop_off_city, actualizar ubicación del vehículo
-        # Esto permite cambiar la ubicación del vehículo al editar un contrato existente
-        if 'drop_off_city' in vals:
-            for record in self:
-                if record.drop_off_city and record.vehicle_id:
-                    record.vehicle_id.location = record.drop_off_city
-        
-        return result
 
     @api.constrains('start_date', 'end_date', 'rent_type')
     def _check_date_rent_type(self):

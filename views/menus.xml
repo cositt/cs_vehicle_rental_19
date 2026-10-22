@@ -107,5 +107,11 @@
                   parent="menu_configuration"
                   action="action_maintenance_schedule"
                   sequence="4"/>
+        <menuitem id="menu_vehicle_rental_delegation"
+                  name="Delegaciones"
+                  parent="menu_configuration"
+                  action="action_vehicle_rental_delegation"
+                  groups="fleet.fleet_group_manager,base.group_system"
+                  sequence="5"/>
     </data>
 </odoo>

@@ -173,8 +173,8 @@
                 </div>
             </div>
 
-            <!-- DELEGACIONES -->
-            <div class="delegations-section py-5" style="background-color: #f8f9fa;">
+            <!-- DELEGACIONES: las activas del modelo vehicle.rental.delegation -->
+            <div id="delegaciones" class="delegations-section py-5" style="background-color: #f8f9fa;" t-if="delegations">
                 <div class="container">
                     <div class="row text-center mb-5">
                         <div class="col-12">
@@ -187,99 +187,34 @@
                             </p>
                         </div>
                     </div>
-                    
-                    <div class="row g-4">
-                        <div class="col-lg-4 col-md-6">
+
+                    <div class="row g-4 justify-content-center">
+                        <div class="col-lg-4 col-md-6" t-foreach="delegations" t-as="delegation">
                             <div class="delegation-card card h-100 shadow-sm">
                                 <div class="card-body text-center">
                                     <div class="delegation-icon mb-3">
                                         <i class="fa fa-building fa-3x" style="color: #0066B3;"></i>
                                     </div>
-                                    <h5 class="card-title fw-bold" style="color: #0066B3;">Delegación Madrid</h5>
-                                    <p class="text-muted mb-3">
+                                    <h5 class="card-title fw-bold" style="color: #0066B3;">
+                                        Delegación <t t-esc="delegation['name']"/>
+                                    </h5>
+                                    <p class="text-muted mb-3" t-if="delegation['address']">
                                         <i class="fa fa-map-marker me-2"></i>
-                                        C/ Alcalá, 200<br/>
-                                        28028 Madrid
+                                        <t t-esc="delegation['address']"/>
                                     </p>
-                                    <div class="rating mb-3">
-                                        <i class="fa fa-star text-warning"></i>
-                                        <i class="fa fa-star text-warning"></i>
-                                        <i class="fa fa-star text-warning"></i>
-                                        <i class="fa fa-star text-warning"></i>
-                                        <i class="fa fa-star text-warning"></i>
-                                        <span class="ms-2 text-muted">4.8/5</span>
-                                    </div>
-                                    <a href="tel:+34913221100" class="btn btn-outline-primary me-2" style="border-color: #0066B3; color: #0066B3;">
-                                        <i class="fa fa-phone me-1"></i>
-                                        +34 913 221 100
-                                    </a>
-                                    <a href="/pinveco/delegacion/madrid" class="btn" style="background-color: #0066B3; color: white;">
-                                        <i class="fa fa-info-circle me-1"></i>
-                                        Más Info
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-lg-4 col-md-6">
-                            <div class="delegation-card card h-100 shadow-sm">
-                                <div class="card-body text-center">
-                                    <div class="delegation-icon mb-3">
-                                        <i class="fa fa-building fa-3x" style="color: #0066B3;"></i>
-                                    </div>
-                                    <h5 class="card-title fw-bold" style="color: #0066B3;">Delegación Barcelona</h5>
-                                    <p class="text-muted mb-3">
-                                        <i class="fa fa-map-marker me-2"></i>
-                                        Av. Diagonal, 500<br/>
-                                        08006 Barcelona
+                                    <p class="text-muted small mb-3" t-if="delegation['schedule']">
+                                        <i class="fa fa-clock-o me-2"></i>
+                                        <t t-esc="delegation['schedule']"/>
                                     </p>
-                                    <div class="rating mb-3">
-                                        <i class="fa fa-star text-warning"></i>
-                                        <i class="fa fa-star text-warning"></i>
-                                        <i class="fa fa-star text-warning"></i>
-                                        <i class="fa fa-star text-warning"></i>
-                                        <i class="fa fa-star text-warning"></i>
-                                        <span class="ms-2 text-muted">4.9/5</span>
-                                    </div>
-                                    <a href="tel:+34933445566" class="btn btn-outline-primary me-2" style="border-color: #0066B3; color: #0066B3;">
+                                    <a t-if="delegation['phone']" t-att-href="'tel:%s' % delegation['phone'].replace(' ', '')"
+                                       class="btn btn-outline-primary me-2 mb-2" style="border-color: #0066B3; color: #0066B3;">
                                         <i class="fa fa-phone me-1"></i>
-                                        +34 933 445 566
+                                        <t t-esc="delegation['phone']"/>
                                     </a>
-                                    <a href="/pinveco/delegacion/barcelona" class="btn" style="background-color: #0066B3; color: white;">
-                                        <i class="fa fa-info-circle me-1"></i>
-                                        Más Info
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-lg-4 col-md-6">
-                            <div class="delegation-card card h-100 shadow-sm">
-                                <div class="card-body text-center">
-                                    <div class="delegation-icon mb-3">
-                                        <i class="fa fa-building fa-3x" style="color: #0066B3;"></i>
-                                    </div>
-                                    <h5 class="card-title fw-bold" style="color: #0066B3;">Delegación Valencia</h5>
-                                    <p class="text-muted mb-3">
-                                        <i class="fa fa-map-marker me-2"></i>
-                                        C/ Colón, 85<br/>
-                                        46004 Valencia
-                                    </p>
-                                    <div class="rating mb-3">
-                                        <i class="fa fa-star text-warning"></i>
-                                        <i class="fa fa-star text-warning"></i>
-                                        <i class="fa fa-star text-warning"></i>
-                                        <i class="fa fa-star text-warning"></i>
-                                        <i class="fa fa-star text-warning"></i>
-                                        <span class="ms-2 text-muted">4.7/5</span>
-                                    </div>
-                                    <a href="tel:+34963778899" class="btn btn-outline-primary me-2" style="border-color: #0066B3; color: #0066B3;">
-                                        <i class="fa fa-phone me-1"></i>
-                                        +34 963 778 899
-                                    </a>
-                                    <a href="/pinveco/delegacion/valencia" class="btn" style="background-color: #0066B3; color: white;">
-                                        <i class="fa fa-info-circle me-1"></i>
-                                        Más Info
+                                    <a t-if="delegation['email']" t-att-href="'mailto:%s' % delegation['email']"
+                                       class="btn mb-2" style="background-color: #0066B3; color: white;">
+                                        <i class="fa fa-envelope me-1"></i>
+                                        <t t-esc="delegation['email']"/>
                                     </a>
                                 </div>
                             </div>
