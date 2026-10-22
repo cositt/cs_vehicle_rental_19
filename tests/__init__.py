@@ -17,3 +17,4 @@ from . import test_website_contact
 from . import test_payment_return
 from . import test_pricing_currency
 from . import test_pricing_validity
+from . import test_partner_driver_data

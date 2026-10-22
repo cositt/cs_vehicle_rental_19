@@ -36,3 +36,4 @@ from . import vehicle_deposit_rule
 
 from . import payment_redsys_inherit
 from . import payment_redsys_webhook_fix
+from . import res_partner

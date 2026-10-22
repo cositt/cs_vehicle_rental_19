@@ -3,7 +3,7 @@
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 {
     'name': "Sunset",
-    'version': "19.0.6.2",
+    'version': "19.0.6.3",
     'description': "A car rental, hire car or car hire agency is a company that rents automobiles for short periods.",
     'summary': "Vehicle Rental Management",
     'author': 'Cositt',
@@ -55,6 +55,7 @@
         'views/vehicle_deposit_rule_views.xml',
         'views/assets.xml',
         'views/fleet_inherit_views.xml',
+        'views/res_partner_views.xml',
         'views/fleet_vehicle_model_views.xml',
         'views/vehicle_contract_extension_views.xml',
         'views/vehicle_contract_group_views.xml',
