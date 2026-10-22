@@ -23,3 +23,4 @@ from . import test_flexirent
 from . import test_installments
 from . import test_delegations
 from . import test_website_delegations
+from . import test_authorized_driver

@@ -301,6 +301,48 @@
                                 </td>
                             </tr>
 
+                            <!-- Authorized driver -->
+                            <t t-set="driver" t-value="contract.authorized_driver_id"/>
+                            <tr style="border-bottom: 2px solid black;">
+                                <td colspan="4">
+                                    <span class="primary-section-header">
+                                        <i class="fa fa-id-card ms-1 me-1" aria-hidden="true"/>
+                                        Conductor autorizado
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span class="label">Conductor:</span>
+                                </td>
+                                <td class="value">
+                                    <t t-if="driver" t-esc="driver.name"/>
+                                    <t t-else="">Sin asignar</t>
+                                </td>
+                                <td>
+                                    <span class="label">DNI/NIE:</span>
+                                </td>
+                                <td class="value">
+                                    <t t-esc="driver.driver_identity_number or (not driver.parent_id and driver.vat) or ''"/>
+                                </td>
+                            </tr>
+                            <tr t-if="contract.driver_license_number">
+                                <td>
+                                    <span class="label">Carnet de conducir:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.driver_license_number"/>
+                                </td>
+                                <td>
+                                    <span class="label">Expedición / Caducidad:</span>
+                                </td>
+                                <td class="value">
+                                    <span t-field="contract.driver_license_issue_date"/>
+                                    <t t-if="contract.driver_license_issue_date and contract.driver_license_expiry_date"> / </t>
+                                    <span t-field="contract.driver_license_expiry_date"/>
+                                </td>
+                            </tr>
+
                             <!-- Driver Details -->
                             <tr style="border-bottom: 2px solid black;" t-if="contract.is_driver_required">
                                 <td colspan="4">

@@ -523,8 +523,8 @@ class VehicleContract(models.Model):
                 raise ValidationError(
                     _("The Rent per %s must be greater than zero.") % type_labels[record.rent_type])
 
-    def a_draft_to_b_in_progress(self):
-        """Change status from draft to in-progress."""
+    def _check_hand_over_ready(self):
+        """Raise the blocking errors that stop a contract from going in progress."""
         for rec in self:
             # Validate if rental type is selected
             if not rec.rent_type:
@@ -573,6 +573,11 @@ class VehicleContract(models.Model):
                     plate=rec.vehicle_id.license_plate or rec.vehicle_id.name,
                     conflicts=conflict_details,
                 ))
+
+    def a_draft_to_b_in_progress(self):
+        """Change status from draft to in-progress."""
+        for rec in self:
+            rec._check_hand_over_ready()
             # Proceed to update status and prepare email context
             rec.ensure_one()
             template_id = self.env.ref("vehicle_rental.vehicle_rental_booking_mail_template").sudo()

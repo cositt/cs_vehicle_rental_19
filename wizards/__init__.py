@@ -12,3 +12,4 @@ from . import substitution_damage_painter_wizard
 from . import vehicle_return_wizard
 from . import return_damage_painter_wizard
 from . import sale_order_to_vehicle_contract
+from . import vehicle_contract_driver_confirm
