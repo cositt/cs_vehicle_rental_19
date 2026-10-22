@@ -232,7 +232,8 @@ class RentalPaymentController(http.Controller):
                 'provider_id': redsys_provider.id,
                 'payment_method_id': payment_method.id,
                 'amount': total_with_deposit,
-                'currency_id': request.env.company.currency_id.id,
+                # The Redsys form below is sent in 978 (EUR): the transaction must match it.
+                'currency_id': request.env.ref('base.EUR').id,
                 'partner_id': request.env.user.partner_id.id if request.env.user.partner_id else request.env.ref('base.public_partner').id,
                 'reference': order_number,
             }
