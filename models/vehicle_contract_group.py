@@ -275,7 +275,7 @@ class VehicleContractGroup(models.Model):
                         'name': f'[{vehicle_label}] {extra_service.description or extra_service.product_id.name}',
                         'quantity': extra_service.product_qty,
                         'price_unit': extra_service.amount,
-                        'tax_ids': tax,
+                        'tax_ids': [(6, 0, contract._extra_service_taxes(extra_service.product_id).ids)],
                     }))
 
         if not invoice_lines:

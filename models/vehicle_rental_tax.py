@@ -78,6 +78,34 @@ class ResCompany(models.Model):
             contracts.write({'tax_ids': [(6, 0, tax.ids)]})
 
 
+SURCHARGES_VAT_INCLUDED = ('vehicle_rental.surcharge_out_of_hours', 'vehicle_rental.surcharge_fuel_not_full')
+SURCHARGES_PLUS_VAT = ('vehicle_rental.surcharge_other_branch', 'vehicle_rental.surcharge_lost_beacon')
+
+
+class ResCompanySurcharges(models.Model):
+    _inherit = 'res.company'
+
+    def _vehicle_rental_load_surcharges(self):
+        """Set the VAT of the tariff surcharges in each company: included or + 21 %."""
+        for company in self:
+            included = company._vehicle_rental_ensure_sale_tax()
+            excluded = self.env['account.tax'].sudo().search([
+                ('company_id', '=', company.id), ('type_tax_use', '=', 'sale'),
+                ('amount_type', '=', 'percent'), ('amount', '=', RENTAL_VAT),
+                ('price_include_override', '!=', 'tax_included'),
+            ], limit=1)
+            for xmlids, tax in ((SURCHARGES_VAT_INCLUDED, included), (SURCHARGES_PLUS_VAT, excluded)):
+                if not tax:
+                    continue
+                for xmlid in xmlids:
+                    product = self.env.ref(xmlid, raise_if_not_found=False)
+                    if not product:
+                        continue
+                    template = product.product_tmpl_id.sudo()
+                    others = template.taxes_id.filtered(lambda t: t.company_id == company)
+                    template.write({'taxes_id': [(3, t.id) for t in others] + [(4, tax.id)]})
+
+
 class VehicleContractTax(models.Model):
     """Rental lines carry the VAT-included tax of the contract's company.
 
@@ -101,3 +129,8 @@ class VehicleContractTax(models.Model):
         """Taxes of the product that belong to the company of the contract."""
         self.ensure_one()
         return product.taxes_id.filtered(lambda tax: tax.company_id == self.company_id)
+
+    def _extra_service_taxes(self, product):
+        """Tax of the service product, or the VAT-included tax of the contract."""
+        self.ensure_one()
+        return self._taxes_for(product) or self.tax_ids

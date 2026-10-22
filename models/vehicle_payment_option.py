@@ -133,7 +133,7 @@ class VehiclePaymentOption(models.Model):
                 'name': extra_service.description or extra_service.product_id.name,
                 'quantity': extra_service.product_qty,
                 'price_unit': extra_service.amount,
-                'tax_ids': tax,
+                'tax_ids': [(6, 0, contract._extra_service_taxes(extra_service.product_id).ids)],
             }))
         if contract.total_extra_charges > 0:
             lines.append((0, 0, {

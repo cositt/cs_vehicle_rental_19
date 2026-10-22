@@ -30,3 +30,4 @@ from . import test_form_chatter
 from . import test_vat_included
 from . import test_deposit_rules
 from . import test_insurance_tariff
+from . import test_surcharges
