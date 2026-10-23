@@ -14,3 +14,9 @@ def _display_rental_notification(message, message_type):
             'sticky': False,
         }
     }
+
+
+def format_es_number(value, decimals=0):
+    """Number with Spanish separators: 18.000 or 1.234,50."""
+    text = f"{value or 0.0:,.{decimals}f}"
+    return text.translate(str.maketrans({',': '.', '.': ','}))
