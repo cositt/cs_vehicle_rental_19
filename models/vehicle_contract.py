@@ -21,6 +21,11 @@ INSTALLMENT_PERIODS = {
 }
 
 
+# The default reference is translated when the form opens and may come back
+# in another language when saving: any of them still means "not numbered".
+NEW_REFERENCES = ('New', 'Nueva', 'Nuevo')
+
+
 class RentalVehicleImage(models.Model):
     """Rental Vehicle Image"""
     _name = "rental.vehicle.image"
@@ -487,13 +492,39 @@ class VehicleContract(models.Model):
         
         records = super().create(vals_list)
         for record in records:
-            if record.reference_no == _('New'):
+            if record.reference_no in NEW_REFERENCES or record.reference_no == _('New'):
                 record.reference_no = self.env['ir.sequence'].next_by_code('vehicle.contract') or _(
                     'New')
 
 
         records._sync_deposit_from_calculated()
         return records
+
+    @api.model
+    def _availability_chart_data(self):
+        """Rows of the availability chart, in the timezone of the user.
+
+        Only the companies the user selected and may access; sudo only to read
+        the vehicles of the other companies on those contracts.
+        """
+        company_ids = set(self.env.context.get('allowed_company_ids') or self.env.company.ids)
+        company_ids &= set(self.env.user.company_ids.ids)
+        contracts = self.sudo().search([
+            ('status', '!=', 'd_cancel'), ('company_id', 'in', list(company_ids)),
+            ('start_date', '!=', False), ('end_date', '!=', False)])
+
+        def local(moment):
+            return fields.Datetime.context_timestamp(self, moment).strftime("%d-%m-%Y %H:%M:%S")
+
+        return [{
+            'contract_id': contract.id,
+            'text': contract.vehicle_id.name,
+            'name': contract.reference_no,
+            'start_date': local(contract.start_date),
+            'end_date': local(contract.end_date),
+            'order': 10,
+            'progress': 0.6,
+        } for contract in contracts]
 
     @api.constrains('start_date', 'end_date', 'rent_type')
     def _check_date_rent_type(self):
