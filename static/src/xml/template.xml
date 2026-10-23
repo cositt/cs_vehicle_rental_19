@@ -13,7 +13,7 @@
                             <div class="card-body info-bg tk-card-body">
                                 <img alt="users" width="40"
                                      src="/vehicle_rental/static/src/img/dashboard/1-total.svg"/>
-                                <h4 class="tk-st-1 info-bg">Total Vehicles</h4>
+                                <h4 class="tk-st-1 info-bg">Vehículos Totales</h4>
                                 <h6 class="tk-st-2 info-bg">
                                     <t t-esc="state.fleetVehicleStats['total_vehicle']"/>
                                 </h6>
@@ -95,7 +95,7 @@
                                     <div class="card-body info-bg tk-card-body">
                                         <img alt="users" width="40"
                                              src="/vehicle_rental/static/src/img/dashboard/4-contract.svg"/>
-                                        <h4 class="tk-st-1 info-bg">Contracts</h4>
+                                        <h4 class="tk-st-1 info-bg">Contratos</h4>
                                         <h6 class="tk-st-2 info-bg">
                                             <t t-esc="state.vehicleContractStatus['draft_vehicle']"/>
                                         </h6>
@@ -108,7 +108,7 @@
                                     <div class="card-body warn-bg tk-card-body">
                                         <img alt="users" width="40"
                                              src="/vehicle_rental/static/src/img/dashboard/5-progress.svg"/>
-                                        <h4 class="tk-st-1 warn-bg">In Progress</h4>
+                                        <h4 class="tk-st-1 warn-bg">En curso</h4>
                                         <h6 class="tk-st-2 warn-bg">
                                             <t t-esc="state.vehicleContractStatus['in_progress_vehicle']"/>
                                         </h6>
@@ -134,7 +134,7 @@
                                     <div class="card-body terminate-bg tk-card-body">
                                         <img alt="users" width="40"
                                              src="/vehicle_rental/static/src/img/dashboard/7-cancel.svg"/>
-                                        <h4 class="tk-st-1 terminate-bg">Cancelled</h4>
+                                        <h4 class="tk-st-1 terminate-bg">Cancelados</h4>
                                         <h6 class="tk-st-2 terminate-bg">
                                             <t t-esc="state.vehicleContractStatus['cancel_contract']"/>
                                         </h6>
