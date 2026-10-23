@@ -22,5 +22,16 @@
             <field name="interval_type">days</field>
             <field name="active" eval="True"/>
         </record>
+
+        <!--Paid web bookings whose opportunity was not created-->
+        <record id="cron_process_orphaned_transactions" model="ir.cron">
+            <field name="name">Vehicle Rental: Recuperar reservas web pagadas sin oportunidad</field>
+            <field name="model_id" ref="payment.model_payment_transaction"/>
+            <field name="state" eval="'code'"/>
+            <field name="code" eval="'model._cron_process_orphaned_transactions()'"/>
+            <field name="interval_number">30</field>
+            <field name="interval_type">minutes</field>
+            <field name="active" eval="True"/>
+        </record>
     </data>
 </odoo>

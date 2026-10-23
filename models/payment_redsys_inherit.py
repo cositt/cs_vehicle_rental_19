@@ -585,7 +585,12 @@ class PaymentTransaction(models.Model):
             try:
                 booking_data = tx._get_booking_data()
                 if booking_data:
-                    tx._create_lead_from_payment(booking_data)
+                    # One payment at a time: a failing one is rolled back alone
+                    # and marked processed only when its lead exists, so the
+                    # next run does not create it again.
+                    with self.env.cr.savepoint():
+                        tx._create_lead_from_payment(booking_data)
+                        tx.booking_created = True
                 else:
                     _logger.warning(
                         f"REDSYS CRON: Datos de booking no encontrados | TX:{tx.id}"
