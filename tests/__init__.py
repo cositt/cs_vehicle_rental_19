@@ -42,3 +42,4 @@ from . import test_source_health
 from . import test_dashboard
 from . import test_availability
 from . import test_cancellation
+from . import test_tariffs

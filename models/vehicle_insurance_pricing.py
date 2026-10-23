@@ -223,18 +223,17 @@ class VehicleInsurancePricing(models.Model):
                     _('El precio debe ser mayor que cero.')
                 )
 
-    # Constraint SQL para evitar duplicados
-    _sql_constraints = [
-        ('unique_insurance_pricing',
-         'UNIQUE(insurance_type, duration_range, driver_type, valid_from, company_id)',
-         'Ya existe una tarifa de seguro con esta combinación de parámetros para la misma fecha.'),
-    ]
+    # Sin duplicados (Odoo 19 ya no aplica _sql_constraints)
+    _unique_insurance_pricing = models.Constraint(
+        'UNIQUE(insurance_type, duration_range, driver_type, valid_from, company_id)',
+        'Ya existe una tarifa de seguro con esta combinación de parámetros para la misma fecha.',
+    )
 
     # ============================================
     # MÉTODOS DE BÚSQUEDA
     # ============================================
 
-    def find_insurance_price(self, insurance_type, total_days, is_special_driver, rental_date=None):
+    def find_insurance_price(self, insurance_type, total_days, is_special_driver, rental_date=None, company=None):
         """
         Busca el precio de seguro aplicable
         
@@ -243,6 +242,8 @@ class VehicleInsurancePricing(models.Model):
             total_days: Días totales del alquiler
             is_special_driver: True si conductor <25 o >60 años
             rental_date: Fecha del alquiler (por defecto hoy)
+            company: Compañía del contrato (por defecto la activa); cada
+                compañía tiene sus precios
         
         Returns:
             Precio por día o False
@@ -264,6 +265,7 @@ class VehicleInsurancePricing(models.Model):
             ('valid_from', '<=', rental_date),
             '|', ('valid_until', '=', False), ('valid_until', '>=', rental_date),
             ('active', '=', True),
+            ('company_id', '=', (company or self.env.company).id),
         ]
 
         pricing = self.search(domain, limit=1, order='valid_from desc')

@@ -293,16 +293,19 @@ class VehiclePricingRule(models.Model):
                     _('El precio debe ser mayor que cero.')
                 )
 
-    # Constraint SQL para evitar tarifas duplicadas
-    _sql_constraints = [
-        ('unique_standard_pricing',
-         'UNIQUE(vehicle_category_id, pricing_type, km_range, duration_range, valid_from, company_id)',
-         'Ya existe una tarifa con esta combinación de parámetros para la misma fecha.'),
-        
-        ('unique_flexirent_pricing',
-         'UNIQUE(vehicle_category_id, pricing_type, flexirent_km_total, flexirent_duration_days, valid_from, company_id)',
-         'Ya existe una tarifa FLEXIRENT con estos parámetros para la misma fecha.'),
-    ]
+    # Sin tarifas duplicadas. Odoo 19 ya no aplica _sql_constraints: con él
+    # estas reglas nunca llegaron a la base de datos. Cada índice mira solo su
+    # tipo de tarifa: las estándar comparten los km/días FLEXIRENT por defecto.
+    _unique_standard_pricing = models.UniqueIndex(
+        "(vehicle_category_id, km_range, duration_range, valid_from, company_id)"
+        " WHERE pricing_type = 'standard'",
+        "Ya existe una tarifa con esta combinación de parámetros para la misma fecha.",
+    )
+    _unique_flexirent_pricing = models.UniqueIndex(
+        "(vehicle_category_id, flexirent_km_total, flexirent_duration_days, valid_from, company_id)"
+        " WHERE pricing_type = 'flexirent'",
+        "Ya existe una tarifa FLEXIRENT con estos parámetros para la misma fecha.",
+    )
 
     # ============================================
     # MÉTODOS DE BÚSQUEDA

@@ -596,7 +596,7 @@ class VehicleContractPricing(models.Model):
     # MÉTODOS COMPUTADOS - SEGUROS
     # ============================================
     
-    @api.depends('insurance_type', 'driver_special', 'total_days', 'start_date')
+    @api.depends('insurance_type', 'driver_special', 'total_days', 'start_date', 'company_id')
     def _compute_insurance_price(self):
         """Calcula el precio del seguro por día"""
         for record in self:
@@ -609,7 +609,8 @@ class VehicleContractPricing(models.Model):
                 insurance_type=record.insurance_type,
                 total_days=record.total_days,
                 is_special_driver=record.driver_special,
-                rental_date=record.start_date.date() if record.start_date else fields.Date.today()
+                rental_date=record.start_date.date() if record.start_date else fields.Date.today(),
+                company=record.company_id,
             )
             
             record.insurance_price_per_day = price if price else 0.0
