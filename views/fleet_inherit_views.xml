@@ -70,24 +70,24 @@
                     <field name="is_any_vehicle_expense"/>
                 </xpath>
                 <xpath expr="//page[@name='page_model']" position="after">
-                    <page name="fleet_vehicle_expenses" string="Vehicle Expenses"
+                    <page name="fleet_vehicle_expenses" string="Gastos del vehículo"
                           invisible="not is_any_vehicle_expense">
                         <field name="fleet_expense_ids" context="{'default_driver_id': driver_id}">
                             <!--Inherit Form View-->
-                            <form string="Expenses" js_class="hr_expense_form_view">
+                            <form string="Gasto" js_class="hr_expense_form_view">
                                 <header>
                                     <!-- action_submit_expenses no existe en Odoo 19, usando action_submit -->
                                     <!-- sheet_id puede no existir en Odoo 19, eliminada la condición -->
-                                    <button name="action_submit" string="Create Report" type="object"
+                                    <button name="action_submit" string="Crear informe" type="object"
                                             class="oe_highlight o_expense_submit"
                                             invisible="nb_attachment &lt;= 0" data-hotkey="v"/>
                                     <!-- action_view_sheet eliminado temporalmente - no disponible en Odoo 19 -->
-                                    <widget name="attach_document" string="Attach Receipt" action="attach_document"
+                                    <widget name="attach_document" string="Adjuntar recibo" action="attach_document"
                                             invisible="nb_attachment &lt; 1"/>
-                                    <widget name="attach_document" string="Attach Receipt" action="attach_document"
+                                    <widget name="attach_document" string="Adjuntar recibo" action="attach_document"
                                             highlight="1" invisible="nb_attachment &gt;= 1"/>
                                     <!-- sheet_id puede no existir en Odoo 19, eliminada la condición -->
-                                    <button name="action_submit" string="Create Report" type="object"
+                                    <button name="action_submit" string="Crear informe" type="object"
                                             class="o_expense_submit" invisible="nb_attachment &gt;= 1"
                                             data-hotkey="v"/>
                                     <field name="state" widget="statusbar"
@@ -97,7 +97,7 @@
                                            statusbar_visible="draft,reported,submitted,refused"
                                            invisible="state != 'refused'"/>
                                     <!-- sheet_id puede no existir en Odoo 19, eliminada la condición -->
-                                    <button name="action_split_wizard" string="Split Expense" type="object"
+                                    <button name="action_split_wizard" string="Dividir gasto" type="object"
                                             invisible="product_has_cost"/>
                                 </header>
                                 <sheet>
@@ -244,10 +244,10 @@
                                        decoration-danger="state == 'refused'"/>
                                 <field name="message_main_attachment_id" column_invisible="1" readonly="1"/>
                                 <button name="action_view_expense_details" icon="fa-eye" type="object"
-                                        string="Expenses" class="btn btn-outline-primary"/>
+                                        string="Ver gasto" class="btn btn-outline-primary"/>
                                 <!-- action_submit_expenses no existe en Odoo 19, usando action_submit -->
                                 <!-- sheet_id puede no existir en Odoo 19, eliminada la condición -->
-                                <button name="action_submit" string="Create Report" type="object"
+                                <button name="action_submit" string="Crear informe" type="object"
                                         class="btn btn-primary" invisible="nb_attachment &lt;= 0"/>
                                 <!-- action_view_sheet eliminado temporalmente - no disponible en Odoo 19 -->
                             </list>

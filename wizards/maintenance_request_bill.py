@@ -30,7 +30,7 @@ class MaintenanceRequestBill(models.TransientModel):
         if self.maintenance_request_id.vehicle_maintenance_part_ids:
             invoice_lines.append((0, 0, {
                 'display_type': 'line_section',
-                'name': "Vehicle Maintenance Parts",
+                'name': _('Repuestos'),
                 'sequence': sequence_number,
             }))
             sequence_number += 1
@@ -48,7 +48,7 @@ class MaintenanceRequestBill(models.TransientModel):
         if self.maintenance_request_id.vehicle_maintenance_service_ids:
             invoice_lines.append((0, 0, {
                 'display_type': 'line_section',
-                'name': "Vehicle Maintenance Services",
+                'name': _('Servicios de mantenimiento'),
                 'sequence': sequence_number,
             }))
             sequence_number += 1
@@ -63,7 +63,9 @@ class MaintenanceRequestBill(models.TransientModel):
                 sequence_number += 1
                 invoice_lines.append((0, 0, service_record))
 
+        company = self.maintenance_request_id.company_id or self.env.company
         order_data = {
+            'company_id': company.id,
             'partner_id': self.vendor_id.id,
             'move_type': 'in_invoice',
             'invoice_date': fields.Date.today(),
@@ -71,8 +73,11 @@ class MaintenanceRequestBill(models.TransientModel):
             'maintenance_request_id': self.maintenance_request_id.id,
             'fleet_vehicle_id': self.maintenance_request_id.fleet_vehicle_id.id,
         }
-        bill_id = self.env['account.move'].create(order_data)
+        # The bill belongs to the company of the request, which is the vehicle's
+        bill_id = self.env['account.move'].with_company(company).create(order_data)
         self.maintenance_request_id.bill_id = bill_id.id
+        if company not in self.env.companies:
+            return self.maintenance_request_id._bill_company_notification()
         return {
             'type': 'ir.actions.act_window',
             'name': _('Vendor Bill'),

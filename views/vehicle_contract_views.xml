@@ -544,12 +544,12 @@
                                 <field name="deposit_card_type" 
                                        widget="radio" 
                                        options="{'horizontal': true}"
-                                       readonly="status != 'a_draft'"/>
+                                       readonly="status == 'c_return' or deposit_invoice_id != False"/>
                             </group>
                             <group>
                                 <!-- Checkbox para usar regla o manual -->
                                 <field name="use_deposit_from_rule" 
-                                       readonly="status != 'a_draft'"/>
+                                       readonly="status == 'c_return' or deposit_invoice_id != False"/>
                             </group>
                         </group>
                         
@@ -558,6 +558,7 @@
                             <group>
                                 <field name="deposit_rule_id" readonly="1" 
                                        help="Regla de depósito que se aplicó"/>
+                                <field name="deposit_rule_note" invisible="not deposit_rule_note"/>
                             </group>
                             <group>
                                 <field name="calculated_deposit" readonly="1"

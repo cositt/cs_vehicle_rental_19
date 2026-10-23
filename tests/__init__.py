@@ -8,6 +8,7 @@ from . import test_contract_report_annexes
 from . import test_return_email
 from . import test_maintenance_odometer
 from . import test_vehicle_maintenance_buttons
+from . import test_maintenance_company
 from . import test_blocking_errors
 from . import test_pricing_rules
 from . import test_contract_availability

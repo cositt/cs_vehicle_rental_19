@@ -13,7 +13,8 @@ class MaintenanceSchedule(models.Model):
 
     name = fields.Char(string="Name", required=True)
     maintenance_days = fields.Integer(string="Maintenance Days")
-    company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
+    # Shared by every company unless one is set: Sunset and Pinveco use the same intervals
+    company_id = fields.Many2one('res.company')
 
     @api.constrains('maintenance_days')
     def _check_maintenance_days(self):

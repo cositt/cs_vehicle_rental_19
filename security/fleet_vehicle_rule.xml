@@ -13,4 +13,10 @@
         <value eval="[ref('fleet.ir_rule_fleet_odometer')]"/>
         <value eval="{'domain_force': &quot;[('vehicle_id.company_id', 'in', user.company_ids.ids + [False])]&quot;}"/>
     </function>
+    <!-- Maintenance of a vehicle lives in the company that owns it (Pinveco owns
+         almost the whole fleet), so requests and teams follow the vehicle rule. -->
+    <function model="ir.rule" name="write">
+        <value eval="[ref('maintenance.maintenance_request_comp_rule'), ref('maintenance.maintenance_team_comp_rule')]"/>
+        <value eval="{'domain_force': &quot;[('company_id', 'in', user.company_ids.ids + [False])]&quot;}"/>
+    </function>
 </odoo>
