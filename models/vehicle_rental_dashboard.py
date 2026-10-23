@@ -24,13 +24,10 @@ class VehicleRentalDashboard(models.Model):
         in_progress_vehicle = vehicle_contract.search_count([('status', '=', 'b_in_progress')])
         return_contract = vehicle_contract.search_count([('status', '=', 'c_return')])
         cancel_contract = vehicle_contract.search_count([('status', '=', 'd_cancel')])
-        customers = self.env['res.partner'].search_count([])
-
-        customer_invoice = rental_invoices.search_count(
-            [('vehicle_contract_id', '!=', False), ('move_type', '=', 'out_invoice')])
-        pending_invoices = rental_invoices.search_count(
-            [('vehicle_contract_id', '!=', False), ('payment_state', '!=', 'paid'),
-             ('move_type', '=', 'out_invoice')])
+        domains = self._dashboard_domains()
+        customers = self.env['res.partner'].search_count(domains['customers'])
+        customer_invoice = rental_invoices.search_count(domains['customer_invoice'])
+        pending_invoices = rental_invoices.search_count(domains['pending_invoices'])
 
         data = {
             'total_vehicle': total_vehicle,
@@ -45,9 +42,20 @@ class VehicleRentalDashboard(models.Model):
             'pending_invoices': pending_invoices,
             'rent_duration': self.get_rent_contract(),
             'rent_invoice_month': self.get_rent_invoice_month(),
-
+            'domains': domains,
         }
         return data
+
+    def _dashboard_domains(self):
+        """Domains of the cards, shared with the lists they open"""
+        renters = self.env['vehicle.contract'].search([]).customer_id
+        rental_invoices = [('vehicle_contract_id', '!=', False), ('move_type', '=', 'out_invoice')]
+        return {
+            'customers': [('id', 'in', renters.ids)],
+            'customer_invoice': rental_invoices + [('state', '!=', 'cancel')],
+            'pending_invoices': rental_invoices + [
+                ('state', '=', 'posted'), ('payment_state', 'in', ('not_paid', 'partial'))],
+        }
 
     def get_rent_contract(self):
         """Return rental contract"""
@@ -62,32 +70,20 @@ class VehicleRentalDashboard(models.Model):
         return contract_data
 
     def get_rent_invoice_month(self):
-        """Rental contract invoice by month"""
-        year = fields.Date.today().year
-        data_dict = {'Enero': 0,
-                     'Febrero': 0,
-                     'Marzo': 0,
-                     'Abril': 0,
-                     'Mayo': 0,
-                     'Junio': 0,
-                     'Julio': 0,
-                     'Agosto': 0,
-                     'Septiembre': 0,
-                     'Octubre': 0,
-                     'Noviembre': 0,
-                     'Diciembre': 0,
-                     }
-
-        invoice_id = self.env['account.move'].search([
-            ('vehicle_contract_id', '!=', False),
-            ('move_type', '=', 'out_invoice')
-        ])
-        for data in invoice_id:
-            if data.invoice_date and data.invoice_date.year == year:
-                if data.vehicle_contract_id.status == 'c_return':
-                    month_num = data.invoice_date.month
-                    month_names = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                                 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-                    month = month_names[month_num - 1]
-                    data_dict[month] = data_dict.get(month, 0) + data.amount_total
-        return [list(data_dict.keys()), list(data_dict.values())]
+        """Rental income by month of this year: posted invoices less refunds,
+        without VAT and without deposits (they are owed back, not income)"""
+        today = fields.Date.today()
+        month_names = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+        income = [0.0] * 12
+        groups = self.env['account.move.line']._read_group([
+            ('move_id.vehicle_contract_id', '!=', False),
+            ('move_id.move_type', 'in', ('out_invoice', 'out_refund')),
+            ('parent_state', '=', 'posted'),
+            ('account_id.account_type', 'in', ('income', 'income_other')),
+            ('date', '>=', today.replace(month=1, day=1)),
+            ('date', '<=', today.replace(month=12, day=31)),
+        ], ['date:month'], ['balance:sum'])
+        for month, balance in groups:
+            income[month.month - 1] = -balance
+        return [month_names, income]

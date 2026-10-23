@@ -23,6 +23,7 @@ class VehicleRentalDashboard extends Component {
             customerInvoices: { 'customer_invoice': 0, 'pending_invoices': 0 },
             rentContractDurations: { 'data': [] },
             invoiceStatusGraph: { 'x-axis': [], 'y-axis': [] },
+            domains: { 'customers': [], 'customer_invoice': [], 'pending_invoices': [] },
         });
 
         useSubEnv({
@@ -43,6 +44,7 @@ class VehicleRentalDashboard extends Component {
                 this.state.vehicleContractStatus = vehicleRentalData;
                 this.state.vehicleCustomers = vehicleRentalData;
                 this.state.customerInvoices = vehicleRentalData;
+                this.state.domains = vehicleRentalData['domains'];
                 this.state.rentContractDurations = { 'data': vehicleRentalData['rent_duration'] };
                 this.state.invoiceStatusGraph = { 'x-axis': vehicleRentalData['rent_invoice_month'][0], 'y-axis': vehicleRentalData['rent_invoice_month'][1] };
             }
@@ -127,13 +129,14 @@ class VehicleRentalDashboard extends Component {
             type: 'ir.actions.act_window',
             name: 'Clientes',
             res_model: 'res.partner',
+            domain: this.state.domains['customers'],
             views: [[false, 'kanban'], [false, 'list'], [false, 'form'], [false, 'activity']],
             target: 'current',
             context: context,
         });
     }
     viewCustomerInvoices() {
-        let domain = [['vehicle_contract_id', '!=', false], ['move_type', '=', 'out_invoice']];
+        let domain = this.state.domains['customer_invoice'];
         let context = { 'create': false }
         this.action.doAction({
             type: 'ir.actions.act_window',
@@ -146,7 +149,7 @@ class VehicleRentalDashboard extends Component {
         });
     }
     viewPendingInvoices() {
-        let domain = [['payment_state', '!=', 'paid'], ['vehicle_contract_id', '!=', false], ['move_type', '=', 'out_invoice']];
+        let domain = this.state.domains['pending_invoices'];
         let context = { 'create': false }
         this.action.doAction({
             type: 'ir.actions.act_window',
@@ -194,7 +197,7 @@ class VehicleRentalDashboard extends Component {
                     var a = new Date(val[0])
                     var b = new Date(val[1])
                     var diff = Math.floor((b - a) / (1000 * 60 * 60 * 24)); // Difference in days
-                    return diff + (diff > 1 ? ' days' : ' day');
+                    return diff + (diff === 1 ? ' día' : ' días');
                 },
                 style: {
                     colors: ['#273029'],
