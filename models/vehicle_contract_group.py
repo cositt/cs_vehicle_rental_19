@@ -39,6 +39,9 @@ class VehicleContractGroup(models.Model):
          ('credit', 'Tarjeta de Crédito')],
         string='Tipo de Tarjeta', default='debit')
     tax_ids = fields.Many2many('account.tax', string='Impuestos')
+    contract_tax_ids = fields.Many2many(
+        'account.tax', string='Impuestos de los contratos', compute='_compute_contract_tax_ids',
+        help='Los que llevan las facturas: el IVA de cada contrato.')
 
     contract_ids = fields.One2many('vehicle.contract', 'group_id', string='Contratos')
     contract_count = fields.Integer(compute='_compute_contract_count', string='Nº Contratos')
@@ -147,6 +150,11 @@ class VehicleContractGroup(models.Model):
             'domain': [('id', 'in', self.invoice_ids.ids)],
         }
 
+    @api.depends('contract_ids.tax_ids')
+    def _compute_contract_tax_ids(self):
+        for group in self:
+            group.contract_tax_ids = group.contract_ids.tax_ids
+
     def action_activate_all(self):
         """Activar todos los contratos hijos en borrador y crear cuotas."""
         self.ensure_one()
@@ -156,14 +164,14 @@ class VehicleContractGroup(models.Model):
 
         errors = []
         for contract in draft_contracts:
-            if not contract.rent_type:
-                errors.append(_('%s: falta tipo de alquiler') % (contract.reference_no,))
-                continue
-            if not contract.start_date or not contract.end_date:
-                errors.append(_('%s: faltan fechas') % (contract.reference_no,))
+            try:
+                contract._check_hand_over_ready()
+            except UserError as error:
+                errors.append(str(error))
                 continue
 
-            overlapping = self.env['vehicle.contract'].search([
+            # sudo: bookings of the other company also hold the vehicle
+            overlapping = self.env['vehicle.contract'].sudo().search([
                 ('id', '!=', contract.id),
                 ('vehicle_id', '=', contract.vehicle_id.id),
                 ('status', 'in', list(BUSY_CONTRACT_STATES)),
@@ -174,15 +182,16 @@ class VehicleContractGroup(models.Model):
                 errors.append(
                     _('%s: solapamiento con %s') % (
                         contract.reference_no, overlapping.reference_no))
-                continue
-
-            contract.status = 'b_in_progress'
-            if not contract.installment_created and contract.payment_type:
-                contract.action_create_vehicle_payment()
 
         if errors:
             raise UserError('\n'.join(errors))
-        return True
+
+        # Same hand-over as one by one (vehicle delegation, mail), all together
+        action = draft_contracts.with_context(hand_over_without_driver=True).a_draft_to_b_in_progress()
+        for contract in draft_contracts:
+            if not contract.installment_created and contract.payment_type:
+                contract.action_create_vehicle_payment()
+        return action
 
     def action_create_consolidated_invoice(self):
         """Facturación consolidada: cuotas + depósito + seguro + extras

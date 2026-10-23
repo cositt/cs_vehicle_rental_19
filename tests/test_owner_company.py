@@ -4,7 +4,9 @@
 The staff act as Sunset, but most of the fleet belongs to Pinveco: a contract
 for a Pinveco van went out signed "Sunset" (Juan, 2026-10-23: the owner signs).
 """
-from odoo.tests.common import tagged
+from datetime import timedelta
+
+from odoo.tests.common import new_test_user, tagged
 
 from .common import VehicleRentalCase
 
@@ -66,3 +68,43 @@ class TestOwnerCompany(VehicleRentalCase):
         substitution = self.env['vehicle.contract.substitution'].search([('contract_id', '=', self.contract.id)])
         html = self._html('vehicle_rental.vehicle_substitution_addendum_report_template', substitution)
         self.assertIn(self.owner.name, html)
+
+
+@tagged('post_install', '-at_install', 'vehicle_owner_company')
+class TestOwnerCompanyAsClerk(TestOwnerCompany):
+    """The clerk acts as Sunset only: the owner company is not active, yet it signs.
+
+    Reading the owner company as the clerk raised an access error on the
+    hand-over mail, the contract mails and the documents.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.clerk = new_test_user(
+            cls.env, login='firma_sunset', groups='base.group_user,fleet.fleet_group_manager',
+            company_id=cls.company.id, company_ids=[cls.company.id, cls.owner.id])
+
+    def _clerk(self, records):
+        return records.with_user(self.clerk).with_context(allowed_company_ids=[self.company.id])
+
+    def test_mails_render_for_the_clerk(self):
+        for xmlid in ('email_template_vehicle_contract', 'vehicle_rental_booking_mail_template'):
+            template = self._clerk(self.env.ref(f'vehicle_rental.{xmlid}'))
+            body = template._render_field('body_html', self.contract.ids)[self.contract.id]
+            self.assertIn(self.owner.name, body, xmlid)
+        booking = self._clerk(self.env.ref('vehicle_rental.vehicle_rental_booking_mail_template'))
+        self.assertEqual(booking._render_field('email_from', self.contract.ids)[self.contract.id],
+                         'duena@example.com')
+
+    def test_hand_over_mail_opens_for_the_clerk(self):
+        contract = self._create_contract(self.vehicle, self.customer, status='a_draft')
+        contract.write({'start_date': self.end_date + timedelta(days=1),
+                        'end_date': self.end_date + timedelta(days=3)})
+        action = self._clerk(contract).with_context(hand_over_without_driver=True).a_draft_to_b_in_progress()
+        self.assertEqual(action['context']['default_email_from'], 'duena@example.com')
+
+    def test_contract_document_prints_for_the_clerk(self):
+        html, _type = self._clerk(self.env['ir.actions.report'])._render_qweb_html(
+            'vehicle_rental.vehicle_contract_report_template', self.contract.ids)
+        self.assertIn(self.owner.name, html.decode())

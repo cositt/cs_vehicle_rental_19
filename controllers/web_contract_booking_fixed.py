@@ -1536,7 +1536,7 @@ class WebsiteContractBookingFixed(http.Controller):
                             let lastBinValidated = null;
                             
                             cardNumberInput.addEventListener('input', function() {{
-                                let cardNumber = this.value.replace(/\D/g, '');
+                                let cardNumber = this.value.replace(/\\D/g, '');
                                 
                                 if (cardNumber.length >= 6) {{
                                     const bin = cardNumber.substring(0, 6);
@@ -2153,14 +2153,14 @@ class WebsiteContractBookingFixed(http.Controller):
                                 maxDays = 1;
                             }} else if (duration.includes('d')) {{
                                 // Para días, extraer el rango
-                                const rangeMatch = duration.match(/(\d+)-(\d+)d/);
+                                const rangeMatch = duration.match(/(\\d+)-(\\d+)d/);
                                 if (rangeMatch) {{
                                     // Rango: 3-5d
                                     minDays = parseInt(rangeMatch[1]);
                                     maxDays = parseInt(rangeMatch[2]);
                                 }} else {{
                                     // Un solo número: 1d
-                                    const singleMatch = duration.match(/(\d+)d/);
+                                    const singleMatch = duration.match(/(\\d+)d/);
                                     if (singleMatch) {{
                                         minDays = parseInt(singleMatch[1]);
                                         maxDays = parseInt(singleMatch[1]); // Mismo valor para min y max

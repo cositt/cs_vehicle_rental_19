@@ -63,6 +63,9 @@
                     <button string="Añadir Vehículo" name="action_add_vehicle" type="object"
                             class="btn btn-primary" icon="fa-plus"
                             invisible="state in ('done', 'cancel')"/>
+                    <button string="Entregar todos" name="action_activate_all" type="object"
+                            class="btn btn-primary" icon="fa-key"
+                            invisible="state != 'draft' or contract_count == 0"/>
                     <button string="Facturar Período" name="action_create_consolidated_invoice" type="object"
                             class="btn btn-info" icon="fa-file-text-o"
                             invisible="state in ('draft', 'cancel')"/>
@@ -108,7 +111,7 @@
                             <field name="total_deposit" widget="monetary"/>
                         </group>
                         <group string="Impuestos">
-                            <field name="tax_ids" widget="many2many_tags"/>
+                            <field name="contract_tax_ids" widget="many2many_tags"/>
                         </group>
                     </group>
 

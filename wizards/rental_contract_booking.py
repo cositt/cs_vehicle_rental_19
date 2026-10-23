@@ -2,6 +2,7 @@
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 from odoo import fields, api, models, _
+from odoo.exceptions import UserError
 from datetime import datetime, timedelta
 
 from ..models.vehicle_contract import BUSY_CONTRACT_STATES
@@ -154,6 +155,8 @@ class RentalContractBooking(models.TransientModel):
             ('vehicle_id', '!=', False),
         ])
         occupied_vehicle_ids = occupied_contracts.mapped('vehicle_id').ids
+        # Vehicles already in this multiple booking for these dates
+        occupied_vehicle_ids += self._multi_booking_vehicles().ids
 
         # 2. Dominio base: vehículos de todas las compañías con las que trabaja
         #    el usuario (Sunset alquila los de Pinveco), estén o no activas en el
@@ -247,12 +250,21 @@ class RentalContractBooking(models.TransientModel):
             'target': 'current'
         }
 
+    def _multi_booking_vehicles(self):
+        """Vehicles of the multiple booking whose dates overlap the asked ones."""
+        lines = self.multi_booking_id.line_ids.filtered(
+            lambda l: self.start_date and self.end_date
+            and l.start_date <= self.end_date and l.end_date >= self.start_date)
+        return lines.vehicle_id
+
     def _add_to_multi_booking(self, vehicle):
         """Añade el vehículo como línea a la reserva múltiple en vez de crear contrato."""
         self.ensure_one()
         mb = self.multi_booking_id
         if not mb or not mb.exists():
             raise UserError(_('La reserva múltiple ya no existe.'))
+        if vehicle in self._multi_booking_vehicles():
+            raise UserError(_('%s ya está en esta reserva para esas fechas.', vehicle.display_name))
 
         self.env['rental.multi.booking.line'].create({
             'booking_id': mb.id,
@@ -266,12 +278,6 @@ class RentalContractBooking(models.TransientModel):
             'km_range': self.km_range,
         })
 
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Reserva Múltiple'),
-            'res_model': 'rental.multi.booking',
-            'res_id': mb.id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
+        # Close the dialog: the booking form behind reloads with the new line
+        return {'type': 'ir.actions.act_window_close'}
 
