@@ -18,16 +18,19 @@ class VehicleContractDriver(models.Model):
         related='customer_id.commercial_partner_id', string="Empresa del cliente")
     authorized_driver_id = fields.Many2one(
         'res.partner', string="Conductor autorizado", tracking=True,
+        # Any person of the database, plus the customer itself. It was limited
+        # to the customer's contacts: a company with none left the list empty
+        # (Javier Pineda, 2026-10-23).
         domain="['|', '|', ('id', '=', customer_id), ('id', '=', customer_commercial_partner_id),"
-               " ('parent_id', '=', customer_commercial_partner_id)]",
-        help="Quien conduce el vehículo. Si no está en la lista, créelo aquí: "
+               " ('is_company', '=', False)]",
+        help="Quien conduce el vehículo: cualquier persona de los contactos. Si no está, créelo aquí: "
              "se guarda como contacto de la empresa del cliente.")
 
     def _authorized_driver_domain(self):
         self.ensure_one()
         company = self.customer_id.commercial_partner_id
         return ['|', '|', ('id', '=', self.customer_id.id), ('id', '=', company.id),
-                ('parent_id', '=', company.id)]
+                ('is_company', '=', False)]
 
     def _authorized_driver_creation_context(self):
         self.ensure_one()

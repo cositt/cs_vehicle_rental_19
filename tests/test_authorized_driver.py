@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Authorized driver: optional, a contact of the customer, warned at hand-over.
+"""Authorized driver: optional, any person of the contacts, warned at hand-over.
 
 The driver is not required to book or to save a contract and no longer has to
 be an employee. A driver created from the contract becomes a child contact of
@@ -52,13 +52,19 @@ class TestDriverIsOptional(DriverCase):
 @tagged('post_install', '-at_install', 'vehicle_driver')
 class TestDriverIsACustomerContact(DriverCase):
 
-    def test_driver_choice_is_limited_to_the_customer_and_its_contacts(self):
+    def test_any_person_can_be_the_driver(self):
+        """Javier Pineda, 2026-10-23: a company with no drivers of its own left
+        the list empty and the contract could not go on; all of them must show."""
         stranger = self.env['res.partner'].create({'name': 'Persona Ajena'})
+        other_company = self.env['res.partner'].create({'name': 'Otra Empresa SL', 'is_company': True})
         contract = self._draft()
         allowed = self.env['res.partner'].search(contract._authorized_driver_domain())
         self.assertIn(self.driver, allowed)
         self.assertIn(self.company_customer, allowed)
-        self.assertNotIn(stranger, allowed)
+        self.assertIn(stranger, allowed)
+        self.assertNotIn(other_company, allowed, 'a company does not drive')
+        field_domain = self.env['vehicle.contract']._fields['authorized_driver_id'].domain
+        self.assertNotIn('parent_id', field_domain)
 
     def test_driver_created_from_the_contract_is_a_child_of_the_customer(self):
         contract = self._draft()

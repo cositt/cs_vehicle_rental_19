@@ -50,3 +50,19 @@ class TestAgreementTerms(VehicleRentalCase):
         html, _type = self.env['ir.actions.report']._render_qweb_html(
             'vehicle_rental.vehicle_contract_report_template', contract.ids)
         self.assertIn('Términos y Condiciones', html.decode())
+
+    def test_migration_fills_the_existing_contracts(self):
+        import importlib.util
+        from odoo.tools.misc import file_path
+        contract = self._new_contract(self.spare_vehicle)
+        self.env.cr.execute("UPDATE vehicle_contract SET rental_agreement_terms_id = NULL, rental_terms = NULL"
+                            " WHERE id = %s", [contract.id])
+        self.env.invalidate_all()
+        path = file_path('vehicle_rental/migrations/19.0.6.21/post-migrate.py')
+        spec = importlib.util.spec_from_file_location('terms_migration', path)
+        migration = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration)
+        migration.migrate(self.env.cr, '19.0.6.20')
+        self.env.invalidate_all()
+        self.assertEqual(contract.rental_agreement_terms_id.company_id, self.company)
+        self.assertTrue(contract.rental_terms)
