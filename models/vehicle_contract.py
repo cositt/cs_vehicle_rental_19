@@ -778,22 +778,16 @@ class VehicleContract(models.Model):
             }
         return True
 
-    @api.constrains('start_date')
-    def _check_start_date(self):
-        """Check start date"""
-        today = fields.Datetime.now()
-        for record in self:
-            if record.start_date and record.start_date < today:
-                raise ValidationError(
-                    _("Ensure start date is greater than or equal to today's date."))
-
-    @api.constrains('date')
-    def _check_date(self):
-        """Check that the sign date is not before today"""
-        today = fields.Date.today()
-        for record in self:
-            if record.date and record.date < today:
-                raise ValidationError(_("The sign date cannot be earlier than today."))
+    @api.onchange('start_date')
+    def _onchange_past_start_date(self):
+        """A contract may be recorded after the fact: warn, do not block."""
+        if self.start_date and self.start_date < fields.Datetime.now():
+            return {'warning': {
+                'title': _('Contrato con fecha pasada'),
+                'message': _('La fecha de inicio está en el pasado. Se puede guardar igualmente; '
+                             'compruebe que es correcta.'),
+            }}
+        return {}
 
     @api.onchange('start_date', 'end_date')
     def get_vehicle_select(self):
@@ -833,7 +827,9 @@ class VehicleContract(models.Model):
     def onchange_vehicle_details(self):
         """Onchange vehicle details"""
         for rec in self:
-            rec.driver_id = rec.vehicle_id.driver_id
+            # The fleet driver only fills an empty driver: never wipe the one chosen
+            if rec.vehicle_id.driver_id and not rec.driver_id:
+                rec.driver_id = rec.vehicle_id.driver_id
             rec.last_odometer = rec.vehicle_id.odometer
             rec.odometer_unit = rec.vehicle_id.odometer_unit
             rec.model_year = rec.vehicle_id.model_year

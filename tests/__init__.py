@@ -51,3 +51,4 @@ from . import test_invoice_company
 from . import test_vehicle_state
 from . import test_required_driver
 from . import test_spanish_labels
+from . import test_past_contracts
