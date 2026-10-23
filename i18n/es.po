@@ -2000,13 +2000,13 @@ msgstr "Documentos"
 #: model:ir.model.fields,field_description:vehicle_rental.field_vehicle_contract__driver_id
 #: model_terms:ir.ui.view,arch_db:vehicle_rental.vehicle_rental_hr_expense_inherit_search_view
 msgid "Driver"
-msgstr "Conductora"
+msgstr "Conductor"
 
 #. module: vehicle_rental
 #: model:ir.model.fields,field_description:vehicle_rental.field_vehicle_contract__is_driver_required
 #: model_terms:ir.ui.view,arch_db:vehicle_rental.vehicle_contract_search_view
 msgid "Driver Required"
-msgstr "Conductora requerida"
+msgstr "Conductor requerido"
 
 #. module: vehicle_rental
 #: model:ir.model.fields.selection,name:vehicle_rental.selection__customer_documents__document_type__dl
@@ -2553,7 +2553,7 @@ msgstr "Facturas"
 #. module: vehicle_rental
 #: model:ir.model.fields,field_description:vehicle_rental.field_vehicle_contract__is_any_trip_expense
 msgid "Is Any Trip Expense"
-msgstr ""
+msgstr "Gastos de viaje"
 
 #. module: vehicle_rental
 #: model:ir.model.fields,field_description:vehicle_rental.field_vehicle_contract__message_is_follower
