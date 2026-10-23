@@ -1128,13 +1128,14 @@ class VehicleContract(models.Model):
 
 
 
-    @api.constrains('driver_charge')
+    @api.constrains('driver_charge', 'driver_charge_type', 'is_driver_required')
     def _check_driver_charge(self):
         """Ensure driver charge are greater than zero."""
         for record in self:
-            if record.is_driver_required:
-                if record.driver_charge <= 0:
-                    raise ValidationError(_("The driver charges must be greater than zero."))
+            if (record.is_driver_required and record.driver_charge_type == 'excluding'
+                    and record.driver_charge <= 0):
+                raise ValidationError(_(
+                    "El cargo del conductor debe ser mayor que cero cuando no va incluido en el alquiler."))
 
     @api.depends('total_vehicle_rent', 'rent_type', 'rent', 'total_days', 'driver_charge',
                  'total_km',
@@ -1555,13 +1556,15 @@ class VehicleContract(models.Model):
             'target': 'current',
         }
 
-    @api.constrains('driver_id')
-    def _check_driver_is_rental_employee(self):
-        """Check driver is also employee"""
+    @api.constrains('driver_id', 'is_any_trip_expense')
+    def _check_trip_expense_driver_is_employee(self):
+        """Any contact may drive; only trip expenses need the driver to be an employee."""
         for record in self:
-            if record.driver_id and not record.driver_id.employee_ids:
-                raise ValidationError(
-                    _("The selected driver must be one of the allowed employees."))
+            if record.is_any_trip_expense and record.driver_id and not record.driver_id.employee_ids:
+                raise ValidationError(_(
+                    "Los gastos de viaje se registran a nombre de un empleado y %s no lo es. "
+                    "Desmarque «Gastos de viaje» o elija un conductor que sea empleado.",
+                    record.driver_id.display_name))
 
     def create_contract_trip_expense_report(self):
         """Create Trip Expense Reports"""
