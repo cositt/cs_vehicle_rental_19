@@ -19,9 +19,9 @@
                                 <li><strong>Número de Contrato:</strong> <t t-out="object.reference_no"/></li>
                                 <li><strong>Vehículo:</strong> <t t-out="object.vehicle_id.name"/></li>
                                 <li><strong>Modelo:</strong> <t t-out="object.model_year or (object.vehicle_id.model_id.name or '')"/></li>
-                                <li><strong>Fecha de Inicio:</strong> <t t-out="object.start_date"/></li>
-                                <li><strong>Fecha de Fin:</strong> <t t-out="object.end_date"/></li>
-                                <li><strong>Total Alquiler:</strong> <t t-out="object.total_vehicle_rent"/> €</li>
+                                <li><strong>Fecha de Inicio:</strong> <t t-out="format_datetime(object.start_date, tz='Europe/Madrid', dt_format='dd/MM/yyyy HH:mm')"/></li>
+                                <li><strong>Fecha de Fin:</strong> <t t-out="format_datetime(object.end_date, tz='Europe/Madrid', dt_format='dd/MM/yyyy HH:mm')"/></li>
+                                <li><strong>Total Alquiler:</strong> <t t-out="format_amount(object.total_vehicle_rent, object.currency_id)"/></li>
                             </ul>
                         </div>
                         
@@ -32,7 +32,7 @@
                         <p>¡Esperamos que disfrute de su vehículo de alquiler!</p>
                         
                         <p>Atentamente,<br/>
-                        El equipo de SUNSET RENT</p>
+                        El equipo de <t t-out="object.company_id.name"/></p>
                         
                         <hr style="margin: 16px 0px 16px 0px; border: none; border-top: 1px solid #e1e1e1;"/>
                         

@@ -4,7 +4,7 @@
 from dateutil.relativedelta import relativedelta
 from odoo.exceptions import ValidationError, UserError
 import base64
-from ..utils import _display_rental_notification
+from ..utils import _display_rental_notification, format_es_number
 from odoo import models, fields, api, _
 
 # Estados en los que el contrato retiene el vehículo. Devuelto y cancelado no
@@ -741,9 +741,9 @@ class VehicleContract(models.Model):
                 raise UserError(_(
                     'El kilometraje indicado (%(new)s) no supera al que ya tiene el '
                     'vehículo %(plate)s (%(current)s). Indique una lectura mayor.',
-                    new=f"{self.last_odometer:,.0f}",
+                    new=format_es_number(self.last_odometer),
                     plate=self.vehicle_id.license_plate or self.vehicle_id.name,
-                    current=f"{self.vehicle_id.odometer:,.0f}",
+                    current=format_es_number(self.vehicle_id.odometer),
                 ))
             self.vehicle_id.write({
                 'model_year': self.model_year,

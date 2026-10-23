@@ -6,6 +6,7 @@ import base64
 from markupsafe import Markup
 
 from odoo import models, fields, api, _
+from ..utils import format_es_number
 from odoo.exceptions import UserError, ValidationError
 
 from ..models.vehicle_contract_return import FUEL_LEVEL_SELECTION
@@ -256,7 +257,7 @@ class VehicleReturnWizard(models.TransientModel):
 
         if self.has_damage:
             if self.damage_amount:
-                importe = '%s %s' % (f"{self.damage_amount:,.2f}", self.currency_id.symbol or '')
+                importe = '%s %s' % (format_es_number(self.damage_amount, 2), self.currency_id.symbol or '')
             else:
                 importe = _('importe pendiente de valorar')
             damage_row = Markup('''
@@ -320,8 +321,8 @@ class VehicleReturnWizard(models.TransientModel):
         ''') % (
             date_str,
             self.vehicle_id.name, self.vehicle_id.license_plate or '-',
-            f"{self.odometer_start:,.0f}", f"{self.odometer:,.0f}", unit,
-            f"{self.km_driven:,.0f}", unit,
+            format_es_number(self.odometer_start), format_es_number(self.odometer), unit,
+            format_es_number(self.km_driven), unit,
             fuel_row,
             damage_row,
             signature_row,

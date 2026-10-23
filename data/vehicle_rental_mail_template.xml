@@ -1,181 +1,85 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
-    <data noupdate="1">
+    <data>
         <record id="vehicle_rental_booking_mail_template" model="mail.template">
-            <field name="name">Vehicle Rental Booking Mail Template</field>
+            <field name="name">Confirmación de alquiler</field>
             <field name="model_id" ref="vehicle_rental.model_vehicle_contract"/>
-            <field name="subject">Important: Vehicle Rental Contract Information for Your Upcoming Journey</field>
+            <field name="subject">Su alquiler {{ object.reference_no }}: datos de recogida y devolución</field>
             <field name="email_from">{{object.company_id.email}}</field>
             <field name="partner_to">{{ object.customer_id.id }}</field>
             <field name="body_html" type="html">
-                <p>
-                    <h4>
-                        Dear
-                        <strong>
-                            <t t-out="object.customer_id.name"/>
-                        </strong>,
-                    </h4>
-                </p>
-                <hr/>
-                <p>
-                    We are excited about your upcoming journey with us and want to ensure that you have all the
-                    necessary information regarding the rental contract.
-                </p>
-                <table>
+            <div style="margin: 0px; padding: 0px; font-size: 13px;">
+                <p>Estimado/a <t t-out="object.customer_id.name or 'cliente'"/>,</p>
+                <p>Le confirmamos los datos de su alquiler. Por favor, revíselos:</p>
+                <table style="width: 100%; border-collapse: collapse;">
                     <tr>
-                        <td colspan="2" style="text-align: center; width: 100%">
-                            <strong>
-                                Please review the following details:
-                            </strong>
-                        </td>
+                        <td style="width: 40%;"><strong>Contrato:</strong></td>
+                        <td><t t-out="object.reference_no"/></td>
                     </tr>
                     <tr>
-                        <td style="width: 50%">
-                            <strong>
-                                Reference Number:
-                            </strong>
-                        </td>
-                        <td style="width: 50%">
-                            <t t-out="object.reference_no"/>
-                        </td>
+                        <td style="width: 40%;"><strong>Vehículo:</strong></td>
+                        <td><t t-out="object.vehicle_id.name or ''"/></td>
                     </tr>
                     <tr>
-                        <td style="width: 50%">
-                            <strong>
-                                Vehicle:
-                            </strong>
-                        </td>
-                        <td style="width: 50%">
-                            <t t-if="object.vehicle_id.name">
-                                <t t-out="object.vehicle_id.name"/>
+                        <td style="width: 40%;"><strong>Recogida:</strong></td>
+                        <td><t t-out="format_datetime(object.start_date, tz='Europe/Madrid', dt_format='dd/MM/yyyy HH:mm')"/></td>
+                    </tr>
+                    <tr>
+                        <td style="width: 40%;"><strong>Lugar de recogida:</strong></td>
+                        <td>
+                            <t t-out="', '.join([p for p in [object.pick_up_street, object.pick_up_street2] if p])"/>
+                            <br/>
+                            <t t-out="' '.join([p for p in [object.pick_up_zip, object.pick_up_city] if p])"/>
+                            <t t-if="object.pick_up_state_id and object.pick_up_state_id.name != object.pick_up_city">
+                                (<t t-out="object.pick_up_state_id.name"/>)
+                            </t>
+                            <t t-if="object.pick_up_country_id">
+                                <br/><t t-out="object.pick_up_country_id.name"/>
                             </t>
                         </td>
                     </tr>
                     <tr>
-                        <td style="width: 50%">
-                            <strong>
-                                Pick-Up Date:
-                            </strong>
-                        </td>
-                        <td style="width: 50%">
-                            <t t-out="object.start_date"/>
-                        </td>
+                        <td style="width: 40%;"><strong>Devolución:</strong></td>
+                        <td><t t-out="format_datetime(object.end_date, tz='Europe/Madrid', dt_format='dd/MM/yyyy HH:mm')"/></td>
                     </tr>
                     <tr>
-                        <td style="width: 50%">
-                            <strong>
-                                Pick-Up Location:
-                            </strong>
-                        </td>
-                        <td style="width: 50%">
-                            <t t-if="object.pick_up_street">
-                                <t t-out="object.pick_up_street"/>
+                        <td style="width: 40%;"><strong>Lugar de devolución:</strong></td>
+                        <td>
+                            <t t-out="', '.join([p for p in [object.drop_off_street, object.drop_off_street2] if p])"/>
+                            <br/>
+                            <t t-out="' '.join([p for p in [object.drop_off_zip, object.drop_off_city] if p])"/>
+                            <t t-if="object.drop_off_state_id and object.drop_off_state_id.name != object.drop_off_city">
+                                (<t t-out="object.drop_off_state_id.name"/>)
                             </t>
-                        </td>
-                    </tr>
-                    <tr t-if="object.pick_up_street2">
-                        <td style="width: 50%">
-                        </td>
-                        <td style="width: 50%">
-                            <t t-out="object.pick_up_street2"/>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="width: 50%">
-                        </td>
-                        <td style="width: 50%">
-                            <t t-out="object.pick_up_city" class="me-1"/>
-                            <t t-out="object.pick_up_state_id.name" class="me-1"/>
-                            <t t-out="object.pick_up_zip"/>
-                        </td>
-                    </tr>
-                    <tr t-if="object.pick_up_country_id.name">
-                        <td style="width: 50%">
-                        </td>
-                        <td style="width: 50%">
-                            <t t-out="object.pick_up_country_id.name"/>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="width: 50%">
-                            <strong>
-                                Drop-Off Date:
-                            </strong>
-                        </td>
-                        <td style="width: 50%">
-                            <t t-out="object.end_date"/>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="width: 50%">
-                            <strong>
-                                Drop-Off Location:
-                            </strong>
-                        </td>
-                        <td style="width: 50%">
-                            <t t-if="object.drop_off_street">
-                                <t t-out="object.drop_off_street"/>
+                            <t t-if="object.drop_off_country_id">
+                                <br/><t t-out="object.drop_off_country_id.name"/>
                             </t>
-                        </td>
-                    </tr>
-                    <tr t-if="object.drop_off_street2">
-                        <td style="width: 50%">
-                        </td>
-                        <td style="width: 50%">
-                            <t t-out="object.drop_off_street2"/>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="width: 50%">
-                        </td>
-                        <td style="width: 50%">
-                            <t t-out="object.drop_off_city" class="me-1"/>
-                            <t t-out="object.drop_off_state_id.name" class="me-1"/>
-                            <t t-out="object.drop_off_zip"/>
-                        </td>
-                    </tr>
-                    <tr t-if="object.drop_off_country_id.name">
-                        <td style="width: 50%">
-                        </td>
-                        <td style="width: 50%">
-                            <t t-out="object.drop_off_country_id.name"/>
                         </td>
                     </tr>
                 </table>
-                <hr/>
                 <p>
-                    Before your journey, please familiarize yourself with the rental agreement, which outlines the terms
-                    and conditions. To access the agreement, visit
-                    <strong>
-                        <t t-out="object.company_id.website"/>
-                    </strong>
-                    or contact our customer support team. Ensure that your insurance coverage is adequate and that all
-                    drivers meet the requirements. A security deposit may be required at pickup, refundable upon the
-                    vehicle's return. Conduct a thorough inspection before your journey, noting any pre-existing
-                    damages. For any questions or concerns, reach out to our customer support team at
-                    <strong>
-                        <t t-out="object.company_id.phone"/>
-                    </strong>
-                    We appreciate your trust and wish you a fantastic journey!
+                    Antes de recoger el vehículo, lea las condiciones del contrato. Compruebe que su seguro es
+                    adecuado y que todos los conductores cumplen los requisitos. En la recogida se le pedirá
+                    una fianza, que se devuelve al entregar el vehículo. Revise el vehículo antes de salir y
+                    anote cualquier daño previo.
                 </p>
-                <h5>
-                    Best regards,
-                    <br/>
-                    <strong>
-                        <t t-out="object.responsible_id.name"/>
-                    </strong>
-                </h5>
-                <hr/>
-                <span>
-                    <h4>
-                        <t t-out="object.company_id.name"/>
-                    </h4>
-                    <t t-out="object.company_id.phone"/>
-                    <br/>
-                    <t t-out="object.company_id.email"/>
-                    <br/>
-                    <t t-out="object.company_id.website"/>
-                </span>
+                <p>
+                    Para cualquier duda, contacte con nosotros<t t-if="object.company_id.phone"> en el
+                    <strong><t t-out="object.company_id.phone"/></strong></t>.
+                    ¡Gracias por su confianza y buen viaje!
+                </p>
+                <p>
+                    Atentamente,<br/>
+                    <strong><t t-out="object.responsible_id.name"/></strong>
+                </p>
+                <hr style="border: none; border-top: 1px solid #e1e1e1;"/>
+                <p style="font-size: 12px; color: #666;">
+                    <strong><t t-out="object.company_id.name"/></strong>
+                    <t t-if="object.company_id.phone"><br/><t t-out="object.company_id.phone"/></t>
+                    <t t-if="object.company_id.email"><br/><t t-out="object.company_id.email"/></t>
+                    <t t-if="object.company_id.website"><br/><t t-out="object.company_id.website"/></t>
+                </p>
+            </div>
             </field>
             <field name="auto_delete" eval="True"/>
         </record>

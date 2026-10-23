@@ -2,6 +2,7 @@
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 from odoo import models, fields, api, _
+from ..utils import format_es_number
 from odoo.exceptions import UserError, ValidationError
 
 
@@ -220,6 +221,8 @@ class VehicleSubstitutionWizard(models.TransientModel):
                     ('status', '=', 'available'),
                     ('id', '!=', wizard.old_vehicle_id.id if wizard.old_vehicle_id else False),
                     ('id', 'not in', busy_ids),
+                    # A contract refuses a vehicle without category
+                    ('category_id', '!=', False),
                 ]).ids
             
             wizard.available_vehicle_ids = [(6, 0, available_ids)]
@@ -466,7 +469,7 @@ class VehicleSubstitutionWizard(models.TransientModel):
             # Firmas
             'customer_signature': self.customer_signature,
             'company_signature': self.company_signature,
-            'signature_date': fields.Datetime.now(),
+            'signature_date': fields.Datetime.now() if (self.customer_signature or self.company_signature) else False,
         }
         
         substitution = self.env['vehicle.contract.substitution'].create(substitution_vals)
@@ -499,6 +502,8 @@ class VehicleSubstitutionWizard(models.TransientModel):
         self.contract_id.write({
             'vehicle_id': self.new_vehicle_id.id,  # Actualizar al nuevo vehículo
             'last_odometer': self.new_vehicle_odometer,
+            # The return starts from what the customer got with the substitute
+            'initial_fuel_level': self.new_vehicle_fuel_level,
         })
         
         # 6. Generar factura de daños si aplica
@@ -537,7 +542,7 @@ class VehicleSubstitutionWizard(models.TransientModel):
                         <td style="padding: 5px; font-weight: bold;">Diferencia de precio:</td>
                         <td style="padding: 5px;">%s %s</td>
                     </tr>
-            ''') % (f"{self.price_difference:,.2f}", self.currency_id.symbol)
+            ''') % (format_es_number(self.price_difference, 2), self.currency_id.symbol)
         
         # Agregar enlace al addendum/anexo
         substitution_link = Markup('''
@@ -586,7 +591,7 @@ class VehicleSubstitutionWizard(models.TransientModel):
             reason_label,
             self.old_vehicle_id.name, self.old_vehicle_id.license_plate,
             self.new_vehicle_id.name, self.new_vehicle_id.license_plate,
-            f"{self.old_vehicle_odometer:,.0f}", f"{self.new_vehicle_odometer:,.0f}",
+            format_es_number(self.old_vehicle_odometer), format_es_number(self.new_vehicle_odometer),
             price_row,
             substitution_link
         )

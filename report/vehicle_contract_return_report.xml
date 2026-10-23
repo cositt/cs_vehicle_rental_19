@@ -145,11 +145,11 @@
                             </tr>
                             <tr>
                                 <td class="info-label">Kilometraje:</td>
-                                <td><span t-esc="'{:,.0f}'.format(ret.odometer_start)"/>
+                                <td><span t-esc="'{:,.0f}'.format(ret.odometer_start).replace(',', '.')"/>
                                     <span t-if="ret.odometer_unit == 'kilometers'"> km</span>
                                     <span t-else=""> mi</span>
                                 </td>
-                                <td><strong><span t-esc="'{:,.0f}'.format(ret.odometer)"/>
+                                <td><strong><span t-esc="'{:,.0f}'.format(ret.odometer).replace(',', '.')"/>
                                     <span t-if="ret.odometer_unit == 'kilometers'"> km</span>
                                     <span t-else=""> mi</span>
                                 </strong></td>
@@ -176,7 +176,7 @@
                             </tr>
                             <tr>
                                 <td class="info-label">Kilómetros Recorridos:</td>
-                                <td colspan="2"><strong><span t-esc="'{:,.0f}'.format(ret.km_driven)"/>
+                                <td colspan="2"><strong><span t-esc="'{:,.0f}'.format(ret.km_driven).replace(',', '.')"/>
                                     <span t-if="ret.odometer_unit == 'kilometers'"> km</span>
                                     <span t-else=""> mi</span>
                                 </strong></td>

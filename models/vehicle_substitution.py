@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
+import base64
+
 from odoo import models, fields, api, _
 
 
@@ -198,12 +200,10 @@ class VehicleContractSubstitution(models.Model):
     def action_generate_addendum(self):
         """Generar documento addendum/anexo al contrato"""
         self.ensure_one()
-        # Aquí se generaría el PDF del addendum
-        # Por ahora marcamos como generado
-        self.addendum_generated = True
-        
-        # Retornar la vista del PDF o del reporte
-        return self.env.ref('vehicle_rental.action_report_vehicle_substitution_addendum').report_action(self)
+        report = self.env.ref('vehicle_rental.action_report_vehicle_substitution_addendum')
+        content, _type = self.env['ir.actions.report'].sudo()._render_qweb_pdf(report.report_name, self.ids)
+        self.write({'addendum_pdf': base64.b64encode(content), 'addendum_generated': True})
+        return report.report_action(self)
 
     def action_create_damage_invoice(self):
         """Crear factura por daños del vehículo original si aplica"""

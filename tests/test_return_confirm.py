@@ -107,7 +107,7 @@ class TestReturnConfirm(VehicleRentalCase):
         self.wizard.action_confirm_return()
 
         body = self.contract.message_ids[0].body
-        self.assertIn('150.00', body)
+        self.assertIn('150,00', body)
         self.assertNotIn('importe pendiente de valorar', body)
 
     def test_chatter_records_the_collected_signature(self):

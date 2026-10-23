@@ -7,6 +7,7 @@ from datetime import datetime
 from markupsafe import Markup
 
 from odoo import models, fields, api, _
+from ..utils import format_es_number
 from odoo.exceptions import UserError, ValidationError
 
 
@@ -218,8 +219,8 @@ class VehicleContractExtension(models.Model):
         ''') % (
             self.original_end_date or '-',
             self.new_end_date or '-',
-            f"{self.extension_days:,.1f}",
-            f"{self.extension_amount:,.2f}",
+            format_es_number(self.extension_days, 1),
+            format_es_number(self.extension_amount, 2),
             self.currency_id.symbol or '',
         )
         self.contract_id.message_post(body=body)
@@ -292,9 +293,9 @@ class VehicleContractExtension(models.Model):
         ''') % (
             previous_end_date or '-',
             self.new_end_date or '-',
-            f"{self.extension_days:,.1f}",
-            f"{self.daily_rate:,.2f}", self.currency_id.symbol or '',
-            f"{self.extension_amount:,.2f}", self.currency_id.symbol or '',
+            format_es_number(self.extension_days, 1),
+            format_es_number(self.daily_rate, 2), self.currency_id.symbol or '',
+            format_es_number(self.extension_amount, 2), self.currency_id.symbol or '',
             invoice.name or _('Borrador'),
             self.id,
         )

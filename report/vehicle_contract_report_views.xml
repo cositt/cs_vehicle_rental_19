@@ -96,7 +96,7 @@
                                     <td style="padding: 5px; border: 1px solid #ffc107;">
                                         Fin <span t-field="ext.original_end_date" t-options="{'widget': 'date'}"/>
                                         → <span t-field="ext.new_end_date" t-options="{'widget': 'date'}"/>
-                                        (<span t-esc="'{:,.0f}'.format(ext.extension_days)"/> días)
+                                        (<span t-esc="'{:,.0f}'.format(ext.extension_days).replace(',', '.')"/> días)
                                     </td>
                                 </tr>
                                 <tr t-foreach="contract.return_ids" t-as="ret">
@@ -106,7 +106,7 @@
                                     </td>
                                     <td style="padding: 5px; border: 1px solid #ffc107;">
                                         <span t-field="ret.vehicle_id.license_plate"/> —
-                                        <span t-esc="'{:,.0f}'.format(ret.odometer)"/>
+                                        <span t-esc="'{:,.0f}'.format(ret.odometer).replace(',', '.')"/>
                                         <span t-if="ret.odometer_unit == 'kilometers'">km</span>
                                         <span t-else="">mi</span>
                                         <span t-if="ret.has_damage"> — con daños</span>
