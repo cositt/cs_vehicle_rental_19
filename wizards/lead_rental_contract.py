@@ -195,6 +195,16 @@ class LeadRentalContract(models.TransientModel):
         Buscar la transacción Redsys asociada al booking.
         Estrategia: buscar por email del cliente en booking_data_json (más fiable que partner_id)
         """
+        # The payment of the lead itself first: the e-mail search below only
+        # looks at the last 48 hours and could take another booking.
+        tx = self.crm_lead_id.payment_transaction_id.sudo()
+        if tx:
+            try:
+                return tx, json.loads(tx.booking_data_json or '{}')
+            except ValueError:
+                _logger.warning("WIZARD: booking data of TX %s unreadable", tx.id)
+                return tx, {}
+
         # Obtener email del lead/partner
         email = self.partner_id.email or self.crm_lead_id.email_from
         if not email:
@@ -312,7 +322,9 @@ class LeadRentalContract(models.TransientModel):
         # ============================================
         # CREAR SALE.ORDER PARA INTEGRACIÓN CON VENTAS
         # ============================================
-        sale_order = self._create_sale_order(
+        # The sale order is created confirmed because the booking was paid on
+        # the web: an opportunity without payment (a phone call) gets none.
+        sale_order = tx and self._create_sale_order(
             partner=self.partner_id,
             lead=self.crm_lead_id,
             vehicle=self.vehicle_id,
