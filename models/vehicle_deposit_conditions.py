@@ -95,7 +95,7 @@ class VehicleContractDeposit(models.Model):
         for record in self:
             method = record._deposit_payment_method() if record.deposit_card_type else False
             if record.pricing_type == 'flexirent':
-                record.deposit_rule_note = _('FLEXIRENT: fianza fija de la tarifa.')
+                record.deposit_rule_note = _('FLEXIRENT: fianza fija, la misma con débito, crédito o efectivo (se aplica la regla de débito).')
             elif method and method != record.deposit_card_type:
                 record.deposit_rule_note = _(
                     'Débito con seguro sin franquicia: se aplica la fianza de tarjeta de crédito.')

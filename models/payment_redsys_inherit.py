@@ -282,7 +282,7 @@ class PaymentTransaction(models.Model):
         required_fields = ['customer_name', 'customer_email', 'start_date', 'end_date', 'category_id']
         for field in required_fields:
             if field not in booking_data or not booking_data[field]:
-                raise ValidationError(f"Falta datos obligatorio: {field}")
+                raise ValidationError(f"Falta un dato obligatorio: {field}")
 
         try:
             # 1. Construir dirección para contacto (como en Odoo: calle, ciudad, CP, país, estado)
