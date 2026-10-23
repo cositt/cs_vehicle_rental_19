@@ -498,7 +498,22 @@ class VehicleContract(models.Model):
 
 
         records._sync_deposit_from_calculated()
+        records.filtered(lambda contract: not contract.rental_agreement_terms_id)._set_default_agreement_terms()
         return records
+
+    def _set_default_agreement_terms(self):
+        """General terms of the company that signs: the vehicle owner.
+
+        They were only filled when someone picked the agreement by hand, so
+        most contracts were printed without general terms.
+        """
+        Terms = self.env['rental.agreement.terms'].sudo()
+        for contract in self:
+            terms = Terms.search([('company_id', '=', contract.owner_company_id.id)], limit=1, order='id') \
+                or Terms.search([('company_id', '=', contract.company_id.id)], limit=1, order='id')
+            if terms:
+                contract.write({'rental_agreement_terms_id': terms.id,
+                                'rental_terms': contract.rental_terms or terms.rental_terms})
 
     @api.model
     def _availability_chart_data(self):
