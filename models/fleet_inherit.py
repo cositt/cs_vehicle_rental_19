@@ -2,7 +2,7 @@
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from dateutil.relativedelta import relativedelta
 
 
@@ -38,14 +38,17 @@ class FleetVehicle(models.Model):
     status = fields.Selection(
         [('available', 'Operational'), ('in_maintenance', 'Under Maintenance')],
         string="Status", default="available")
-    maintenance_schedule_id = fields.Many2one('maintenance.schedule', string="Horario de Mantenimiento")
+    maintenance_schedule_id = fields.Many2one(
+        'maintenance.schedule', string="Horario de Mantenimiento",
+        domain="[('company_id', 'in', [company_id, False])]")
     maintenance_request_id = fields.Many2one('maintenance.request', string="Solicitud de Mantenimiento")
     maintenance_request_count = fields.Integer(compute='_compute_maintenance_request_count')
     maintenance_bill_count = fields.Integer(compute='_compute_maintenance_bill_count')
 
     # Vehicle Expanses
     is_any_vehicle_expense = fields.Boolean(string="¿Hay Gastos del Vehículo?")
-    fleet_expense_ids = fields.One2many(comodel_name='hr.expense', inverse_name='fleet_vehicle_id')
+    fleet_expense_ids = fields.One2many(comodel_name='hr.expense', inverse_name='fleet_vehicle_id',
+                                        string="Gastos del vehículo")
 
     def available_to_in_maintenance(self):
         """Mark vehicle as 'In Maintenance' if no active contract is in progress.
@@ -210,8 +213,11 @@ class FleetVehicle(models.Model):
                 'maintenance_schedule_id': vehicle.maintenance_schedule_id.id,
                 'upcoming_maintenance_date': upcoming_maintenance_date,
                 'fleet_vehicle_id': vehicle.id,
+                'company_id': vehicle.company_id.id or self.env.company.id,
+                'maintenance_type': 'preventive',
             }
-            maintenance_request = self.env['maintenance.request'].create(data)
+            company = vehicle.company_id or self.env.company
+            maintenance_request = self.env['maintenance.request'].with_company(company).create(data)
             vehicle.maintenance_request_id = maintenance_request.id
             return {
                 'type': 'ir.actions.act_window',
@@ -222,6 +228,19 @@ class FleetVehicle(models.Model):
                 'target': 'current',
             }
         return True
+
+    @api.constrains('maintenance_schedule_id', 'company_id')
+    def _check_maintenance_schedule_company(self):
+        """A schedule of another company cannot be used by this vehicle."""
+        for vehicle in self:
+            schedule_company = vehicle.maintenance_schedule_id.company_id
+            if schedule_company and vehicle.company_id and schedule_company != vehicle.company_id:
+                raise ValidationError(_(
+                    'El horario de mantenimiento «%(schedule)s» es de %(company)s y el vehículo '
+                    '%(plate)s es de otra compañía. Elija un horario compartido o de la misma compañía.',
+                    schedule=vehicle.maintenance_schedule_id.name, company=schedule_company.name,
+                    plate=vehicle.license_plate or vehicle.name,
+                ))
 
     def _compute_maintenance_request_count(self):
         """Compute maintenance request count"""

@@ -99,6 +99,27 @@ class VehicleMaintenanceRequest(models.Model):
     bill_count = fields.Integer(compute='_compute_bill_count',
                                 string="Vendor Bill")
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        """A request for a vehicle belongs to the company that owns the vehicle."""
+        for vals in vals_list:
+            if vals.get('fleet_vehicle_id') and not vals.get('company_id'):
+                vehicle = self.env['fleet.vehicle'].browse(vals['fleet_vehicle_id'])
+                if vehicle.company_id:
+                    vals['company_id'] = vehicle.company_id.id
+            if vals.get('company_id') and not vals.get('maintenance_team_id'):
+                company = self.env['res.company'].browse(vals['company_id'])
+                vals['maintenance_team_id'] = self._vehicle_rental_team(company).id
+        return super().create(vals_list)
+
+    @api.model
+    def _vehicle_rental_team(self, company):
+        """Maintenance team of the company, created the first time it is needed."""
+        Team = self.env['maintenance.team'].sudo()
+        team = Team.search([('company_id', '=', company.id)], limit=1) \
+            or Team.search([('company_id', '=', False)], limit=1)
+        return team or Team.create({'name': _('Mantenimiento interno'), 'company_id': company.id})
+
     @api.depends('fleet_vehicle_id')
     def _compute_vehicle_odometer(self):
         """Propose the vehicle's current reading; the mechanic corrects it."""
@@ -167,11 +188,31 @@ class VehicleMaintenanceRequest(models.Model):
     def _compute_bill_count(self):
         """Compute bill count"""
         for rec in self:
-            rec.bill_count = self.env['account.move'].search_count(
+            # The bill may be in a company that is not active in the switcher
+            rec.bill_count = self.env['account.move'].sudo().search_count(
                 [('maintenance_request_id', '=', rec.id)])
+
+    def _bill_company_notification(self):
+        """Accounting stays per company: say where the bill is instead of failing."""
+        company = self.bill_id.sudo().company_id
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'type': 'success',
+                'sticky': True,
+                'title': _('Factura de proveedor creada'),
+                'message': _('La factura %(bill)s se ha creado en %(company)s, la compañía del vehículo. '
+                             'Para verla, active %(company)s en el selector de compañías.',
+                             bill=self.bill_id.sudo().name or _('(borrador)'), company=company.name),
+                'next': {'type': 'ir.actions.act_window_close'},
+            },
+        }
 
     def action_vendor_bill_views(self):
         """Action views vendor bills"""
+        if self.bill_id.sudo().company_id not in self.env.companies:
+            return self._bill_company_notification()
         return {
             'type': 'ir.actions.act_window',
             'name': _('Vendor Bill'),

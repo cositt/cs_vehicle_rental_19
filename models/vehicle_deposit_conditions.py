@@ -86,6 +86,30 @@ class VehicleContractDeposit(models.Model):
                 '|', ('valid_until', '=', False), ('valid_until', '>=', today),
             ], limit=1, order='valid_from desc')
 
+    deposit_rule_note = fields.Char(
+        string="Motivo de la regla", compute='_compute_deposit_rule_note',
+        help="Por qué se aplica una regla de otro medio de pago.")
+
+    @api.depends('deposit_card_type', 'insurance_type', 'pricing_type')
+    def _compute_deposit_rule_note(self):
+        for record in self:
+            method = record._deposit_payment_method() if record.deposit_card_type else False
+            if record.pricing_type == 'flexirent':
+                record.deposit_rule_note = _('FLEXIRENT: fianza fija de la tarifa.')
+            elif method and method != record.deposit_card_type:
+                record.deposit_rule_note = _(
+                    'Débito con seguro sin franquicia: se aplica la fianza de tarjeta de crédito.')
+            else:
+                record.deposit_rule_note = False
+
+    @api.onchange('calculated_deposit', 'use_deposit_from_rule')
+    def _onchange_deposit_from_rule(self):
+        """Show the deposit of the rule right away, not only after saving."""
+        for record in self:
+            if record.use_deposit_from_rule and record.calculated_deposit > 0:
+                record.if_any_deposit = True
+                record.deposit = record.calculated_deposit
+
     def _check_hand_over_ready(self):
         super()._check_hand_over_ready()
         for rec in self:
