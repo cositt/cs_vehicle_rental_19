@@ -1455,7 +1455,6 @@ msgid "CNG"
 msgstr "GNC"
 
 #. module: vehicle_rental
-#: model:ir.model.fields.selection,name:vehicle_rental.selection__vehicle_contract__status__d_cancel
 #: model_terms:ir.ui.view,arch_db:vehicle_rental.lead_rental_contract_form_view
 #: model_terms:ir.ui.view,arch_db:vehicle_rental.maintenance_request_bill_form_view
 #: model_terms:ir.ui.view,arch_db:vehicle_rental.return_deposit_form_view
@@ -1508,8 +1507,9 @@ msgstr "Razones de cancelación"
 #. module: vehicle_rental
 #. odoo-javascript
 #: code:addons/vehicle_rental/static/src/xml/template.xml:0
+#: model:ir.model.fields.selection,name:vehicle_rental.selection__vehicle_contract__status__d_cancel
 msgid "Cancelled"
-msgstr ""
+msgstr "Cancelado"
 
 #. module: vehicle_rental
 #: model_terms:ir.ui.view,arch_db:vehicle_rental.vehicle_contract_report_template

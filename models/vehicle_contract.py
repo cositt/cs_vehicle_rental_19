@@ -382,7 +382,7 @@ class VehicleContract(models.Model):
         ('a_draft', 'New'),
         ('b_in_progress', 'In Progress'),
         ('c_return', 'Return'),
-        ('d_cancel', 'Cancel')],
+        ('d_cancel', 'Cancelled')],
         default="a_draft", copy=False, tracking=True)
     if_any_deposit = fields.Boolean()
     deposit = fields.Monetary(string="Deposit")
@@ -675,7 +675,11 @@ class VehicleContract(models.Model):
             rec.status = 'c_return'
 
     def c_return_to_d_cancel(self):
-        """Return to cancel"""
+        """Cancel a booking or a contract in progress; a returned one is closed."""
+        closed = self.filtered(lambda contract: contract.status in ('c_return', 'd_cancel'))
+        if closed:
+            raise UserError(_("No se puede cancelar un contrato devuelto o ya cancelado: %s",
+                              ', '.join(closed.mapped('reference_no'))))
         self.status = 'd_cancel'
 
 
@@ -1503,18 +1507,17 @@ class VehicleContract(models.Model):
 
     def cancellation_charge_invoice(self):
         """Cancellation charge invoice"""
-        invoice_line = []
-        for rec in self:
-            # Permitir cancelaciones sin cargo (cancellation_charge = 0)
-            if rec.cancellation_charge and rec.cancellation_charge > 0:
-                cancellation_data = {
-                    'product_id': self.env.ref(
-                        'vehicle_rental.vehicle_contract_cancellation_charge').id,
-                    'name': rec.cancellation_policy_id.title,
-                    'quantity': 1,
-                    'price_unit': rec.cancellation_charge
-                }
-                invoice_line = [(0, 0, cancellation_data)]
+        self.ensure_one()
+        if self.cancellation_charge <= 0:
+            raise UserError(_("Indique el importe del cargo de cancelación del contrato %s. "
+                              "Si la cancelación es sin cargo, no genere esta factura.", self.reference_no))
+        product = self.env.ref('vehicle_rental.vehicle_contract_cancellation_charge')
+        invoice_line = [(0, 0, {
+            'product_id': product.id,
+            'name': self.cancellation_policy_id.title or product.display_name,
+            'quantity': 1,
+            'price_unit': self.cancellation_charge,
+        })]
         sale_journal = self._get_sale_journal()
         data = {
             'partner_id': self.customer_id.id,
