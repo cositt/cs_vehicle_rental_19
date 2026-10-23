@@ -150,6 +150,13 @@ class TestDriverInContractPdf(DriverCase):
         self.assertIn('Pedro Conductor', declaration)
         self.assertNotIn('Construcciones Prueba SL', declaration)
 
+    def test_company_without_driver_does_not_declare_a_licence(self):
+        """A company holds no driving licence: the driver writes the name by hand."""
+        html = self._html(self._draft())
+        declaration = html[html.index('Yo,'):][:400]
+        self.assertNotIn('Construcciones Prueba SL', declaration)
+        self.assertIn('____', declaration)
+
     def test_rent_labels_are_in_spanish(self):
         contract = self._draft()
         html, _type = self.env['ir.actions.report'].with_context(lang='es_ES')._render_qweb_html(

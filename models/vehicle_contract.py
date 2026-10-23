@@ -178,6 +178,9 @@ class VehicleContract(models.Model):
 
     responsible_id = fields.Many2one('res.users', default=lambda self: self.env.user)
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
+    owner_company_id = fields.Many2one(
+        'res.company', string='Empresa titular', compute='_compute_owner_company_id',
+        help='Empresa dueña del vehículo: firma los correos y documentos del contrato.')
     currency_id = fields.Many2one('res.currency', string='Currency',
                                   related="company_id.currency_id")
     cancellation_policy_id = fields.Many2one("cancellation.policy", string="Policy")
@@ -634,6 +637,11 @@ class VehicleContract(models.Model):
         """Return to cancel"""
         self.status = 'd_cancel'
 
+
+    @api.depends('vehicle_id.company_id', 'company_id')
+    def _compute_owner_company_id(self):
+        for contract in self:
+            contract.owner_company_id = contract.vehicle_id.sudo().company_id or contract.company_id
 
     def _get_sale_journal(self):
         """

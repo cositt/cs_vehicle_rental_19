@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!-- Workshop services for maintenance requests and their vendor bills; shared by every company.
+         The repairs expense account (622) is set per company in migration 19.0.6.13. -->
+    <data noupdate="1">
+        <record id="product_category_workshop" model="product.category">
+            <field name="name">Servicios de taller</field>
+        </record>
+        <record id="workshop_service_revision" model="product.product">
+            <field name="name">Revisión periódica</field>
+            <field name="type">service</field>
+            <field name="sale_ok" eval="False"/>
+            <field name="categ_id" ref="product_category_workshop"/>
+        </record>
+        <record id="workshop_service_repair" model="product.product">
+            <field name="name">Reparación mecánica</field>
+            <field name="type">service</field>
+            <field name="sale_ok" eval="False"/>
+            <field name="categ_id" ref="product_category_workshop"/>
+        </record>
+        <record id="workshop_service_tyres" model="product.product">
+            <field name="name">Neumáticos</field>
+            <field name="type">service</field>
+            <field name="sale_ok" eval="False"/>
+            <field name="categ_id" ref="product_category_workshop"/>
+        </record>
+        <record id="workshop_service_itv" model="product.product">
+            <field name="name">ITV</field>
+            <field name="type">service</field>
+            <field name="sale_ok" eval="False"/>
+            <field name="categ_id" ref="product_category_workshop"/>
+        </record>
+        <record id="workshop_service_bodywork" model="product.product">
+            <field name="name">Chapa y pintura</field>
+            <field name="type">service</field>
+            <field name="sale_ok" eval="False"/>
+            <field name="categ_id" ref="product_category_workshop"/>
+        </record>
+        <record id="workshop_service_brakes" model="product.product">
+            <field name="name">Frenos</field>
+            <field name="type">service</field>
+            <field name="sale_ok" eval="False"/>
+            <field name="categ_id" ref="product_category_workshop"/>
+        </record>
+        <record id="workshop_service_oil" model="product.product">
+            <field name="name">Cambio de aceite y filtros</field>
+            <field name="type">service</field>
+            <field name="sale_ok" eval="False"/>
+            <field name="categ_id" ref="product_category_workshop"/>
+        </record>
+    </data>
+</odoo>
