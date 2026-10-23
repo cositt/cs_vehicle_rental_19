@@ -43,3 +43,4 @@ from . import test_dashboard
 from . import test_availability
 from . import test_cancellation
 from . import test_tariffs
+from . import test_agreement_terms

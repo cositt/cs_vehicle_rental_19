@@ -4092,7 +4092,7 @@ msgstr ""
 #. module: vehicle_rental
 #: model_terms:ir.ui.view,arch_db:vehicle_rental.cancellation_policy_form_view
 msgid "e.g. Flexible Cancellation Policy.."
-msgstr ""
+msgstr "p. ej. Política de cancelación flexible"
 
 #. module: vehicle_rental
 #: model_terms:ir.ui.view,arch_db:vehicle_rental.vehicle_contract_form_view
