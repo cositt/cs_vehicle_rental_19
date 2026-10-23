@@ -324,6 +324,22 @@ class VehiclePricingRule(models.Model):
             '|', ('valid_until', '=', False), ('valid_until', '>=', on_date),
         ]
 
+    @api.model
+    def _website_price_from(self, category):
+        """Precio por día más bajo vigente de la categoría, para el "desde" de la web."""
+        rules = self.sudo().search([
+            ('vehicle_category_id', '=', category.id),
+            ('pricing_type', '=', 'standard'),
+            ('duration_range', '!=', '4h'),
+        ] + self._in_force_domain())
+        return min(rules.mapped('price_per_unit'), default=0.0)
+
+    @api.model
+    def _format_eur(self, amount):
+        """Importe a la española: 1.234,50 €."""
+        text = f"{amount or 0.0:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+        return f"{text} €"
+
     def find_pricing_rule(self, category_id, total_km, total_days, rental_date=None, pricing_type='standard'):
         """
         Busca la tarifa aplicable para una combinación de parámetros

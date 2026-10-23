@@ -44,6 +44,8 @@ class PinvecoHomeController(http.Controller):
             vehicles = request.env['fleet.vehicle'].sudo().search([])
             
             # Convertir a formato para el template
+            Rule = request.env['vehicle.pricing.rule']
+            prices = {}
             vehicle_list = []
             for vehicle in vehicles:
                 try:
@@ -59,8 +61,9 @@ class PinvecoHomeController(http.Controller):
                         'license_plate': vehicle.license_plate or '',
                         'category': 'Furgoneta',
                         'passengers': 3,
-                        'price': 45,
-                        'features': ['Aire acondicionado', 'GPS', 'Carga útil'],
+                        'price': 0,
+                        'price_label': '',
+                        'features': [],
                         'icon': 'fa-truck',
                         'color': 'Blanco',
                         'year': '',
@@ -69,6 +72,12 @@ class PinvecoHomeController(http.Controller):
                     # Intentar obtener más datos si están disponibles
                     if hasattr(vehicle, 'category_id') and vehicle.category_id:
                         vehicle_data['category'] = vehicle.category_id.name
+                        category = vehicle.category_id
+                        if category.id not in prices:
+                            prices[category.id] = Rule._website_price_from(category)
+                        vehicle_data['price'] = prices[category.id]
+                        if vehicle_data['price']:
+                            vehicle_data['price_label'] = f"Desde {Rule._format_eur(vehicle_data['price'])}/día"
                     
                     if hasattr(vehicle, 'seats') and vehicle.seats:
                         vehicle_data['passengers'] = vehicle.seats
