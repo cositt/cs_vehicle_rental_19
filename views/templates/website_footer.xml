@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Odoo leaves the placeholder "Company name" in the footer of every page -->
+    <template id="footer_copyright_company" inherit_id="website.footer_copyright_company_name">
+        <xpath expr="//span[hasclass('o_footer_copyright_name')]" position="replace">
+            <span class="o_footer_copyright_name me-2 small">Copyright &amp;copy; <t t-out="res_company.name"/></span>
+        </xpath>
+    </template>
+</odoo>
