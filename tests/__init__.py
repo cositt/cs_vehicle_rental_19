@@ -41,3 +41,4 @@ from . import test_multi_booking
 from . import test_source_health
 from . import test_dashboard
 from . import test_availability
+from . import test_cancellation
