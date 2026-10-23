@@ -11,6 +11,8 @@ class FleetVehicleModel(models.Model):
         selection_add=[('van', 'Furgoneta')],
         ondelete={'van': 'set default'}
     )
+    # Odoo creates models as electric; the fleet is diesel vans
+    default_fuel_type = fields.Selection(default='diesel')
 
 
 class FleetVehicleModelCategory(models.Model):

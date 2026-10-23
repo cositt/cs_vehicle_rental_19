@@ -31,6 +31,8 @@
             
             <div class="row g-4">
                 <t t-foreach="vehicle_categories" t-as="category">
+                    <!-- shown when no picture matches: the icon instead of a blank card -->
+                    <t t-set="has_picture" t-value="[letter for letter in 'ABCDEFKTVWXZ' if ('Tipo %s' % letter) in category.name]"/>
                     <div class="col-lg-4 col-md-6 col-12">
                         <div class="card h-100 category-card" 
                              style="cursor: pointer; transition: all 0.3s ease; border: none; border-radius: 0; box-shadow: none; overflow: hidden;"
@@ -109,7 +111,8 @@
                                      loading="lazy"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
                                      t-if="'Tipo Z' in category.name"/>
-                                <i class="fa fa-car fa-4x text-white" style="display: none;"></i>
+                                <i class="fa fa-car fa-5x text-dark"
+                                   t-att-style="'display: none;' if has_picture else None"/>
                             </div>
                             <div class="card-body text-center" style="border-top: 1px solid #e0e0e0;">
                                 <h5 class="card-title" t-esc="category.name"/>
