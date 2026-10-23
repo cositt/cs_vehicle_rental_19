@@ -221,6 +221,8 @@ class VehicleSubstitutionWizard(models.TransientModel):
                     ('status', '=', 'available'),
                     ('id', '!=', wizard.old_vehicle_id.id if wizard.old_vehicle_id else False),
                     ('id', 'not in', busy_ids),
+                    # A contract refuses a vehicle without category
+                    ('category_id', '!=', False),
                 ]).ids
             
             wizard.available_vehicle_ids = [(6, 0, available_ids)]
@@ -467,7 +469,7 @@ class VehicleSubstitutionWizard(models.TransientModel):
             # Firmas
             'customer_signature': self.customer_signature,
             'company_signature': self.company_signature,
-            'signature_date': fields.Datetime.now(),
+            'signature_date': fields.Datetime.now() if (self.customer_signature or self.company_signature) else False,
         }
         
         substitution = self.env['vehicle.contract.substitution'].create(substitution_vals)

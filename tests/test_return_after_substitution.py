@@ -45,3 +45,47 @@ class TestReturnAfterSubstitution(VehicleRentalCase):
         self.assertIn('19.200', html)
         self.assertIn('1.200', html)
         self.assertNotIn('18,000', html)
+
+
+@tagged('post_install', '-at_install', 'vehicle_substitution')
+class TestSubstitutionAddendum(VehicleRentalCase):
+    """The addendum box produces the document and dates are only those that happened."""
+
+    def _substitute(self, **values):
+        wizard = self.env['vehicle.substitution.wizard'].create(dict({
+            'contract_id': self.contract.id,
+            'new_vehicle_id': self.spare_vehicle.id,
+            'old_vehicle_odometer': 10500,
+            'old_vehicle_fuel_level': '2',
+            'new_vehicle_fuel_level': FUEL_FULL,
+            'step': '4_confirm',
+        }, **values))
+        wizard.action_confirm_substitution()
+        return self.env['vehicle.contract.substitution'].search([('contract_id', '=', self.contract.id)])
+
+    def test_generate_addendum_stores_the_document(self):
+        substitution = self._substitute(generate_addendum=True)
+        self.assertTrue(substitution.addendum_pdf)
+        attachments = self.env['ir.attachment'].search([
+            ('res_model', '=', 'vehicle.contract'), ('res_id', '=', self.contract.id),
+            ('name', 'ilike', 'Addendum')])
+        self.assertTrue(attachments, 'the addendum is attached to the contract')
+
+    def test_no_signature_date_without_signatures(self):
+        self.assertFalse(self._substitute().signature_date)
+
+    def test_addendum_shows_the_contract_date(self):
+        substitution = self._substitute()
+        html, _type = self.env['ir.actions.report']._render_qweb_html(
+            'vehicle_rental.vehicle_substitution_addendum_report_template', substitution.ids)
+        html = html.decode()
+        row = html[html.index('Fecha del Contrato'):][:300]
+        self.assertIn(self.contract.create_date.strftime('%d/%m/%Y'), row)
+
+    def test_vehicle_without_category_is_not_offered(self):
+        uncategorised = self._create_vehicle('SIN-0001')
+        uncategorised.category_id = False
+        wizard = self.env['vehicle.substitution.wizard'].create({'contract_id': self.contract.id})
+        self.assertIn(self.spare_vehicle, wizard.available_vehicle_ids)
+        self.assertNotIn(uncategorised, wizard.available_vehicle_ids,
+                         'a contract cannot hold a vehicle without category')

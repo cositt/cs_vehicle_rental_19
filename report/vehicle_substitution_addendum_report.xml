@@ -99,7 +99,10 @@
                             </tr>
                             <tr>
                                 <td class="info-label">Fecha del Contrato:</td>
-                                <td class="info-value"><span t-field="substitution.contract_id.date"/></td>
+                                <td class="info-value">
+                                    <span t-if="substitution.contract_id.date" t-field="substitution.contract_id.date"/>
+                                    <span t-else="" t-out="substitution.contract_id.create_date" t-options='{"widget": "date"}'/>
+                                </td>
                             </tr>
                             <tr>
                                 <td class="info-label">Periodo de Alquiler:</td>
