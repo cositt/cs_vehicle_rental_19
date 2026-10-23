@@ -44,3 +44,4 @@ from . import test_availability
 from . import test_cancellation
 from . import test_tariffs
 from . import test_agreement_terms
+from . import test_lead_to_contract

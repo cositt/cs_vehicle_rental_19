@@ -11,6 +11,10 @@ class BookingEnquiryLead(models.Model):
     _inherit = 'crm.lead'
     _description = __doc__
 
+    payment_transaction_id = fields.Many2one(
+        'payment.transaction', string="Pago web", readonly=True, copy=False,
+        help="Pago de la reserva web que originó esta oportunidad.")
+
     access_token = fields.Char()
     # Booking Enquiry Details
     vehicle_id = fields.Many2one('fleet.vehicle', string="Vehicle",

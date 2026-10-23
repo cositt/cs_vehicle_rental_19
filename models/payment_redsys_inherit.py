@@ -276,8 +276,7 @@ class PaymentTransaction(models.Model):
         Crear SOLO el Lead después de pago exitoso.
         El contrato se crea manualmente desde CRM al marcar como "Ganado".
         """
-        with open('/tmp/method_execution.log', 'a') as me:
-            me.write(f"[METHOD_ENTRY] _create_lead_from_payment called with TX:{self.id}\n")
+        _logger.info("REDSYS: creating lead from payment TX:%s", self.id)
         
         # Validar datos obligatorios
         required_fields = ['customer_name', 'customer_email', 'start_date', 'end_date', 'category_id']
@@ -296,8 +295,7 @@ class PaymentTransaction(models.Model):
                 booking_data.get('company_id'),
                 address_data=address_data
             )
-            with open('/tmp/method_execution.log', 'a') as me:
-                me.write(f"[PARTNER_OK] TX:{self.id} - Partner ID={partner.id}\n")
+            _logger.info("REDSYS: TX:%s partner %s", self.id, partner.id)
 
             # 2. Verificar que existen vehículos en la categoría (NO asignar uno específico)
             category_id = booking_data.get('category_id')
@@ -410,17 +408,11 @@ class PaymentTransaction(models.Model):
                 'end_time': booking_data.get('end_time'),
             }
             
-            with open('/tmp/lead_creation.log', 'a') as lf:
-                lf.write(f"[CREATE] TX:{self.id} - Creando lead con vals: {lead_vals}\n")
-            
-            try:
-                lead = self.env['crm.lead'].sudo().create(lead_vals)
-                with open('/tmp/lead_creation.log', 'a') as lf:
-                    lf.write(f"[SUCCESS] TX:{self.id} - Lead creado: ID={lead.id}\n")
-            except Exception as e:
-                with open('/tmp/lead_creation.log', 'a') as lf:
-                    lf.write(f"[LEAD_ERROR] TX:{self.id} - Error: {str(e)}\n")
-                raise
+            # The payment stays linked to its lead: the contract is made from
+            # it later, maybe days after. (The lead values used to be written
+            # to a plain temporary file, with the customer's ID and licence.)
+            lead_vals['payment_transaction_id'] = self.id
+            lead = self.env['crm.lead'].sudo().create(lead_vals)
 
             _logger.info(
                 f"REDSYS: Lead creado exitosamente (SIN vehículo asignado) | TX:{self.id} | "
