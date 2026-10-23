@@ -11,6 +11,10 @@ class FleetVehicle(models.Model):
     _inherit = 'fleet.vehicle'
     _description = __doc__
 
+    # Fleet starts every vehicle as "Nueva solicitud"; a rental vehicle is already registered
+    state_id = fields.Many2one(default=lambda self: self.env.ref(
+        'fleet.fleet_vehicle_state_registered', raise_if_not_found=False))
+
     delegation_id = fields.Many2one(
         'vehicle.rental.delegation', string='Delegación', index=True, tracking=True,
         help='Dónde está el vehículo. Al devolverlo pasa a la delegación de entrega.')
