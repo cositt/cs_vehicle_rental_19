@@ -66,3 +66,21 @@ class TestLeadToContract(VehicleRentalCase):
     def test_no_personal_data_in_tmp_files(self):
         source = open(file_path('vehicle_rental/models/payment_redsys_inherit.py')).read()
         self.assertNotIn('/tmp/', source)
+
+
+@tagged('post_install', '-at_install', 'vehicle_lead_contract')
+class TestSaleOrderToContract(VehicleRentalCase):
+
+    def test_contract_keeps_the_price_agreed_in_the_order(self):
+        """The contract ignored the order and took the tariff (or failed without one)."""
+        rent = self.env.ref('vehicle_rental.vehicle_rent_charge')
+        rent = rent.product_variant_ids[:1] if rent._name == 'product.template' else rent
+        order = self.env['sale.order'].create({
+            'partner_id': self.customer.id, 'vehicle_id': self.spare_vehicle.id,
+            'order_line': [(0, 0, {'product_id': rent.id, 'product_uom_qty': 4, 'price_unit': 55.0})]})
+        order.action_confirm()
+        wizard = self.env['sale.order.to.vehicle.contract'].create({
+            'sale_order_id': order.id, 'partner_id': self.customer.id, 'vehicle_id': self.spare_vehicle.id,
+            'start_date': self.now + timedelta(days=10), 'end_date': self.now + timedelta(days=14)})
+        wizard.action_create_vehicle_contract()
+        self.assertEqual(order.vehicle_contract_id.rent, 55.0)

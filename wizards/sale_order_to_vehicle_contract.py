@@ -85,28 +85,37 @@ class SaleOrderToVehicleContract(models.TransientModel):
                             date_obj = datetime.strptime(date_obj, '%Y-%m-%d').date()
                         self.end_date = datetime.combine(date_obj, time.max)
 
+    def _agreed_daily_rent(self):
+        """Price per day of the rent line of the order (0 if there is none)."""
+        rent_product = self.env.ref('vehicle_rental.vehicle_rent_charge', raise_if_not_found=False)
+        lines = self.sale_order_id.order_line.filtered(lambda line: not line.display_type and line.price_unit > 0)
+        rent_lines = lines.filtered(lambda line: rent_product and line.product_id.product_tmpl_id
+                                    == (rent_product.product_tmpl_id if rent_product._name == 'product.product'
+                                        else rent_product))
+        return (rent_lines or lines)[:1].price_unit
+
     def action_create_vehicle_contract(self):
         """Create vehicle contract from sale order"""
         self.ensure_one()
         
         # Validaciones
         if not self.vehicle_id:
-            raise UserError(_("Please select a vehicle."))
+            raise UserError(_("Seleccione un vehículo."))
         if not self.partner_id:
-            raise UserError(_("Please select a customer."))
+            raise UserError(_("Seleccione un cliente."))
         if not self.start_date or not self.end_date:
-            raise UserError(_("Please set pick-up and return dates."))
+            raise UserError(_("Indique las fechas de recogida y devolución."))
         if self.end_date < self.start_date:
-            raise UserError(_("Return date cannot be before pick-up date."))
+            raise UserError(_("La fecha de devolución no puede ser anterior a la de recogida."))
         
         # Verificar que el pedido esté confirmado
         if self.sale_order_id.state not in ['sale', 'done']:
-            raise UserError(_("The sale order must be confirmed before creating a contract."))
+            raise UserError(_("Confirme el pedido de venta antes de crear el contrato."))
         
         # Verificar si ya existe un contrato para este pedido
         if self.sale_order_id.vehicle_contract_id:
-            raise UserError(_("A vehicle contract already exists for this sale order: %s") % 
-                          self.sale_order_id.vehicle_contract_id.reference_no)
+            raise UserError(_("Este pedido ya tiene contrato: %s",
+                            self.sale_order_id.vehicle_contract_id.reference_no))
         
         # Obtener información del vehículo
         vehicle = self.vehicle_id
@@ -125,6 +134,9 @@ class SaleOrderToVehicleContract(models.TransientModel):
             'fuel_type': vehicle.fuel_type,
             'start_date': self.start_date,
             'end_date': self.end_date,
+            # The price agreed in the order; it was left at 0
+            'rent': self._agreed_daily_rent(),
+            'rent_type': 'days',
         })
         
         # Vincular el contrato al pedido de venta
@@ -139,8 +151,8 @@ class SaleOrderToVehicleContract(models.TransientModel):
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
-                'title': _('Success'),
-                'message': _('Vehicle contract %s created successfully!') % contract.reference_no,
+                'title': _('Contrato creado'),
+                'message': _('Contrato %s creado.', contract.reference_no),
                 'type': 'success',
                 'sticky': False,
                 'next': {
