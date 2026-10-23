@@ -29,6 +29,7 @@
         # Data
         'data/vehicle_product_data_views.xml',
         'data/vehicle_surcharge_products.xml',
+        'data/workshop_service_products.xml',
         # 'data/vehicle_rental_products_2025.xml',  # Temporalmente deshabilitado - crear productos manualmente
         #         'data/fleet_vehicle_category_data.xml',
         'data/sequence_views.xml',

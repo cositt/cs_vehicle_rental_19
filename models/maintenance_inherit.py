@@ -45,7 +45,7 @@ class VehicleMaintenanceService(models.Model):
     _rec_name = 'product_id'
 
     product_id = fields.Many2one('product.product', string="Service",
-                                 domain=[('type', '=', 'service')])
+                                 domain=lambda self: self._workshop_service_domain())
     description = fields.Char(string="Description", translate=True)
     service_charge = fields.Monetary(string="Service Charge")
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
@@ -53,6 +53,13 @@ class VehicleMaintenanceService(models.Model):
                                   related="company_id.currency_id")
     maintenance_request_id = fields.Many2one('maintenance.request',
                                              ondelete='cascade')
+
+    @api.model
+    def _workshop_service_domain(self):
+        """Workshop services only, not the rental charges."""
+        category = self.env.ref('vehicle_rental.product_category_workshop', raise_if_not_found=False)
+        domain = [('type', '=', 'service')]
+        return domain + [('categ_id', 'child_of', category.id)] if category else domain
 
     @api.onchange('product_id')
     def _onchange_service_charge(self):

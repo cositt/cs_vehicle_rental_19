@@ -32,7 +32,7 @@
                         <p>¡Esperamos que disfrute de su vehículo de alquiler!</p>
                         
                         <p>Atentamente,<br/>
-                        El equipo de <t t-out="object.company_id.name"/></p>
+                        El equipo de <t t-out="object.owner_company_id.name"/></p>
                         
                         <hr style="margin: 16px 0px 16px 0px; border: none; border-top: 1px solid #e1e1e1;"/>
                         
@@ -224,7 +224,7 @@
                     <p>Gracias por confiar en nosotros. Esperamos volver a atenderle pronto.</p>
 
                     <p>Atentamente,<br/>
-                        El equipo de <t t-out="object.company_id.name or 'SUNSET RENT'"/>
+                        El equipo de <t t-out="object.contract_id.owner_company_id.name"/>
                     </p>
 
                     <hr style="margin: 16px 0px; border: none; border-top: 1px solid #e1e1e1;"/>

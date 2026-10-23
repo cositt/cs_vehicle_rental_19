@@ -5,6 +5,9 @@ The Spanish chart books income on 700000 "Ventas de mercaderías" by default
 (company income account and sales journal). Renting a vehicle is a service.
 The invoices booked so far are test data (Juan, 2026-10-23), so their customer
 invoice lines move too, posted ones included.
+
+Workshop services (new category) are booked on 622000 "Reparaciones y
+conservación" in every company.
 """
 import logging
 
@@ -12,7 +15,7 @@ from odoo import SUPERUSER_ID, api
 
 _logger = logging.getLogger(__name__)
 
-GOODS, SERVICES = '700000', '705000'
+GOODS, SERVICES, REPAIRS = '700000', '705000', '622000'
 
 
 def _account(env, company, code):
@@ -20,9 +23,17 @@ def _account(env, company, code):
         ('code', '=', code), ('company_ids', 'in', company.ids)], limit=1)
 
 
+def _workshop_expense(env, company):
+    category = env.ref('vehicle_rental.product_category_workshop', raise_if_not_found=False)
+    repairs = _account(env, company, REPAIRS)
+    if category and repairs:
+        category.with_company(company).property_account_expense_categ_id = repairs
+
+
 def migrate(cr, version):
     env = api.Environment(cr, SUPERUSER_ID, {})
     for company in env['res.company'].search([]):
+        _workshop_expense(env, company)
         goods, services = _account(env, company, GOODS), _account(env, company, SERVICES)
         if not (goods and services):
             continue

@@ -3,9 +3,11 @@
     <template id="vehicle_contract_report_template">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="contract">
-                <!-- El membrete sale de la compañía del contrato, no de la activa del usuario -->
+                <!-- El membrete sale de la empresa dueña del vehículo, no de la activa del usuario -->
                 <t t-set="o" t-value="contract"/>
-                <t t-set="company" t-value="contract.company_id.sudo()"/>
+                <t t-set="company" t-value="contract.owner_company_id.sudo()"/>
+                <!-- Autodeclaración: el conductor; una empresa no tiene carnet, se deja en blanco para rellenar -->
+                <t t-set="declarant" t-value="contract.authorized_driver_id or (not contract.customer_id.is_company and contract.customer_id)"/>
                 <!-- FLEXIRENT: rent es la cuota por 30 días; meses completos + días sueltos / 30 -->
                 <t t-set="is_flexirent" t-value="contract.pricing_type == 'flexirent' and contract.start_date and contract.end_date"/>
                 <t t-if="is_flexirent">
@@ -521,7 +523,7 @@
                                     <span class="label">Empresa:</span>
                                 </td>
                                 <td class="value">
-                                    <span t-field="contract.company_id"/>
+                                    <span t-field="contract.owner_company_id"/>
                                 </td>
                             </tr>
 
@@ -905,7 +907,8 @@
                             <tr>
                                 <td style="padding: 2px !important;">
                                     <strong>Nombre Completo:</strong>
-                                    <span t-esc="(contract.authorized_driver_id or contract.customer_id).name"/>
+                                    <span t-if="declarant" t-esc="declarant.name"/>
+                                    <span t-else="">______________________________</span>
                                 </td>
                             </tr>
                             <tr style="border-bottom: 2px solid black;">
@@ -917,7 +920,8 @@
                                 <td style="padding: 2px !important;">
                                     Yo,
                                     <strong>
-                                        <span t-esc="(contract.authorized_driver_id or contract.customer_id).name"/>
+                                        <span t-if="declarant" t-esc="declarant.name"/>
+                                        <span t-else="">______________________________</span>
                                     </strong>
                                     ,
                                     por la presente declaro que:

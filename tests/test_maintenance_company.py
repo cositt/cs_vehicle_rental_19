@@ -92,3 +92,38 @@ class TestMaintenanceCompany(VehicleRentalCase):
     def test_new_schedule_is_shared_by_every_company(self):
         schedule = self._as_sunset('maintenance.schedule').create({'name': 'Nueva', 'maintenance_days': 60})
         self.assertFalse(schedule.company_id)
+
+
+@tagged('post_install', '-at_install', 'vehicle_maintenance')
+class TestWorkshopServices(VehicleRentalCase):
+    """The workshop has its own services, booked as repairs (622)."""
+
+    SERVICES = ('workshop_service_revision', 'workshop_service_repair', 'workshop_service_tyres',
+                'workshop_service_itv', 'workshop_service_bodywork', 'workshop_service_brakes',
+                'workshop_service_oil')
+
+    def test_workshop_services_exist_for_every_company(self):
+        for xmlid in self.SERVICES:
+            product = self.env.ref(f'vehicle_rental.{xmlid}')
+            self.assertEqual(product.type, 'service')
+            self.assertFalse(product.company_id, 'shared by Sunset and Pinveco')
+            self.assertFalse(product.sale_ok)
+
+    def test_service_line_offers_only_workshop_services(self):
+        lines = self.env['vehicle.maintenance.service']
+        domain = lines._fields['product_id'].domain
+        offered = self.env['product.product'].search(domain(lines) if callable(domain) else domain)
+        self.assertIn(self.env.ref('vehicle_rental.workshop_service_revision'), offered)
+        self.assertNotIn(self.env.ref('vehicle_rental.vehicle_rent_charge'), offered)
+
+    def test_workshop_bill_is_booked_as_repairs(self):
+        request = self.env['maintenance.request'].create({
+            'name': 'Revisión taller', 'fleet_vehicle_id': self.vehicle.id})
+        request.write({'vehicle_maintenance_service_ids': [(0, 0, {
+            'product_id': self.env.ref('vehicle_rental.workshop_service_revision').id,
+            'service_charge': 120.0})]})
+        vendor = self.env['res.partner'].create({'name': 'Taller 622'})
+        self.env['maintenance.request.bill'].with_context(active_id=request.id).create(
+            {'vendor_id': vendor.id}).action_create_vendor_bill()
+        line = request.bill_id.invoice_line_ids.filtered('product_id')
+        self.assertEqual(line.account_id.code, '622000')

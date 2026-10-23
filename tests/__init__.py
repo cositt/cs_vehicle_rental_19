@@ -36,3 +36,4 @@ from . import test_contract_emails
 from . import test_return_after_substitution
 from . import test_fleet_data
 from . import test_income_account
+from . import test_owner_company
