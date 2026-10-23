@@ -174,12 +174,11 @@ class VehicleDepositRule(models.Model):
                     _('El Depósito Mínimo no puede ser mayor que el Depósito Máximo.')
                 )
 
-    # Constraint SQL para evitar duplicados
-    _sql_constraints = [
-        ('unique_deposit_rule',
-         'UNIQUE(vehicle_category_id, card_type, valid_from, company_id)',
-         'Ya existe una regla de depósito para esta categoría, tipo de tarjeta y fecha.'),
-    ]
+    # Sin duplicados (Odoo 19 ya no aplica _sql_constraints)
+    _unique_deposit_rule = models.Constraint(
+        'UNIQUE(vehicle_category_id, card_type, valid_from, company_id)',
+        'Ya existe una regla de depósito para esta categoría, tipo de tarjeta y fecha.',
+    )
 
     # ============================================
     # MÉTODOS DE CÁLCULO
