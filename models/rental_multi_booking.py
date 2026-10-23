@@ -47,17 +47,29 @@ class RentalMultiBooking(models.Model):
         self.ensure_one()
         if not self.customer_id:
             raise UserError(_('Seleccione un cliente antes de añadir vehículos.'))
+        context = {
+            'default_customer_id': self.customer_id.id,
+            'default_company_id': self.company_id.id,
+            'default_multi_booking_id': self.id,
+        }
+        # The next vehicle usually shares dates, category and km: start from the last line
+        last = self.line_ids.sorted('id')[-1:]
+        if last:
+            context.update({
+                'default_start_date': last.start_date,
+                'default_end_date': last.end_date,
+                'default_selected_category_id': last.selected_category_id.id,
+                'default_km_range': last.km_range,
+                'default_duration_range': last.duration_range,
+                'default_pricing_type': last.pricing_type,
+            })
         return {
             'type': 'ir.actions.act_window',
             'name': _('Añadir Vehículo'),
             'res_model': 'rental.contract.booking',
             'view_mode': 'form',
             'target': 'new',
-            'context': {
-                'default_customer_id': self.customer_id.id,
-                'default_company_id': self.company_id.id,
-                'default_multi_booking_id': self.id,
-            },
+            'context': context,
         }
 
     def action_create_group(self):

@@ -7,6 +7,7 @@ from datetime import datetime
 from markupsafe import Markup
 
 from odoo import models, fields, api, _
+from odoo.tools.misc import format_date
 from ..utils import format_es_number
 from odoo.exceptions import UserError, ValidationError
 
@@ -16,6 +17,7 @@ class VehicleContractExtension(models.Model):
     _description = 'Ampliación de contrato de alquiler'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'create_date desc'
+    _rec_names_search = ['contract_id']
 
     contract_id = fields.Many2one(
         'vehicle.contract',
@@ -94,6 +96,14 @@ class VehicleContractExtension(models.Model):
         """Fecha de fin de referencia: la congelada al crear, o la del contrato."""
         self.ensure_one()
         return self.original_end_date or self.contract_id.end_date
+
+
+    @api.depends('contract_id.reference_no', 'new_end_date')
+    def _compute_display_name(self):
+        for extension in self:
+            end = extension.new_end_date and format_date(self.env, extension.new_end_date, date_format='dd/MM/yyyy')
+            extension.display_name = _('Ampliación %(contract)s hasta %(end)s',
+                                       contract=extension.contract_id.reference_no or '', end=end or '')
 
     @api.depends('original_end_date', 'contract_id.end_date', 'new_end_date')
     def _compute_extension_days(self):

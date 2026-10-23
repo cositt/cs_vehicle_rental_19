@@ -378,7 +378,7 @@ class VehicleContract(models.Model):
         ('b_in_progress', 'In Progress'),
         ('c_return', 'Return'),
         ('d_cancel', 'Cancel')],
-        default="a_draft", copy=False)
+        default="a_draft", copy=False, tracking=True)
     if_any_deposit = fields.Boolean()
     deposit = fields.Monetary(string="Deposit")
     deposit_invoice_id = fields.Many2one('account.move', string="Deposit Invoice")
@@ -451,6 +451,9 @@ class VehicleContract(models.Model):
         """Create vehicle contract record"""
         # Llenar ubicaciones con datos de la compañía si no están ya definidos
         for vals in vals_list:
+            # Web leads and sale orders do not pass it: start from the vehicle
+            if vals.get('vehicle_id') and not vals.get('last_odometer'):
+                vals['last_odometer'] = self.env['fleet.vehicle'].sudo().browse(vals['vehicle_id']).odometer
             company_id = vals.get('company_id') or self.env.company.id
             company = self.env['res.company'].browse(company_id)
             
@@ -513,18 +516,18 @@ class VehicleContract(models.Model):
     def _validate_non_positive_values(self):
         """Validate rent is greater than zero based on rent type"""
         type_labels = {
-            'hour': _("Hour"),
-            'days': _("Day"),
-            'week': _("Week"),
-            'month': _("Month"),
-            'year': _("Year"),
-            'km': _("KM"),
-            'mi': _("MI"),
+            'hour': _("hora"),
+            'days': _("día"),
+            'week': _("semana"),
+            'month': _("mes"),
+            'year': _("año"),
+            'km': _("km"),
+            'mi': _("milla"),
         }
         for record in self:
             if record.rent_type in type_labels and record.rent <= 0:
                 raise ValidationError(
-                    _("The Rent per %s must be greater than zero.") % type_labels[record.rent_type])
+                    _("El precio por %s debe ser mayor que cero.", type_labels[record.rent_type]))
 
     def _check_hand_over_ready(self):
         """Raise the blocking errors that stop a contract from going in progress."""
@@ -550,7 +553,8 @@ class VehicleContract(models.Model):
             
             # Check for overlapping contracts (in-progress) for the same vehicle
             # Condición de solapamiento: (start1 <= end2) AND (end1 >= start2)
-            overlapping_contracts = self.env['vehicle.contract'].search([
+            # sudo: a contract of the other company also holds the vehicle
+            overlapping_contracts = self.env['vehicle.contract'].sudo().search([
                 ('id', '!=', rec.id),  # Excluir el contrato actual
                 ('vehicle_id', '=', vehicle_id),
                 ('status', '=', 'b_in_progress'),  # Solo contratos realmente en curso
@@ -578,35 +582,41 @@ class VehicleContract(models.Model):
                 ))
 
     def a_draft_to_b_in_progress(self):
-        """Change status from draft to in-progress."""
-        for rec in self:
-            rec._check_hand_over_ready()
-            # Proceed to update status and prepare email context
-            rec.ensure_one()
-            template_id = self.env.ref("vehicle_rental.vehicle_rental_booking_mail_template").sudo()
-            email_context = {
-                'default_model': 'vehicle.contract',
-                'default_res_ids': rec.ids,
-                'default_partner_ids': [rec.customer_id.id],
-                'default_use_template': bool(template_id),
-                'default_template_id': template_id.id,
-                'default_composition_mode': 'comment',
-                'default_email_from': self.env.company.email,
-                'default_reply_to': self.env.company.email,
-                'custom_layout': False,
-                'force_email': True,
-            }
-            rec.status = 'b_in_progress'
-            return {
-                'type': 'ir.actions.act_window',
-                'view_mode': 'form',
-                'res_model': 'mail.compose.message',
-                'views': [(False, 'form')],
-                'view_id': False,
-                'target': 'new',
-                'context': email_context,
-            }
-        return True
+        """Hand over every contract, then offer the confirmation mail.
+
+        All are checked before any changes, so either all go in progress or
+        none. One contract opens the mail to edit; several open it once in
+        mass mode, one mail per contract.
+        """
+        if not self:
+            return True
+        self._check_hand_over_ready()
+        self.write({'status': 'b_in_progress'})
+        template = self.env.ref("vehicle_rental.vehicle_rental_booking_mail_template").sudo()
+        # sudo: the owner company may not be active in the company switcher
+        sender = self[0].owner_company_id.sudo().email or self.env.company.email
+        email_context = {
+            'default_model': 'vehicle.contract',
+            'default_res_ids': self.ids,
+            'default_use_template': bool(template),
+            'default_template_id': template.id,
+            'default_composition_mode': 'comment' if len(self) == 1 else 'mass_mail',
+            'default_email_from': sender,
+            'default_reply_to': sender,
+            'custom_layout': False,
+            'force_email': True,
+        }
+        if len(self) == 1:
+            email_context['default_partner_ids'] = [self.customer_id.id]
+        return {
+            'type': 'ir.actions.act_window',
+            'view_mode': 'form',
+            'res_model': 'mail.compose.message',
+            'views': [(False, 'form')],
+            'view_id': False,
+            'target': 'new',
+            'context': email_context,
+        }
 
     def b_in_progress_to_c_return(self):
         """Abrir el asistente de devolución en modal.

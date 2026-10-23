@@ -63,3 +63,40 @@ class TestIncomeAccount(VehicleRentalCase):
         self.assertEqual(invoice.invoice_line_ids.account_id, self.services)
         self.assertEqual(invoice.state, 'posted')
         self.assertEqual(self.company.income_account_id, self.services)
+
+
+@tagged('post_install', '-at_install', 'vehicle_income_account')
+class TestDepositAccount(VehicleRentalCase):
+    """A deposit is money owed back to the customer, not income: 560."""
+
+    def _migrate(self):
+        path = file_path('vehicle_rental/migrations/19.0.6.14/post-migrate.py')
+        spec = importlib.util.spec_from_file_location('deposit_account_migration', path)
+        migration = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration)
+        migration.migrate(self.env.cr, '19.0.6.13')
+        self.env.invalidate_all()
+
+    def test_deposit_line_goes_to_deposits_received(self):
+        contract = self._create_contract(self.spare_vehicle, self.customer, status='a_draft')
+        contract.write({'payment_type': 'full_payment', 'use_deposit_from_rule': False,
+                        'if_any_deposit': True, 'deposit': 300.0})
+        contract.action_create_vehicle_payment()
+        option = contract.vehicle_payment_option_ids[0]
+        option.action_create_payment_invoice()
+        deposit = option.invoice_id.invoice_line_ids.filtered(
+            lambda l: l.product_id == self.env.ref('vehicle_rental.vehicle_rent_deposit'))
+        rent = option.invoice_id.invoice_line_ids.filtered(lambda l: l.product_id == contract.invoice_item_id)
+        self.assertEqual(deposit.account_id, _account(self.env, self.company, '560000'))
+        self.assertEqual(rent.account_id, _account(self.env, self.company, '705000'))
+
+    def test_migration_moves_booked_deposits(self):
+        manual = self.env['product.product'].create({'name': 'FIANZA', 'type': 'service'})
+        invoice = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.customer.id,
+            'invoice_line_ids': [(0, 0, {'product_id': manual.id, 'price_unit': 300.0, 'tax_ids': False,
+                                         'account_id': _account(self.env, self.company, '705000').id})]})
+        invoice.action_post()
+        self.env.flush_all()
+        self._migrate()
+        self.assertEqual(invoice.invoice_line_ids.account_id, _account(self.env, self.company, '560000'))
