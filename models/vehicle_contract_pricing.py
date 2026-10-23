@@ -904,7 +904,7 @@ class VehicleContractPricing(models.Model):
                     'name': extra_service.name or extra_service.product_id.name,
                     'quantity': extra_service.qty,
                     'price_unit': extra_service.price,
-                    'tax_ids': [(6, 0, self._taxes_for(extra_service.product_id).ids)],
+                    'tax_ids': [(6, 0, self._extra_service_taxes(extra_service.product_id).ids)],
                 }
                 invoice_lines.append((0, 0, extra_line))
         

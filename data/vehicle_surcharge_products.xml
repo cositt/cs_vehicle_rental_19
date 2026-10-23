@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!-- Surcharges of the general conditions of the tariff; taxes are set per company in code -->
+    <data noupdate="1">
+        <record id="surcharge_other_branch" model="product.product">
+            <field name="name">Recargo: entrega en otra delegación</field>
+            <field name="type">service</field>
+            <field name="list_price">60.0</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+        <record id="surcharge_out_of_hours" model="product.product">
+            <field name="name">Recargo: entrada o salida fuera de horario comercial</field>
+            <field name="type">service</field>
+            <field name="list_price">20.0</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+        <record id="surcharge_fuel_not_full" model="product.product">
+            <field name="name">Recargo: depósito de combustible no lleno (más el combustible)</field>
+            <field name="type">service</field>
+            <field name="list_price">20.0</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+        <record id="surcharge_lost_beacon" model="product.product">
+            <field name="name">Recargo: pérdida de baliza</field>
+            <field name="type">service</field>
+            <field name="list_price">35.0</field>
+            <field name="categ_id" ref="vehicle_rental.product_category_vehicle"/>
+        </record>
+    </data>
+</odoo>

@@ -1347,6 +1347,7 @@ class VehicleContract(models.Model):
                 'name': record.description,
                 'quantity': record.product_qty,
                 'price_unit': record.amount,
+                'tax_ids': [(6, 0, self._extra_service_taxes(record.product_id).ids)],
             }
             invoice_lines.append((0, 0, extra_service))
         sale_journal = self._get_sale_journal()
