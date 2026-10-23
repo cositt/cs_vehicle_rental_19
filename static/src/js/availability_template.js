@@ -29,7 +29,7 @@ class VehicleAvailability extends Component {
     const result = [];
     const seen = new Set();
     for (const item of data) {
-      const key = `${item.start_date}-${item.id}`;
+      const key = `${item.start_date}-${item.contract_id}`;
 
       if (!seen.has(key)) {
         seen.add(key);
@@ -81,17 +81,13 @@ class VehicleAvailability extends Component {
       data: contractdata
     };
 
-    const handleTaskClick = async (taskName) => {
-        const domain = [
-            ['reference_no','=',taskName],
-        ];
-        const records = await this.orm.searchRead('vehicle.contract',domain,['id']);
+    const handleTaskClick = async (contractId) => {
          let context = { 'create': false }
          return await this.action.doAction({
             type: 'ir.actions.act_window',
-            name: 'contracts',
+            name: 'Contrato',
             res_model: 'vehicle.contract',
-            res_id : records[0].id,
+            res_id : contractId,
             view_mode: 'form',
             views: [[false,'form']],
             target: 'current',
@@ -101,7 +97,7 @@ class VehicleAvailability extends Component {
 
      gantt.templates.task_text = function (start, end, task) {
         // Create a div with an onclick event
-        return `<div class="task-text" data-task-name="${task.name}">${task.name}</div>`;
+        return `<div class="task-text" data-contract-id="${task.contract_id}">${task.name}</div>`;
     };
     gantt.config.min_column_width = 50;
     gantt.config.readonly = true;
@@ -122,11 +118,12 @@ class VehicleAvailability extends Component {
 
     gantt.init(el);
     gantt.parse(tasks);
+    gantt.showDate(new Date());
 
     el.addEventListener('click', function(event) {
         if (event.target.classList.contains('task-text')) {
-            const taskId = event.target.getAttribute('data-task-name');
-            handleTaskClick(taskId);
+            const contractId = parseInt(event.target.getAttribute('data-contract-id'));
+            handleTaskClick(contractId);
         }
     });
 

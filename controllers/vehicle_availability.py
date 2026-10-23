@@ -21,29 +21,8 @@ class VehicleContractController(http.Controller):
             dict: A dictionary containing contract data formatted for Gantt charts.
         """
 
-        # Retrieve selected company IDs from cookies
         selected_company_ids = request.httprequest.cookies.get('cids')
-        if selected_company_ids:
-            company_ids = list(map(int, selected_company_ids.split('-')))
-        else:
-            company_ids = [request.env.company.id]
-        # Search for vehicle contracts excluding canceled ones
-        contracts = request.env['vehicle.contract'].sudo().search([
-            ('status', '!=', 'd_cancel'),
-            ('company_id', 'in', company_ids)
-        ])
-        # Prepare Gantt chart data
-        gantt_chart_data = [
-            {
-                'id': contract.id,
-                'text': contract.vehicle_id.name,
-                'name': contract.reference_no,
-                'start_date': contract.start_date.strftime("%d-%m-%Y %H:%M:%S"),
-                'end_date': contract.end_date.strftime("%d-%m-%Y %H:%M:%S"),
-                'order': 10,
-                'progress': 0.6,
-            }
-            for contract in contracts if contract.start_date and contract.end_date
-        ]
-
-        return {'data': gantt_chart_data}
+        company_ids = [int(cid) for cid in selected_company_ids.split('-') if cid.isdigit()] \
+            if selected_company_ids else [request.env.company.id]
+        contracts = request.env['vehicle.contract'].with_context(allowed_company_ids=company_ids)
+        return {'data': contracts._availability_chart_data()}
