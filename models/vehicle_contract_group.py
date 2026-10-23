@@ -16,7 +16,8 @@ class VehicleContractGroup(models.Model):
         string='Referencia', required=True, readonly=True,
         default=lambda self: _('New'), copy=False)
     customer_id = fields.Many2one('res.partner', string='Cliente', required=True, tracking=True)
-    company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
+    company_id = fields.Many2one('res.company', compute='_compute_company_id', store=True,
+                                 readonly=False, default=lambda self: self.env.company)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id')
 
     start_date = fields.Datetime(string='Fecha Inicio', tracking=True)
@@ -83,6 +84,13 @@ class VehicleContractGroup(models.Model):
                     'deposit_card_type': vals['deposit_card_type'],
                 })
         return res
+
+    @api.depends('contract_ids.company_id')
+    def _compute_company_id(self):
+        """El grupo factura en la compañía de sus contratos."""
+        for group in self:
+            if group.contract_ids:
+                group.company_id = group.contract_ids[0].company_id
 
     @api.depends('contract_ids')
     def _compute_contract_count(self):
@@ -290,7 +298,7 @@ class VehicleContractGroup(models.Model):
         if not invoice_lines:
             raise UserError(_('No hay conceptos pendientes de facturar.'))
 
-        invoice = self.env['account.move'].sudo().create({
+        invoice = self.env['account.move'].sudo().with_company(self.company_id).create({
             'partner_id': self.customer_id.id,
             'move_type': 'out_invoice',
             'invoice_date': fields.Date.today(),

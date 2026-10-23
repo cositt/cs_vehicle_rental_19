@@ -3,7 +3,7 @@
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 {
     'name': "Sunset",
-    'version': "19.0.6.23",
+    'version': "19.0.6.25",
     'description': "A car rental, hire car or car hire agency is a company that rents automobiles for short periods.",
     'summary': "Vehicle Rental Management",
     'author': 'Cositt',
@@ -118,6 +118,7 @@
         # Pinveco Templates
         'views/templates/pinveco_home_basic.xml',
         'views/templates/pinveco_fleet_page.xml',
+        'views/templates/website_footer.xml',
         # Test Templates
         'views/templates/test_fleet_page.xml',
         'views/templates/simple_fleet_page.xml',

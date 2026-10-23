@@ -25,5 +25,36 @@
             <field name="global" eval="True"/>
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
         </record>
+        <!-- Lo que cuelga de un contrato se ve igual que el contrato -->
+        <record id="vehicle_rental_company_restricted_vehicle_contract_extension" model="ir.rule">
+            <field name="name">Vehicle Rental : Only Company Vehicle Contract Extensions</field>
+            <field name="model_id" ref="vehicle_rental.model_vehicle_contract_extension"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="vehicle_rental_company_restricted_vehicle_contract_return" model="ir.rule">
+            <field name="name">Vehicle Rental : Only Company Vehicle Contract Returns</field>
+            <field name="model_id" ref="vehicle_rental.model_vehicle_contract_return"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="vehicle_rental_company_restricted_vehicle_contract_substitution" model="ir.rule">
+            <field name="name">Vehicle Rental : Only Company Vehicle Contract Substitutions</field>
+            <field name="model_id" ref="vehicle_rental.model_vehicle_contract_substitution"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="vehicle_rental_company_restricted_vehicle_payment_option" model="ir.rule">
+            <field name="name">Vehicle Rental : Only Company Vehicle Payment Options</field>
+            <field name="model_id" ref="vehicle_rental.model_vehicle_payment_option"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="vehicle_rental_company_restricted_vehicle_contract_group" model="ir.rule">
+            <field name="name">Vehicle Rental : Only Company Vehicle Contract Groups</field>
+            <field name="model_id" ref="vehicle_rental.model_vehicle_contract_group"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
     </data>
 </odoo>

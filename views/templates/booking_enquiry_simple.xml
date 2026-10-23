@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Simple Booking Enquiry Template -->
-<template id="booking_enquiry_simple" name="Simple Booking Enquiry">
+<template id="booking_enquiry_simple" name="Reserva de vehículo">
             <t t-set="img_folder" t-value="'tipos_pinveco' if is_pinveco else 'tipos'" />
     <t t-call="website.layout">
         <style>

@@ -20,7 +20,7 @@ class VehiclePaymentOption(models.Model):
     ref = fields.Char(string="Reference")
     payment_date = fields.Date(string="Payment Date", required=True)
     payment_amount = fields.Monetary(string="Payment Amount")
-    company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
+    company_id = fields.Many2one('res.company', related='vehicle_contract_id.company_id', store=True)
     currency_id = fields.Many2one('res.currency', string='Currency',
                                   related="company_id.currency_id")
     invoice_item_id = fields.Many2one('product.product', string="Invoice Item")

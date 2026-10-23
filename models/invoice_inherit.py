@@ -15,7 +15,19 @@ class RentalInvoice(models.Model):
     vehicle_contract_id = fields.Many2one('vehicle.contract', string="Vehicle Contract")
     maintenance_request_id = fields.Many2one('maintenance.request', string="Maintenance Request")
     fleet_vehicle_id = fields.Many2one('fleet.vehicle', string="Fleet Vehicle")
-    
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Una factura de contrato va en la compañía del contrato, no en la activa."""
+        moves = self.browse()
+        for vals in vals_list:
+            Move = self
+            if vals.get('vehicle_contract_id') and not vals.get('company_id') and not vals.get('journal_id'):
+                contract = self.env['vehicle.contract'].sudo().browse(vals['vehicle_contract_id'])
+                Move = self.with_company(contract.company_id)
+            moves |= super(RentalInvoice, Move).create([vals])
+        return moves.with_env(self.env)
+
     def write(self, vals):
         """Notificar al contrato cuando la factura se pague"""
         # Guardar el estado anterior

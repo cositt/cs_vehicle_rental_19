@@ -1171,7 +1171,7 @@ class WebsiteContractBookingFixed(http.Controller):
                                                             </label>
                                                         </div>
                                                         <div class="mb-3">
-                                                            <span class="h3" style="color: {primary_color};">€{offer.get('price', 0)}</span>
+                                                            <span class="h3" style="color: {primary_color};">{request.env['vehicle.pricing.rule']._format_eur(offer.get('price', 0))}</span>
                                                         </div>
                                                         <p class="text-muted mb-3">{offer.get('km', '')}</p>
                                                         <ul class="list-unstyled mb-0">

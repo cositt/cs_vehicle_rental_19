@@ -46,3 +46,5 @@ from . import test_tariffs
 from . import test_agreement_terms
 from . import test_lead_to_contract
 from . import test_orphaned_payments
+from . import test_website_prices
+from . import test_invoice_company
