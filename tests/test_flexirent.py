@@ -157,3 +157,34 @@ class TestFlexirentBooking60Days(FlexirentCase):
         self.assertEqual(contract.pricing_type, 'flexirent')
         self.assertEqual(contract.flexirent_km_package, '5000')
         self.assertEqual(contract.rent, FEES['5000'])
+
+
+@tagged('post_install', '-at_install', 'vehicle_flexirent')
+class TestBookingRowButton(FlexirentCase):
+    """The «Reservar» button of each vehicle row goes through
+    fleet.vehicle.action_create_book_contract, not the wizard method: it lost
+    the km band, the category and the FLEXIRENT package (user guide capture,
+    2026-10-26: 5.000 km chosen, contract with 3.000 km)."""
+
+    def _book(self, **values):
+        self.spare_vehicle.category_id = self.category
+        wizard = self.env['rental.contract.booking'].create(dict({
+            'customer_id': self.customer.id, 'start_date': START,
+            'selected_category_id': self.category.id}, **values))
+        action = self.spare_vehicle.with_context(
+            wizard_id=wizard.id, wizard_model='rental.contract.booking').action_create_book_contract()
+        return self.env['vehicle.contract'].browse(action['res_id'])
+
+    def test_flexirent_package_reaches_the_contract(self):
+        contract = self._book(end_date=datetime(2027, 11, 16, 7, 0), pricing_type='flexirent',
+                              flexirent_km_package='5000')
+        self.assertEqual(contract.flexirent_km_package, '5000')
+        self.assertEqual(contract.rent, FEES['5000'])
+
+    def test_standard_booking_keeps_km_band_and_category(self):
+        self.env['vehicle.pricing.rule'].create({
+            'vehicle_category_id': self.category.id, 'pricing_type': 'standard', 'km_range': '350',
+            'duration_range': '3-5d', 'price_per_unit': 85.0, 'valid_from': datetime(2026, 1, 1).date()})
+        contract = self._book(end_date=datetime(2027, 9, 20, 7, 0), pricing_type='standard', km_range='350')
+        self.assertEqual(contract.km_range, '350')
+        self.assertEqual(contract.vehicle_category_id, self.category)

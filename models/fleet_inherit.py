@@ -147,6 +147,11 @@ class FleetVehicle(models.Model):
             'rent': wizard.calculated_price,
             'rent_type': 'days',
             'pricing_type': wizard.pricing_type,
+            # The tariff chosen in the wizard: without it the contract lost its
+            # km band, category and FLEXIRENT package (2026-10-26)
+            'vehicle_category_id': (wizard.selected_category_id or self.category_id).id,
+            'km_range': wizard.km_range if wizard.pricing_type != 'flexirent' else False,
+            'flexirent_km_package': wizard.flexirent_km_package or '3000',
             'discount_reason': 'Tarifa del sistema de reservas',  # Set reason to bypass validation
             # Se recoge donde está el vehículo; se entrega donde pidió el cliente
             'pick_up_delegation_id': (self.delegation_id or wizard.delegation_id).id,

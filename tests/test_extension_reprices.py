@@ -77,3 +77,14 @@ class TestExtensionReprices(VehicleRentalCase):
         self.assertAlmostEqual(line.quantity * line.price_unit, 61.0)
         self.assertEqual(self.two_days.rent, 85.0)
         self.assertAlmostEqual(self.two_days.total_vehicle_rent, 255.0)
+
+    def test_invoiced_extension_keeps_the_amount_it_invoiced(self):
+        # The new rate written on the contract must not re-price the extension
+        extension = self.env['vehicle.contract.extension'].create({
+            'contract_id': self.two_days.id, 'new_end_date': datetime(2026, 10, 31, 8, 0),
+            'daily_rate': 85.0})
+        extension.action_mark_signed()
+        extension.action_create_extension_invoice()
+        extension.invalidate_recordset()
+        self.assertAlmostEqual(extension.charged_amount, 194.0)
+        self.assertAlmostEqual(extension.extension_amount, 61.0)
