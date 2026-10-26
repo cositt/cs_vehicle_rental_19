@@ -120,3 +120,40 @@ class TestFlexirentBookingWizard(FlexirentCase):
         options = self.env['rental.contract.booking']._get_km_options()
         self.assertNotIn(False, [value for value, _label in options])
         Form(self.env['rental.contract.booking'])
+
+
+@tagged('post_install', '-at_install', 'vehicle_flexirent')
+class TestFlexirentBooking60Days(FlexirentCase):
+    """Jesús Muñoz, 2026-10-22: «reservar un vehículo para 60 días... ¿en duración
+    qué pongo? Y en rango de kms lo mismo». Duration and km band were required
+    and FLEXIRENT has neither, so a booking over 29 days could not be made."""
+
+    def _wizard_60_days(self):
+        form = Form(self.env['rental.contract.booking'])
+        form.customer_id = self.customer
+        form.start_date = START
+        form.rental_days = 60
+        form.selected_category_id = self.category
+        return form
+
+    def test_sixty_days_switch_to_flexirent_and_save_without_bands(self):
+        form = self._wizard_60_days()
+        self.assertEqual(form.pricing_type, 'flexirent')
+        wizard = form.save()
+        self.assertFalse(wizard.duration_range)
+
+    def test_wizard_shows_the_monthly_fee_of_the_package(self):
+        form = self._wizard_60_days()
+        form.flexirent_km_package = '5000'
+        self.assertEqual(form.calculated_price, FEES['5000'])
+
+    def test_contract_from_the_wizard_is_flexirent_with_its_package(self):
+        form = self._wizard_60_days()
+        form.flexirent_km_package = '5000'
+        wizard = form.save()
+        self.spare_vehicle.category_id = self.category
+        action = wizard.action_create_contract_for_vehicle(self.spare_vehicle.id)
+        contract = self.env['vehicle.contract'].browse(action['res_id'])
+        self.assertEqual(contract.pricing_type, 'flexirent')
+        self.assertEqual(contract.flexirent_km_package, '5000')
+        self.assertEqual(contract.rent, FEES['5000'])

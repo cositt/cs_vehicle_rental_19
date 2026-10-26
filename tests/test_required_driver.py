@@ -49,5 +49,6 @@ class TestRequiredDriver(VehicleRentalCase):
         fields = self.env['vehicle.contract'].with_context(lang='es_ES').fields_get(
             ['driver_id', 'is_driver_required', 'is_any_trip_expense'], ['string'])
         self.assertEqual(fields['driver_id']['string'], 'Conductor')
-        self.assertEqual(fields['is_driver_required']['string'], 'Conductor requerido')
+        # «Conductor requerido» se confundía con el conductor autorizado (Jesús Muñoz, 2026-10-22)
+        self.assertEqual(fields['is_driver_required']['string'], 'Con chófer de la empresa')
         self.assertEqual(fields['is_any_trip_expense']['string'], 'Gastos de viaje')

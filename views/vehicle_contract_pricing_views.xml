@@ -45,20 +45,27 @@
                                readonly="status != 'a_draft'"/>
                     </group>
                     <group>
+                        <!-- El básico va incluido en la tarifa: sin precio propio -->
+                        <div colspan="2" class="text-success fw-bold" name="basic_insurance_included"
+                             invisible="insurance_type != 'basic' or insurance_price_per_day">
+                            Incluido en la tarifa
+                        </div>
                         <field name="insurance_price_per_day" 
                                readonly="1"
                                widget="monetary"
-                               string="Precio Seguro/Día"/>
+                               string="Precio Seguro/Día"
+                               invisible="insurance_type == 'basic' and not insurance_price_per_day"/>
                         <field name="total_insurance_cost" 
                                readonly="1"
                                widget="monetary"
-                               string="Total Seguro"/>
+                               string="Total Seguro"
+                               invisible="insurance_type == 'basic' and not insurance_price_per_day"/>
                     </group>
                 </group>
                 
                 <div class="alert alert-info" role="alert" invisible="insurance_type != 'basic'">
                     <i class="fa fa-info-circle"/> 
-                    <strong>Seguro Básico:</strong> Franquicia de 750 € + IVA por impacto
+                    <strong>Seguro Básico (incluido en la tarifa):</strong> todo riesgo con franquicia de 750 € + IVA por impacto
                 </div>
                 <div class="alert alert-success" role="alert" invisible="insurance_type != 'no_franchise'">
                     <i class="fa fa-check-circle"/> 

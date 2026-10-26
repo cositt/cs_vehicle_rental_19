@@ -60,3 +60,6 @@ from . import test_lead_phone_opportunity
 from . import test_starter_configuration
 from . import test_lessor_in_terms
 from . import test_contract_company_is_vehicle_owner
+from . import test_new_contract_defaults
+from . import test_extension_reprices
+from . import test_group_hand_over_mail

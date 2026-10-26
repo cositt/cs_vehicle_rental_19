@@ -70,7 +70,10 @@ class VehicleContract(models.Model):
         domain="[('id', 'in', available_vehicle_ids)]")
     license_plate = fields.Char(string="License Plate")
 
-    is_driver_required = fields.Boolean(string="Driver Required")
+    is_driver_required = fields.Boolean(
+        string="Con chófer de la empresa",
+        help="Marcar solo si la empresa pone el chófer. Quien conduce del lado del "
+             "cliente va en «Conductor autorizado».")
     driver_id = fields.Many2one('res.partner', string="Driver")
     driver_charge_type = fields.Selection([('including', "Including in rent charge"),
                                            ('excluding', "Excluding in rent charge")],
@@ -880,13 +883,6 @@ class VehicleContract(models.Model):
                 'odometer_unit': self.odometer_unit,
             })
         return True  # Ensuring consistent return values
-
-    @api.onchange('customer_id')
-    def onchange_customer_details(self):
-        """Onchange customer details"""
-        for rec in self:
-            rec.customer_phone = rec.customer_id.phone
-            rec.customer_email = rec.customer_id.email
 
     @api.onchange('vehicle_id')
     def onchange_vehicle_details(self):

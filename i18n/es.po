@@ -5612,8 +5612,8 @@ msgstr "Conductor"
 
 #. module: vehicle_rental
 #: model:ir.model.fields,field_description:vehicle_rental.field_vehicle_contract__is_driver_required
-msgid "Driver Required"
-msgstr "Conductor requerido"
+msgid "Con chófer de la empresa"
+msgstr "Con chófer de la empresa"
 
 #. module: vehicle_rental
 #: model:ir.model.fields.selection,name:vehicle_rental.selection__customer_documents__document_type__dl

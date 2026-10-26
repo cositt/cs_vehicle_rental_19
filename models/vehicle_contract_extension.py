@@ -341,22 +341,16 @@ class VehicleContractExtension(models.Model):
         ], limit=1)
         if not journal:
             raise UserError(_('No se encontró diario de ventas.'))
-        name_line = _('Ampliación de alquiler – %s – %s día(s)') % (
-            contract.reference_no,
-            self.extension_days,
-        )
         invoice_vals = {
             'partner_id': contract.customer_id.id,
             'move_type': 'out_invoice',
             'journal_id': journal.id,
             'invoice_origin': _('Ampliación %s') % contract.reference_no,
-            'invoice_line_ids': [(0, 0, {
-                'product_id': product.id,
-                'name': name_line,
-                'quantity': self.extension_days,
-                'price_unit': self.daily_rate,
-                'tax_ids': [(6, 0, contract.tax_ids.ids)],
-            })],
+            'invoice_line_ids': [(0, 0, dict(
+                self._extension_invoice_line_values(),
+                product_id=product.id,
+                tax_ids=[(6, 0, contract.tax_ids.ids)],
+            ))],
         }
         invoice = self.env['account.move'].sudo().create(invoice_vals)
         previous_end_date = contract.end_date
@@ -373,6 +367,16 @@ class VehicleContractExtension(models.Model):
             'res_model': 'account.move',
             'res_id': invoice.id,
             'view_mode': 'form',
+        }
+
+    def _extension_invoice_line_values(self):
+        """Name, quantity and price of the invoice line."""
+        self.ensure_one()
+        return {
+            'name': _('Ampliación de alquiler – %s – %s día(s)') % (
+                self.contract_id.reference_no, self.extension_days),
+            'quantity': self.extension_days,
+            'price_unit': self.daily_rate,
         }
 
     def action_view_extension_invoice(self):
