@@ -63,3 +63,4 @@ from . import test_contract_company_is_vehicle_owner
 from . import test_new_contract_defaults
 from . import test_extension_reprices
 from . import test_group_hand_over_mail
+from . import test_customers_menu

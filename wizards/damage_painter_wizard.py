@@ -10,6 +10,22 @@ class VehicleContractDamagePainter(models.TransientModel):
     contract_id = fields.Many2one('vehicle.contract', string='Contrato', required=True)
     damage_image = fields.Binary(string='Imagen de Daños')
     base_image = fields.Binary(string='Imagen Base', compute='_compute_base_image', store=False)
+    painter_ref = fields.Char(
+        string='Referencia del Painter', compute='_compute_painter_ref',
+        help='"modelo,id" que el editor de daños lee del DOM para saber dónde guardar. '
+             'Desde el menú la URL del contrato es /odoo/action-…/ID y no sirve.')
+
+    @api.depends_context('uid')
+    def _compute_painter_ref(self):
+        for rec in self:
+            rec.painter_ref = '%s,%s' % (rec._name, rec.id or '')
+
+    def save_image_to_wizard(self, image_data):
+        """Entry point shared by every damage painter: saves on the contract."""
+        self.ensure_one()
+        if not image_data:
+            return {'success': False, 'message': 'No se recibió ninguna imagen'}
+        return self.save_image_to_contract(image_data)
     
     def get_contract_id_for_js(self):
         """Método para que JavaScript obtenga el contract_id"""

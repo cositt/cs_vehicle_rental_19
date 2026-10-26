@@ -50,10 +50,22 @@
                   parent="main_menu_vehicle_rental"
                   action="action_vehicle_contract_extension"
                   sequence="7"/>
+        <!-- Contacts creates companies by default; most customers are private
+             people, so new customers start as a person (2026-10-26) -->
+        <record id="action_vehicle_rental_customers" model="ir.actions.act_window">
+            <field name="name">Clientes</field>
+            <field name="res_model">res.partner</field>
+            <field name="view_mode">list,kanban,form,activity</field>
+            <field name="search_view_id" ref="base.view_res_partner_filter"/>
+            <field name="context">{'default_is_company': False}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">Crear un cliente</p>
+            </field>
+        </record>
         <menuitem id="menu_fleet_vehicle_customer"
                   name="Clientes"
                   parent="main_menu_vehicle_rental"
-                  action="contacts.action_contacts"
+                  action="action_vehicle_rental_customers"
                   sequence="7"/>
         <menuitem id="menu_maintenance_requests"
                   name="Solicitudes de mantenimiento"

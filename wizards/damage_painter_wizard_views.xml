@@ -12,20 +12,27 @@
                         </div>
                         <group>
                             <field name="contract_id" invisible="1" class="js_contract_id_field"/>
+                            <field name="painter_ref" class="o_damage_painter_ref d-none" readonly="1"/>
                             <field name="base_image" invisible="1"/>
                             <field name="damage_image" invisible="1" force_save="1"/>
                         </group>
                         
                         <div class="damage_painter_container">
                             <div class="damage_painter_toolbar" style="margin-bottom: 10px; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
-                                <span class="btn btn-primary damage_tool" data-tool="marker" style="margin-right: 5px; cursor: pointer; display: inline-block; padding: 5px 10px;">
-                                    <i class="fa fa-paint-brush"/> Marcador
+                                <span class="btn btn-primary damage_tool" data-tool="pen" title="Pluma" style="margin-right: 5px; cursor: pointer; display: inline-block; padding: 5px 10px;">
+                                    <i class="fa fa-pencil"/> Pluma
                                 </span>
-                                <span class="btn btn-info damage_tool" data-tool="text" style="margin-right: 5px; cursor: pointer; display: inline-block; padding: 5px 10px;">
+                                <span class="btn btn-secondary damage_tool" data-tool="circle" title="Círculo" style="margin-right: 5px; cursor: pointer; display: inline-block; padding: 5px 10px;">
+                                    <i class="fa fa-circle-o"/> Círculo
+                                </span>
+                                <span class="btn btn-secondary damage_tool" data-tool="rectangle" title="Rectángulo" style="margin-right: 5px; cursor: pointer; display: inline-block; padding: 5px 10px;">
+                                    <i class="fa fa-square-o"/> Rectángulo
+                                </span>
+                                <span class="btn btn-secondary damage_tool" data-tool="arrow" title="Flecha" style="margin-right: 5px; cursor: pointer; display: inline-block; padding: 5px 10px;">
+                                    <i class="fa fa-long-arrow-right"/> Flecha
+                                </span>
+                                <span class="btn btn-secondary damage_tool" data-tool="text" title="Texto" style="margin-right: 5px; cursor: pointer; display: inline-block; padding: 5px 10px;">
                                     <i class="fa fa-font"/> Texto
-                                </span>
-                                <span class="btn btn-warning damage_tool" data-tool="eraser" style="margin-right: 5px; cursor: pointer; display: inline-block; padding: 5px 10px;">
-                                    <i class="fa fa-eraser"/> Borrador
                                 </span>
                                 <span style="margin: 0 10px;">|</span>
                                 <span class="damage_color" data-color="#FF8C00" style="background-color: #FF8C00; margin-right: 5px; width: 40px; height: 30px; display: inline-block; cursor: pointer; border: 2px solid #ddd; border-radius: 3px;"></span>

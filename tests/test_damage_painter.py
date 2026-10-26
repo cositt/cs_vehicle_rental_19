@@ -167,3 +167,36 @@ class TestSubstitutionDamagePainter(VehicleRentalCase):
 
         self.assertEqual(action['res_model'], 'vehicle.substitution.wizard')
         self.assertEqual(action['res_id'], self.substitution_wizard.id)
+
+
+@tagged('post_install', '-at_install', 'damage_painter')
+class TestContractDamagePainter(VehicleRentalCase):
+    """The contract painter did not save when the contract was opened from the
+    menu: it took the contract id from the URL, which is then /odoo/action-…/ID.
+    Its «Marcador» and «Borrador» tools were not handled by the editor either
+    (found while capturing the user guide, 2026-10-26)."""
+
+    def _open_painter(self):
+        action = self.contract.open_damage_painter()
+        return self.env[action['res_model']].browse(action['res_id'])
+
+    def test_painter_ref_carries_model_and_id(self):
+        painter = self._open_painter()
+        self.assertEqual(painter.painter_ref, 'vehicle.contract.damage.painter,%s' % painter.id)
+
+    def test_saving_from_the_painter_writes_the_contract(self):
+        result = self._open_painter().save_image_to_wizard(PNG_1PX.decode())
+        self.assertTrue(result['success'])
+        self.assertTrue(self.contract.painted_damage_image)
+
+    def test_empty_image_is_refused(self):
+        self.assertFalse(self._open_painter().save_image_to_wizard('')['success'])
+
+    def test_view_exposes_the_ref_and_only_tools_the_editor_handles(self):
+        arch = self.env['vehicle.contract.damage.painter'].get_view(view_type='form')['arch']
+        self.assertIn('o_damage_painter_ref', arch)
+        for tool in ('pen', 'circle', 'rectangle', 'arrow', 'text'):
+            with self.subTest(tool=tool):
+                self.assertIn('data-tool="%s"' % tool, arch)
+        self.assertNotIn('data-tool="marker"', arch)
+        self.assertNotIn('data-tool="eraser"', arch)

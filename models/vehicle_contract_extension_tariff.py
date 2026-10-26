@@ -40,6 +40,9 @@ class VehicleContractExtensionTariff(models.Model):
     @api.depends('extension_days', 'contract_days', 'daily_rate', 'contract_id.rent')
     def _compute_extension_amount(self):
         for rec in self:
+            if rec.extension_invoice_id:
+                # Invoicing writes the new rate on the contract: keep what was invoiced
+                continue
             rec.charged_amount = rec.contract_days * (rec.contract_id.rent or 0.0)
             total = (rec.contract_days + rec.extension_days) * (rec.daily_rate or 0.0)
             rec.extension_amount = max(total - rec.charged_amount, 0.0)

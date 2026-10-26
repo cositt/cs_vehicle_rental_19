@@ -339,11 +339,22 @@ import { useService } from "@web/core/utils/hooks";
             }
             
             // Interceptar el botón de guardar - ANTES de enviar el formulario
+            // Capture phase on the dialog: runs before Owl's handler on the button,
+            // so the dialog does not close (and reload the contract) before the
+            // image is written.
             const saveBtn = root.querySelector('.o_save_damage_btn');
             if (saveBtn) {
-                saveBtn.addEventListener('click', function(e) {
-                    saveCanvasImage();
-                });
+                root.addEventListener('click', async function(e) {
+                    if (!e.target.closest('.o_save_damage_btn')) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const painter = findOpenPainterRecord();
+                    const saved = await saveCanvasImage();
+                    if (saved && painter && CLOSE_AFTER_SAVE_MODELS.includes(painter.model)) {
+                        const closeBtn = root.querySelector('button[special="cancel"]');
+                        if (closeBtn) closeBtn.click();
+                    }
+                }, true);
             }
 
             // Marcar primera herramienta como activa
@@ -630,7 +641,11 @@ import { useService } from "@web/core/utils/hooks";
     const WIZARD_PAINTER_MODELS = [
         'vehicle.substitution.damage.painter',
         'vehicle.contract.return.damage.painter',
+        'vehicle.contract.damage.painter',
     ];
+    // Painters that write straight on the contract: close once saved, so the
+    // contract form behind reloads and shows the new image.
+    const CLOSE_AFTER_SAVE_MODELS = ['vehicle.contract.damage.painter'];
 
     /**
      * Localiza el painter abierto para saber dónde guardar la imagen.
@@ -682,11 +697,11 @@ import { useService } from "@web/core/utils/hooks";
         // acaban en "could not serialize access due to concurrent update".
         if (isSaving) {
             console.log('Guardado ya en curso, se ignora el clic');
-            return;
+            return false;
         }
         isSaving = true;
         try {
-            await doSaveCanvasImage();
+            return await doSaveCanvasImage();
         } finally {
             isSaving = false;
         }
@@ -737,6 +752,10 @@ import { useService } from "@web/core/utils/hooks";
                     showToast(saveRes.error.data?.message || saveRes.error.message, 'error');
                 } else if (saveRes.result && saveRes.result.success) {
                     console.log('✅ ¡GUARDADO EN WIZARD!');
+                    if (CLOSE_AFTER_SAVE_MODELS.includes(painterModel)) {
+                        showToast('Imagen guardada correctamente', 'success');
+                        return true;
+                    }
                     
                     // Mostrar mensaje de éxito sin cerrar el modal
                     // El usuario lo cerrará manualmente cuando termine
@@ -748,6 +767,7 @@ import { useService } from "@web/core/utils/hooks";
                     setTimeout(() => {
                         successMsg.remove();
                     }, 5000);
+                    return true;
                 } else {
                     showToast('Error al guardar: ' + (saveRes.result?.message || 'Error desconocido'), 'error');
                 }
