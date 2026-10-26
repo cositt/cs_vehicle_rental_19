@@ -2,7 +2,6 @@
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError
 
 
 class ReturnDeposit(models.TransientModel):
@@ -27,46 +26,17 @@ class ReturnDeposit(models.TransientModel):
             if contract:
                 res.update({
                     'contract_id': contract.id,
-                    'total_deposit': contract.deposit,
-                    'return_deposit': contract.deposit,
+                    'total_deposit': contract.deposit_charged or contract.deposit,
+                    'return_deposit': contract.deposit_charged or contract.deposit,
                 })
         return res
 
     def create_return_deposit_invoice(self):
-        """Handle vehicle rent deposit process."""
-        contract = self.contract_id
-        invoice_lines = []
-        if not self.return_deposit:
-            raise UserError(_(
-                'Indique el importe de la fianza a devolver del contrato %s. '
-                'Si va a retener la fianza completa, no genere esta factura.',
-                contract.reference_no,
-            ))
-        invoice_line_vals = {
-            'product_id': self.env.ref('vehicle_rental.vehicle_rent_deposit').id,
-            'name': f"Return Deposit for - {contract.reference_no} - {contract.vehicle_id.name}",
-            'quantity': 1,
-            'price_unit': self.return_deposit,
-        }
-        invoice_lines.append((0, 0, invoice_line_vals))
-        # Prepare invoice
-        # Obtener journal de ventas del contrato
-        sale_journal = contract._get_sale_journal()
-        data = {
-            'partner_id': contract.customer_id.id,
-            'move_type': 'out_refund',
-            'journal_id': sale_journal.id,
-            'invoice_date': fields.Date.today(),
-                'invoice_date_due': fields.Date.today(),
-            'invoice_line_ids': invoice_lines,
-            'vehicle_contract_id': contract.id
-        }
-
-        invoice = self.env['account.move'].sudo().create(data)
-        contract.return_deposit_invoice_id = invoice.id
+        """Create the credit note giving the deposit back."""
+        invoice = self.contract_id._create_deposit_refund(self.return_deposit)
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Return Deposit Invoice'),
+            'name': _('Devolución de fianza'),
             'res_model': 'account.move',
             'res_id': invoice.id,
             'view_mode': 'form',

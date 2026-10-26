@@ -393,6 +393,10 @@ class VehicleContract(models.Model):
     return_deposit_invoice_id = fields.Many2one('account.move', string="Return Deposit Invoice")
     return_deposit_state = fields.Selection(related="return_deposit_invoice_id.payment_state",
                                             string="Return Payment State")
+    deposit_charged = fields.Monetary(
+        string="Fianza cobrada", compute='_compute_deposit_charged',
+        help="Fianza facturada al cliente (primera cuota, factura de fianza o factura consolidada del grupo).")
+    can_return_deposit = fields.Boolean(string='Puede devolver la fianza', compute='_compute_deposit_charged')
 
     date = fields.Date(string="Date")
     signature = fields.Binary(string="Signature")
@@ -460,7 +464,7 @@ class VehicleContract(models.Model):
             if vals.get('vehicle_id') and not vals.get('last_odometer'):
                 vals['last_odometer'] = self.env['fleet.vehicle'].sudo().browse(vals['vehicle_id']).odometer
             company_id = vals.get('company_id') or self.env.company.id
-            company = self.env['res.company'].browse(company_id)
+            company = self.env['res.company'].sudo().browse(company_id)
             
             # Llenar pick-up si no están definidos
             if not vals.get('pick_up_street') and company.street:
@@ -549,14 +553,15 @@ class VehicleContract(models.Model):
             'month': 28,
             'year': 365,
         }
+        labels = dict(self._fields['rent_type']._description_selection(self.env))
         for rec in self:
             if rec.start_date and rec.end_date:
                 diff_days = (rec.end_date - rec.start_date).days
                 min_days = rent_min_days.get(rec.rent_type)
                 if min_days and diff_days < min_days:
-                    raise ValidationError(
-                        f"Rent Type '{rec.rent_type.capitalize()}' "
-                        f"requires at least {min_days} days duration.")
+                    raise ValidationError(_(
+                        'El tipo de alquiler «%(type)s» requiere una duración mínima de %(days)s días.',
+                        type=labels.get(rec.rent_type, rec.rent_type), days=min_days))
 
     @api.constrains('rent_type', 'rent')
     def _validate_non_positive_values(self):
@@ -736,6 +741,66 @@ class VehicleContract(models.Model):
             ) % company.name)
         
         return journal
+    def _deposit_invoice_lines(self):
+        """Posted deposit lines charged to this contract."""
+        self.ensure_one()
+        product = self.env.ref('vehicle_rental.vehicle_rent_deposit', raise_if_not_found=False)
+        if not product or not self.id:
+            return self.env['account.move.line']
+        moves = self.env['account.move'].sudo().search([
+            ('vehicle_contract_id', '=', self.id), ('move_type', '=', 'out_invoice')])
+        lines = moves.invoice_line_ids
+        if self.group_id:
+            # Consolidated invoice: one deposit line per vehicle, named after it
+            label = '[%s]' % (self.vehicle_id.name or self.license_plate or '')
+            lines |= self.group_id.sudo().invoice_ids.filtered(
+                lambda m: m.move_type == 'out_invoice').invoice_line_ids.filtered(
+                lambda l: (l.name or '').startswith(label))
+        return lines.filtered(lambda l: l.product_id == product and l.move_id.state == 'posted')
+
+    @api.depends('deposit', 'group_id', 'return_deposit_invoice_id', 'status')
+    def _compute_deposit_charged(self):
+        for rec in self:
+            rec.deposit_charged = sum(rec._deposit_invoice_lines().mapped('price_total'))
+            rec.can_return_deposit = bool(
+                rec.deposit_charged > 0 and rec.status in ('c_return', 'd_cancel')
+                and not rec.return_deposit_invoice_id)
+
+    def _create_deposit_refund(self, amount):
+        """Credit note giving the deposit back (draft, to review and pay)."""
+        self.ensure_one()
+        if amount <= 0:
+            raise UserError(_(
+                'Indique el importe de la fianza a devolver del contrato %s. '
+                'Si va a retener la fianza completa, no genere esta factura.',
+                self.reference_no,
+            ))
+        if amount > self.deposit_charged and self.deposit_charged > 0:
+            raise UserError(_(
+                'No se puede devolver más fianza (%(amount)s) de la cobrada (%(charged)s).',
+                amount=amount, charged=self.deposit_charged))
+        refund = self.env['account.move'].sudo().create({
+            'partner_id': self.customer_id.id,
+            'move_type': 'out_refund',
+            'journal_id': self._get_sale_journal().id,
+            'invoice_date': fields.Date.today(),
+            'invoice_date_due': fields.Date.today(),
+            'vehicle_contract_id': self.id,
+            'ref': _('Devolución de fianza %s') % self.reference_no,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.env.ref('vehicle_rental.vehicle_rent_deposit').id,
+                'name': _('Devolución de fianza - %(ref)s - %(vehicle)s',
+                          ref=self.reference_no, vehicle=self.vehicle_id.name or ''),
+                'quantity': 1,
+                'price_unit': amount,
+                'tax_ids': [],
+            })],
+        })
+        self.return_deposit_invoice_id = refund.id
+        self.message_post(body=_('Devolución de fianza creada: %(name)s por %(amount)s €.',
+                                 name=refund.display_name, amount=amount))
+        return refund
+
     def action_vehicle_rent_deposit(self):
         """Handle vehicle rent deposit process."""
         if self.if_any_deposit and not self.deposit:

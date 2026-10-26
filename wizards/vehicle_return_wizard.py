@@ -2,6 +2,7 @@
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 import base64
+from datetime import timedelta
 
 from markupsafe import Markup
 
@@ -96,6 +97,22 @@ class VehicleReturnWizard(models.TransientModel):
         default=False
     )
 
+    # === FIANZA ===
+    deposit_charged = fields.Monetary(
+        string='Fianza cobrada', related='contract_id.deposit_charged',
+        currency_field='currency_id')
+    refund_deposit = fields.Boolean(
+        string='Devolver la fianza', compute='_compute_refund_deposit', store=True, readonly=False,
+        help='Crea la factura rectificativa de devolución de la fianza (en borrador, para revisar y pagar).')
+    deposit_to_refund = fields.Monetary(
+        string='Fianza a devolver', compute='_compute_refund_deposit', store=True, readonly=False,
+        currency_field='currency_id',
+        help='Por defecto, toda la fianza cobrada. Rebájela si se retiene una parte.')
+    deposit_net_to_customer = fields.Monetary(
+        string='Neto a devolver al cliente', compute='_compute_deposit_net',
+        currency_field='currency_id',
+        help='Fianza a devolver menos los daños indicados. Los daños se facturan aparte.')
+
     # === FIRMA ===
     request_signature = fields.Boolean(
         string='Solicitar firma del cliente',
@@ -144,6 +161,37 @@ class VehicleReturnWizard(models.TransientModel):
         """Kilómetros recorridos durante el contrato"""
         for wizard in self:
             wizard.km_driven = max(wizard.odometer - wizard.odometer_start, 0.0)
+
+    @api.depends('contract_id')
+    def _compute_refund_deposit(self):
+        for wizard in self:
+            charged = wizard.contract_id.deposit_charged
+            wizard.refund_deposit = charged > 0 and not wizard.contract_id.return_deposit_invoice_id
+            wizard.deposit_to_refund = charged
+
+    @api.depends('refund_deposit', 'deposit_to_refund', 'has_damage', 'damage_amount')
+    def _compute_deposit_net(self):
+        for wizard in self:
+            refund = wizard.deposit_to_refund if wizard.refund_deposit else 0.0
+            damages = wizard.damage_amount if wizard.has_damage else 0.0
+            wizard.deposit_net_to_customer = refund - damages
+
+    @api.onchange('return_date')
+    def _onchange_return_date_warning(self):
+        """Warn about unusual return dates; recording them is still allowed."""
+        if not self.return_date:
+            return False
+        start = self.contract_id.start_date
+        if start and self.return_date < start:
+            message = _('La fecha de devolución es anterior al inicio del alquiler (%s). '
+                        'Revísela antes de confirmar.') % fields.Datetime.context_timestamp(
+                self, start).strftime('%d/%m/%Y %H:%M')
+        elif self.return_date > fields.Datetime.now() + timedelta(hours=1):
+            message = _('La fecha de devolución es futura. Revísela antes de confirmar: '
+                        'normalmente se registra al recibir el vehículo.')
+        else:
+            return False
+        return {'warning': {'title': _('Fecha de devolución'), 'message': message}}
 
     @api.onchange('has_damage')
     def _onchange_has_damage(self):
@@ -409,7 +457,11 @@ class VehicleReturnWizard(models.TransientModel):
         if self.has_damage and self.invoice_damage_now and self.damage_amount > 0:
             return_record.action_create_damage_invoice()
 
-        # 8. Enviar al cliente el correo de cierre con el resumen del proceso
+        # 8. Devolver la fianza (rectificativa en borrador)
+        if self.refund_deposit and self.deposit_to_refund > 0:
+            contract._create_deposit_refund(self.deposit_to_refund)
+
+        # 9. Enviar al cliente el correo de cierre con el resumen del proceso
         if self.send_closing_email:
             attachment_ids = [acta_attachment.id] if acta_attachment else None
             sent = return_record.action_send_return_email(extra_attachment_ids=attachment_ids)

@@ -99,8 +99,9 @@ class TestOwnerCompanyAsClerk(TestOwnerCompany):
 
     def test_hand_over_mail_opens_for_the_clerk(self):
         contract = self._create_contract(self.vehicle, self.customer, status='a_draft')
+        # A contract made before each company invoiced its own vehicles
         contract.write({'start_date': self.end_date + timedelta(days=1),
-                        'end_date': self.end_date + timedelta(days=3)})
+                        'end_date': self.end_date + timedelta(days=3), 'company_id': self.company.id})
         action = self._clerk(contract).with_context(hand_over_without_driver=True).a_draft_to_b_in_progress()
         self.assertEqual(action['context']['default_email_from'], 'duena@example.com')
 

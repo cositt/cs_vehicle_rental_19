@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import api, models
+from odoo import _, api, models
+from odoo.exceptions import UserError
 
 RENTAL_VAT = 21.0
 OPEN_CONTRACT_STATES = ('a_draft', 'b_in_progress')
@@ -112,18 +113,74 @@ class VehicleContractTax(models.Model):
     Rent, insurance and extra km are priced with VAT included in the tariff,
     so they all take the contract tax; other products bring their own taxes,
     filtered by the company of the contract.
+
+    Each company invoices its own vehicles (Juan, 2026-10-26): the contract
+    belongs to the company that owns the vehicle, whatever company the clerk
+    is acting for.
     """
     _inherit = 'vehicle.contract'
+
+    def _vehicle_owner(self, vehicle_id):
+        return self.env['fleet.vehicle'].sudo().browse(vehicle_id).company_id
+
+    @api.model
+    def _owner_is_active(self, vehicle):
+        if self.env.su or not vehicle.company_id:
+            return True
+        allowed = self.env.context.get('allowed_company_ids') or self.env.company.ids
+        return vehicle.company_id.id in allowed
+
+    @api.model
+    def _check_owner_is_active(self, vehicle):
+        """Taxes, journals and accounts of a company are only usable while it is active."""
+        if not self._owner_is_active(vehicle):
+            raise UserError(_(
+                'El vehículo %(vehicle)s es de %(owner)s y se factura desde %(owner)s. '
+                'Marque también %(owner)s en el selector de compañías (arriba a la derecha) '
+                'para trabajar con él.', vehicle=vehicle.display_name, owner=vehicle.company_id.name))
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            owner = self._vehicle_owner(vals.get('vehicle_id'))
+            if owner and owner.id != vals.get('company_id'):
+                self._check_owner_is_active(self.env['fleet.vehicle'].sudo().browse(vals['vehicle_id']))
+                vals['company_id'] = owner.id
+                vals.pop('tax_ids', None)
             if not vals.get('tax_ids'):
                 company = self.env['res.company'].browse(vals.get('company_id') or self.env.company.id)
                 tax = company._vehicle_rental_sale_tax()
                 if tax:
                     vals['tax_ids'] = [(6, 0, tax.ids)]
         return super().create(vals_list)
+
+    def write(self, vals):
+        if not vals.get('vehicle_id'):
+            return super().write(vals)
+        owner = self._vehicle_owner(vals['vehicle_id'])
+        moving = self.filtered(lambda c: owner and c.status == 'a_draft' and c.company_id != owner)
+        if moving:
+            self._check_owner_is_active(self.env['fleet.vehicle'].sudo().browse(vals['vehicle_id']))
+        result = super().write(vals)
+        if moving:
+            tax = owner._vehicle_rental_sale_tax()
+            super(VehicleContractTax, moving).write({'company_id': owner.id, 'tax_ids': [(6, 0, tax.ids)]})
+        return result
+
+    @api.onchange('vehicle_id')
+    def _onchange_vehicle_owner_company(self):
+        for contract in self:
+            owner = contract.vehicle_id.sudo().company_id
+            if not owner or contract.status not in (False, 'a_draft') or contract.company_id == owner:
+                continue
+            if not self._owner_is_active(contract.vehicle_id):
+                return {'warning': {
+                    'title': _('Vehículo de %s', owner.name),
+                    'message': _('Este vehículo se factura desde %(owner)s. Marque también %(owner)s '
+                                 'en el selector de compañías (arriba a la derecha) para poder guardar.',
+                                 owner=owner.name)}}
+            contract.company_id = owner
+            contract.tax_ids = owner._vehicle_rental_sale_tax()
 
     def _taxes_for(self, product):
         """Taxes of the product that belong to the company of the contract."""

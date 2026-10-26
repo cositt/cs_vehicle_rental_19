@@ -23,7 +23,8 @@
                     <!-- Botón para crear contrato desde oportunidades ganadas -->
                     <button string="Crear Contrato" name="%(action_lead_rental_contract)d" type="action"
                             class="oe_highlight"
-                            invisible="(type != 'opportunity' or probability &lt; 100) and (type != 'lead' or vehicle_id == False) or contract_id != False"/>
+                            invisible="not can_create_contract"/>
+                    <field name="can_create_contract" invisible="1"/>
                     <!-- Botón para convertir lead a oportunidad (REEMPLAZA al botón nativo morado) -->
                     <button string="Convertir a Oportunidad" name="action_set_won" type="object"
                             class="btn-secondary"

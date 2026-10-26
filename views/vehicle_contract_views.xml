@@ -147,9 +147,10 @@
                         <button name="%(action_vehicle_damage)d" string="Damage Invoice" type="action"
                                 class="oe_highlight" invisible="status != 'c_return' or is_invoice_done != False"/>
 
-                        <button name="%(action_return_deposit)d" string="Return Deposit Invoice" type="action"
-                                class="btn btn-info"
-                                invisible="if_any_deposit == False or deposit_invoice_id == False or status not in ('c_return', 'd_cancel') or return_deposit_invoice_id != False"/>
+                        <button name="%(action_return_deposit)d" string="Devolver fianza" type="action"
+                                class="btn btn-info" icon="fa-undo"
+                                invisible="not can_return_deposit"/>
+                        <field name="can_return_deposit" invisible="1"/>
 
                         <button string="Create Trip Expense Reports" name="create_contract_trip_expense_report"
                                 class="btn btn-info" type="object"
@@ -596,7 +597,8 @@
                         <separator string="Detalles de la Compañía" name="company_details"/>
                         <group>
                             <group>
-                                <field name="company_id" required="1" readonly="status != 'a_draft'"/>
+                                <field name="company_id" required="1" readonly="vehicle_id or status != 'a_draft'" force_save="1"
+                                       help="Factura la compañía dueña del vehículo."/>
                             </group>
                             <group>
                                 <field name="responsible_id" widget="many2one_avatar_user" required="1"

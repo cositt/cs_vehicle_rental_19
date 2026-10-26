@@ -52,3 +52,11 @@ from . import test_vehicle_state
 from . import test_required_driver
 from . import test_spanish_labels
 from . import test_past_contracts
+from . import test_deposit_return
+from . import test_return_date_warning
+from . import test_maintenance_vehicle_status
+from . import test_vehicle_expense_employee
+from . import test_lead_phone_opportunity
+from . import test_starter_configuration
+from . import test_lessor_in_terms
+from . import test_contract_company_is_vehicle_owner

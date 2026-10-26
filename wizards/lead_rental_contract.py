@@ -32,9 +32,34 @@ class LeadRentalContract(models.TransientModel):
                                           readonly=True, help="Categoría del vehículo a alquilar")
     search_vehicle = fields.Char(string="Buscar Vehículo", help="Busca por marca o modelo")
     vehicle_id = fields.Many2one('fleet.vehicle', string="Vehicle",
-                                 domain="[('status', '=', 'available'), ('company_id', '=', crm_lead_id.company_id.id), '|', ('model_id.category_id', '=', selected_category_id), ('category_id', '=', selected_category_id)]")
+                                 domain="[('status', '=', 'available'), '|', ('model_id.category_id', '=', selected_category_id), ('category_id', '=', selected_category_id)]")
     start_date = fields.Datetime(string="Start Date")
     end_date = fields.Datetime(string="End Date")
+    km_range = fields.Selection(
+        selection=lambda self: self.env['vehicle.contract']._selection_km_range(),
+        string="Kilómetros Incluidos",
+        compute='_compute_km_range', store=True, readonly=False,
+        help="Paquete de kilómetros: junto con los días decide la tarifa del contrato.")
+
+    @api.depends('vehicle_id', 'start_date', 'end_date')
+    def _compute_km_range(self):
+        """Smallest kilometre package with a tariff for this category and duration."""
+        Rule = self.env['vehicle.pricing.rule']
+        for wizard in self:
+            category = wizard.vehicle_id.category_id
+            if not category or not wizard.start_date or not wizard.end_date:
+                continue
+            days = max(1, (wizard.end_date - wizard.start_date).days)
+            rental_date = wizard.start_date.date()
+            rules = Rule.search([
+                ('vehicle_category_id', '=', category.id), ('pricing_type', '=', 'standard'),
+                ('duration_range', '=', Rule._get_duration_range_from_days(days)),
+                ('active', '=', True)] + Rule._in_force_domain(rental_date))
+            bands = set(rules.mapped('km_range'))
+            options = [value for value, _label in wizard._fields['km_range']._description_selection(self.env)]
+            if wizard.km_range in bands:
+                continue
+            wizard.km_range = next((value for value in options if value in bands), False)
 
     def _get_occupied_vehicle_ids(self, start_date, end_date):
         """Vehículos ocupados: solo contratos que aún tienen el vehículo (a_draft, b_in_progress). Devuelto (c_return) no bloquea."""
@@ -96,6 +121,8 @@ class LeadRentalContract(models.TransientModel):
                 # Vehículo - buscar por categoría si no hay vehículo específico
                 if hasattr(lead, 'vehicle_id') and lead.vehicle_id:
                     res['vehicle_id'] = lead.vehicle_id.id
+                    if not res.get('selected_category_id') and lead.vehicle_id.category_id:
+                        res['selected_category_id'] = lead.vehicle_id.category_id.id
                 elif hasattr(lead, 'selected_category_id') and lead.selected_category_id:
                     vehicle = self.env['fleet.vehicle'].search([
                         ('model_id.category_id', '=', lead.selected_category_id.id),
@@ -312,6 +339,7 @@ class LeadRentalContract(models.TransientModel):
             # La ubicación elegida en la web es el nombre de una delegación
             'pick_up_delegation_id': delegation.id,
             'drop_off_delegation_id': delegation.id,
+            'km_range': self.km_range,
             'rent': daily_rate,  # Precio por día
             'rent_type': 'days',  # Tipo de alquiler: días
             'discount_reason': 'Precio de reserva web',  # Auto-rellenado para evitar validación
@@ -343,6 +371,9 @@ class LeadRentalContract(models.TransientModel):
         
         contract = self.env['vehicle.contract'].create(contract_vals)
         self.crm_lead_id.contract_id = contract.id
+        # The opportunity is won once it has its contract
+        if self.crm_lead_id.probability < 100:
+            self.crm_lead_id.action_set_won_rainbowman()
         
         # Vincular sale.order con el contrato
         if sale_order:

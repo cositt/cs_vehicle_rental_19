@@ -119,6 +119,28 @@ class VehicleMaintenanceRequest(models.Model):
                 vals['maintenance_team_id'] = self._vehicle_rental_team(company).id
         return super().create(vals_list)
 
+    def write(self, vals):
+        res = super().write(vals)
+        if 'stage_id' in vals:
+            self._sync_vehicle_status()
+        return res
+
+    def _is_in_workshop(self):
+        """Started and not finished: the vehicle is in the workshop."""
+        self.ensure_one()
+        new_stage = self.env.ref('maintenance.stage_0', raise_if_not_found=False)
+        return bool(self.stage_id) and not self.stage_id.done and self.stage_id != new_stage
+
+    def _sync_vehicle_status(self):
+        """In progress -> vehicle in maintenance; done/scrapped -> available again."""
+        for vehicle in self.mapped('fleet_vehicle_id'):
+            open_requests = self.sudo().search([('fleet_vehicle_id', '=', vehicle.id)]).filtered(
+                lambda r: r._is_in_workshop())
+            if open_requests and vehicle.status != 'in_maintenance':
+                vehicle.available_to_in_maintenance()
+            elif not open_requests and vehicle.status == 'in_maintenance':
+                vehicle.in_maintenance_to_available()
+
     @api.model
     def _vehicle_rental_team(self, company):
         """Maintenance team of the company, created the first time it is needed."""

@@ -83,6 +83,26 @@
                     </group>
                 </group>
 
+                <separator string="Fianza"/>
+                <div class="text-muted mb-2" invisible="deposit_charged > 0">
+                    No hay fianza cobrada en las facturas de este contrato: no hay nada que devolver.
+                </div>
+                <group invisible="deposit_charged == 0">
+                    <group>
+                        <field name="deposit_charged"/>
+                        <field name="refund_deposit"/>
+                        <field name="deposit_to_refund" invisible="not refund_deposit"
+                               required="refund_deposit"/>
+                    </group>
+                    <group>
+                        <field name="deposit_net_to_customer" invisible="not refund_deposit"/>
+                        <div class="text-muted" colspan="2" invisible="not refund_deposit">
+                            Se crea la rectificativa de la fianza en borrador. Los daños se
+                            facturan aparte; al pagar, compense ambos importes.
+                        </div>
+                    </group>
+                </group>
+
                 <separator string="Firma"/>
                 <group>
                     <group>

@@ -188,6 +188,7 @@
                                             <field name="driver_id" widget="many2one_avatar" readonly="1"
                                                    force_save="1"/>
                                             <field name="employee_ids" invisible="1"/>
+                                            <field name="employee_name" placeholder="Nombre de quien hizo el gasto"/>
                                             <t groups="hr_expense.group_hr_expense_team_approver">
                                                 <field name="employee_id" groups="!hr.group_hr_user"
                                                        context="{'default_company_id': company_id}"
@@ -232,7 +233,8 @@
                                 <field name="date"/>
                                 <field name="name"/>
                                 <field name="product_id"/>
-                                <field name="employee_id"/>
+                                <field name="employee_name"/>
+                                <field name="employee_id" optional="hide"/>
                                 <field name="total_amount" sum="total_amount"/>
                                 <field name="nb_attachment" column_invisible="1"/>
                                 <!-- sheet_id puede no existir en Odoo 19, comentado temporalmente -->
