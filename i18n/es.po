@@ -4851,7 +4851,7 @@ msgstr "Estado actual del vehículo"
 #. module: vehicle_rental
 #: model:ir.model.fields,field_description:vehicle_rental.field_vehicle_contract__is_scratch_report
 msgid "Custom Scratch Report"
-msgstr "Informe borrador personalizado"
+msgstr "Informe de daños personalizado"
 
 #. module: vehicle_rental
 #: model:ir.model.fields,field_description:vehicle_rental.field_lead_rental_contract__partner_id
@@ -10356,12 +10356,12 @@ msgstr "Pedido de venta"
 #: model:ir.model.fields,field_description:vehicle_rental.field_vehicle_contract__vehicle_scratch_report_id
 #: model_terms:ir.ui.view,arch_db:vehicle_rental.scratch_report_template
 msgid "Scratch Report"
-msgstr "Informe preliminar"
+msgstr "Informe de daños"
 
 #. module: vehicle_rental
 #: model:ir.actions.act_window,name:vehicle_rental.action_vehicle_scratch_report
 msgid "Scratch Reports"
-msgstr "Informe preliminar"
+msgstr "Informes de daños"
 
 #. module: vehicle_rental
 #: model_terms:ir.ui.view,arch_db:vehicle_rental.vehicle_substitution_addendum_report_template

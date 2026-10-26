@@ -7,7 +7,7 @@
                     <t t-call="web.basic_layout">
                         <div class="page">
                             <h2 style="text-align: center;">
-                                Scratch Report
+                                Informe de daños
                             </h2>
                             <br/>
                             <div id="information" class="row mt8 mb8">
@@ -300,7 +300,7 @@
         </template>
     </data>
     <record id="action_scratch_report_template" model="ir.actions.report">
-        <field name="name">Scratch Report</field>
+        <field name="name">Informe de daños</field>
         <field name="model">vehicle.contract</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">vehicle_rental.scratch_report_template</field>

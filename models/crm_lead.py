@@ -27,6 +27,14 @@ class BookingEnquiryLead(models.Model):
     start_date = fields.Date()
     end_date = fields.Date()
     contract_id = fields.Many2one('vehicle.contract', string="Contract")
+    can_create_contract = fields.Boolean(string='Puede crear contrato', compute='_compute_can_create_contract')
+
+    @api.depends('vehicle_id', 'selected_category_id', 'contract_id')
+    def _compute_can_create_contract(self):
+        """Any opportunity with a vehicle or category can become a contract (also by phone)."""
+        for lead in self:
+            lead.can_create_contract = bool(
+                (lead.vehicle_id or lead.selected_category_id) and not lead.contract_id)
     customer_dni = fields.Char(string="DNI/NIE", help="Documento Nacional de Identidad o NIE del cliente")
     customer_dni_expiry_date = fields.Date(string="Fecha de Expiración del DNI", help="Fecha de expiración del documento de identidad")
     customer_address = fields.Char(string="Domicilio", help="Dirección del cliente")

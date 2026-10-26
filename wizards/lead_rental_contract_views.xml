@@ -20,6 +20,7 @@
                         <group string="Fechas del Alquiler">
                             <field name="start_date" string="Fecha de Recogida" required="1"/>
                             <field name="end_date" string="Fecha de Devolución" required="1"/>
+                            <field name="km_range" required="1"/>
                         </group>
                     </group>
                     <footer>

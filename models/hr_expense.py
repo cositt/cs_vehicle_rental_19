@@ -2,6 +2,7 @@
 # Copyright 2022-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 from odoo import models, fields, api, _
+from odoo.exceptions import ValidationError
 from ..utils import _display_rental_notification
 
 
@@ -15,6 +16,33 @@ class HrExpense(models.Model):
     driver_id = fields.Many2one('res.partner', string="Driver")
     employee_ids = fields.Many2many('hr.employee', compute='_compute_employee_ids',
                                     string="Employees")
+    # A vehicle expense only records who paid it: the companies have no employees
+    employee_id = fields.Many2one(required=False)
+    employee_name = fields.Char(
+        string="Empleado (texto)",
+        help="Quién hizo el gasto. Solo queda registrado; no hace falta que sea un empleado de RR. HH.")
+
+    @api.constrains('employee_id', 'fleet_vehicle_id', 'vehicle_contract_id')
+    def _check_employee_unless_vehicle(self):
+        for rec in self:
+            if not rec.employee_id and not rec.fleet_vehicle_id and not rec.vehicle_contract_id:
+                raise ValidationError(_('Indique el empleado del gasto «%s».', rec.name))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """A vehicle expense belongs to the company that owns the vehicle."""
+        for vals in vals_list:
+            vehicle = self.env['fleet.vehicle'].sudo().browse(vals.get('fleet_vehicle_id'))
+            if vehicle.company_id:
+                self.env['vehicle.contract']._check_owner_is_active(vehicle)
+                vals['company_id'] = vehicle.company_id.id
+        return super().create(vals_list)
+
+    @api.onchange('fleet_vehicle_id')
+    def _onchange_fleet_vehicle_company(self):
+        for rec in self:
+            if rec.fleet_vehicle_id.company_id:
+                rec.company_id = rec.fleet_vehicle_id.company_id
 
     @api.model
     def default_get(self, fields_list):

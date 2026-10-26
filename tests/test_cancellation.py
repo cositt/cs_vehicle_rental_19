@@ -60,4 +60,15 @@ class TestCancellation(VehicleRentalCase):
         self.assertFalse(self.contract.cancellation_invoice_id)
 
     def test_deposit_can_be_returned_after_cancelling(self):
-        self.assertIn('d_cancel', self._button('string="Return Deposit Invoice"'))
+        self.assertIn('can_return_deposit', self._button('string="Devolver fianza"'))
+        self.contract.write({'use_deposit_from_rule': False, 'if_any_deposit': True, 'deposit': 300.0})
+        invoice = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.customer.id,
+            'vehicle_contract_id': self.contract.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.env.ref('vehicle_rental.vehicle_rent_deposit').id,
+                'name': 'Depósito de Seguridad', 'quantity': 1, 'price_unit': 300.0,
+                'tax_ids': [(6, 0, [])]})]})
+        invoice.action_post()
+        self.contract.status = 'd_cancel'
+        self.assertTrue(self.contract.can_return_deposit)

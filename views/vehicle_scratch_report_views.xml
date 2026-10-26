@@ -47,7 +47,7 @@
             </field>
         </record>
         <record id="action_vehicle_scratch_report" model="ir.actions.act_window">
-            <field name="name">Scratch Reports</field>
+            <field name="name">Informes de daños</field>
             <field name="res_model">vehicle.scratch.report</field>
             <field name="view_mode">list,form,search</field>
         </record>
