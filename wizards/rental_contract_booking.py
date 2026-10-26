@@ -34,6 +34,10 @@ class RentalContractBooking(models.TransientModel):
     duration_range = fields.Selection(string="Duration", selection='_get_duration_options')
     km_range = fields.Selection(string="Km Range", selection='_get_km_options')
     pricing_type = fields.Selection(string="Pricing Type", selection='_get_pricing_type_options', default='standard')
+    flexirent_km_package = fields.Selection(
+        selection=lambda self: self.env['vehicle.contract']._fields['flexirent_km_package'].selection,
+        string="Paquete de km", default='3000',
+        help="FLEXIRENT: kilómetros incluidos por cada 30 días. Decide la cuota mensual.")
     calculated_price = fields.Float(string="Price (€/day)", compute='_compute_price', store=False)
     
     fleet_vehicle_ids = fields.Many2many('fleet.vehicle', string="Vehicle")
@@ -114,10 +118,15 @@ class RentalContractBooking(models.TransientModel):
             if band in dict(self._get_duration_options()):
                 self.duration_range = band
 
-    @api.depends('selected_category_id', 'duration_range', 'km_range', 'pricing_type')
+    @api.depends('selected_category_id', 'duration_range', 'km_range', 'pricing_type',
+                 'flexirent_km_package', 'start_date')
     def _compute_price(self):
-        """Calculate price from vehicle.pricing.rule"""
+        """Calculate price from vehicle.pricing.rule: per day, or the monthly fee for FLEXIRENT."""
         for record in self:
+            if record.pricing_type == 'flexirent':
+                record.calculated_price = record._flexirent_fee()
+                record.stored_calculated_price = record.calculated_price
+                continue
             if not record.selected_category_id or not record.duration_range or not record.km_range or not record.pricing_type:
                 record.calculated_price = 0.0
                 record.stored_calculated_price = 0.0
@@ -137,6 +146,21 @@ class RentalContractBooking(models.TransientModel):
             else:
                 record.calculated_price = 0.0
                 record.stored_calculated_price = 0.0
+
+    def _flexirent_fee(self):
+        """Monthly FLEXIRENT fee of the category for the km package, or 0."""
+        self.ensure_one()
+        if not self.selected_category_id:
+            return 0.0
+        Rule = self.env['vehicle.pricing.rule']
+        rental_date = self.start_date.date() if self.start_date else fields.Date.today()
+        rule = Rule.search([
+            ('vehicle_category_id', '=', self.selected_category_id.id),
+            ('pricing_type', '=', 'flexirent'),
+            ('flexirent_km_total', '=', int(self.flexirent_km_package or 3000)),
+            ('active', '=', True),
+        ] + Rule._in_force_domain(rental_date), limit=1, order='valid_from desc')
+        return rule.price_per_unit if rule else 0.0
 
     @api.onchange('selected_category_id', 'start_date', 'end_date', 'search_vehicle', 'company_id',
                   'duration_range', 'km_range', 'pricing_type', 'delegation_id', 'only_delegation')
@@ -216,7 +240,8 @@ class RentalContractBooking(models.TransientModel):
             'rent_type': 'days',
             'pricing_type': self.pricing_type,
             'vehicle_category_id': (self.selected_category_id or vehicle.category_id).id,
-            'km_range': self.km_range,
+            'km_range': self.km_range if self.pricing_type != 'flexirent' else False,
+            'flexirent_km_package': self.flexirent_km_package or '3000',
             # Se recoge donde está el vehículo; se entrega donde pidió el cliente
             'pick_up_delegation_id': (vehicle.delegation_id or self.delegation_id).id,
             'drop_off_delegation_id': (self.delegation_id or vehicle.delegation_id).id,

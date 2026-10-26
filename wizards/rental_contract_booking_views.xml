@@ -35,13 +35,14 @@
                     <group>
                         <group>
                             <field name="selected_category_id" required="1" string="Tipo de Vehículo"/>
-                            <field name="duration_range" required="1" string="Duración"/>
+                            <field name="duration_range" required="pricing_type != 'flexirent'" invisible="pricing_type == 'flexirent'" string="Duración"/>
+                            <field name="flexirent_km_package" invisible="pricing_type != 'flexirent'" required="pricing_type == 'flexirent'"/>
                         </group>
                         <group>
                             <field name="search_vehicle" placeholder="Buscar por marca o modelo"/>
                             <field name="delegation_id" options="{'no_create': True}"/>
                             <field name="only_delegation" invisible="not delegation_id"/>
-                            <field name="km_range" required="1" string="Rango de Km"/>
+                            <field name="km_range" required="pricing_type != 'flexirent'" invisible="pricing_type == 'flexirent'" string="Rango de Km"/>
                         </group>
                     </group>
 
@@ -50,7 +51,8 @@
                             <field name="pricing_type" required="1" string="Tipo de Tarifa"/>
                         </group>
                         <group>
-                            <field name="calculated_price" readonly="1" string="Tarifa (€/día)"/>
+                            <field name="calculated_price" readonly="1" string="Tarifa (€/día)" invisible="pricing_type == 'flexirent'"/>
+                            <field name="calculated_price" readonly="1" string="Cuota mensual (€)" invisible="pricing_type != 'flexirent'"/>
                         </group>
                     </group>
 

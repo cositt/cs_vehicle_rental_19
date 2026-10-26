@@ -206,6 +206,11 @@
                                 <field name="customer_address" string="Domicilio" readonly="status != 'a_draft'" colspan="2"/>
                             </group>
                         </group>
+                        <div class="alert alert-danger" role="alert"
+                             invisible="not customer_dni_expired or status not in ('a_draft', 'b_in_progress')">
+                            <i class="fa fa-exclamation-triangle" title="Aviso"/>
+                            El <strong>DNI</strong> caduca antes de la devolución. Pida el documento en vigor.
+                        </div>
                         <group string="Conductor autorizado">
                             <group>
                                 <field name="customer_commercial_partner_id" invisible="1"/>
@@ -219,6 +224,13 @@
                                 <field name="driver_license_expiry_date" string="Fecha Caducidad" readonly="status != 'a_draft'"/>
                             </group>
                         </group>
+                        <field name="driver_license_expired" invisible="1"/>
+                        <field name="customer_dni_expired" invisible="1"/>
+                        <div class="alert alert-danger" role="alert"
+                             invisible="not driver_license_expired or status not in ('a_draft', 'b_in_progress')">
+                            <i class="fa fa-exclamation-triangle" title="Aviso"/>
+                            El <strong>carnet de conducir</strong> caduca antes de la devolución. Pida el carnet en vigor.
+                        </div>
                         <separator string="Detalles de Recogida y Devolución" name="pick_drop_details"/>
                         <group>
                             <group>
